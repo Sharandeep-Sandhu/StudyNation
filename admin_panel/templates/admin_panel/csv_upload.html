@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Questions - Admin Panel</title>
+    {% include 'partials/mathjax.html' %}
+    {% include 'partials/equation_inline_css.html' %}
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f7fa;
+        color: #333;
+      }
+      
+      .dashboard-wrapper {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        min-height: 100vh;
+      }
+      
+      /* Sidebar */
+      .sidebar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px 0;
+        position: fixed;
+        height: 100vh;
+        width: 250px;
+        overflow-y: auto;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      }
+      
+      .sidebar-header {
+        padding: 0 20px 30px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        margin-bottom: 20px;
+      }
+      
+      .sidebar-header h2 {
+        font-size: 20px;
+        margin-bottom: 5px;
+      }
+      
+      .sidebar-header p {
+        font-size: 12px;
+        opacity: 0.8;
+      }
+      
+      .sidebar-nav {
+        list-style: none;
+      }
+      
+      .sidebar-nav li {
+        margin: 0;
+      }
+      
+      .sidebar-nav a {
+        display: block;
+        padding: 14px 20px;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+      }
+      
+      .sidebar-nav a:hover,
+      .sidebar-nav a.active {
+        background: rgba(255, 255, 255, 0.1);
+        border-left-color: white;
+      }
+      
+      .sidebar-footer {
+        position: absolute;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        padding: 0 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        padding-top: 20px;
+      }
+      
+      .logout-btn {
+        width: 100%;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: block;
+        text-align: center;
+        font-size: 14px;
+      }
+      
+      .logout-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+      
+      /* Main Content */
+      .main-content {
+        margin-left: 250px;
+        padding: 40px;
+        width: max-content;
+      }
+      
+      .header {
+        margin-bottom: 40px;
+      }
+      
+      .header h1 {
+        font-size: 28px;
+        color: #333;
+        margin-bottom: 10px;
+      }
+      
+      .header p {
+        color: #666;
+        font-size: 14px;
+      }
+      
+      .form-container {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        max-width: 600px;
+      }
+      
+      .form-group {
+        margin-bottom: 24px;
+      }
+      
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+      }
+      
+      .form-group select,
+      .form-group input[type='file'] {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+      }
+      
+      .form-group select:focus,
+      .form-group input[type='file']:focus {
+        outline: none;
+        border-color: #667eea;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+      
+      .file-upload-area {
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #f0f4ff;
+      }
+      
+      .file-upload-area:hover {
+        border-color: #764ba2;
+        background: #e8edff;
+      }
+      
+      .file-upload-area input[type='file'] {
+        display: none;
+      }
+      
+      .upload-icon {
+        font-size: 40px;
+        margin-bottom: 10px;
+      }
+      
+      .upload-text {
+        font-weight: 600;
+        color: #667eea;
+        margin-bottom: 5px;
+      }
+      
+      .upload-hint {
+        font-size: 12px;
+        color: #999;
+      }
+      
+      .submit-btn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      
+      .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+      }
+      
+      .info-box {
+        background: #f0f4ff;
+        border-left: 4px solid #667eea;
+        padding: 16px;
+        border-radius: 6px;
+        margin-bottom: 24px;
+        font-size: 13px;
+        color: #555;
+      }
+      
+      .info-box h4 {
+        color: #667eea;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      
+      .info-box ul {
+        list-style: none;
+        padding-left: 0;
+      }
+      
+      .info-box li {
+        margin-bottom: 4px;
+        padding-left: 20px;
+        position: relative;
+      }
+      
+      .info-box li:before {
+        content: '•';
+        position: absolute;
+        left: 8px;
+        color: #667eea;
+        font-weight: bold;
+      }
+      
+      .messages {
+        margin-bottom: 20px;
+      }
+      
+      .alert {
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+      
+      .alert-error {
+        background: #ffebee;
+        color: #c62828;
+        border-left: 4px solid #c62828;
+      }
+      
+      .alert-success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        border-left: 4px solid #2e7d32;
+      }
+      
+      .recent-uploads {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-top: 40px;
+      }
+      
+      .recent-uploads h2 {
+        font-size: 18px;
+        margin-bottom: 20px;
+        color: #333;
+      }
+      
+      .upload-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        border-bottom: 1px solid #e0e0e0;
+        font-size: 13px;
+      }
+      
+      .upload-item:last-child {
+        border-bottom: none;
+      }
+      
+      .upload-info {
+        flex: 1;
+      }
+      
+      .upload-filename {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 3px;
+      }
+      
+      .upload-stats {
+        color: #999;
+        font-size: 12px;
+      }
+      
+      .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+      
+      @media (max-width: 768px) {
+        .dashboard-wrapper {
+          grid-template-columns: 1fr;
+        }
+      
+        .sidebar {
+          position: relative;
+          width: 100%;
+          height: auto;
+        }
+      
+        .main-content {
+          margin-left: 0;
+          padding: 20px;
+        }
+      
+        .form-container {
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    {% include 'admin_panel/_partials/sidebar_slider.html' %}
+    <div class="dashboard-wrapper">
+      <!-- Sidebar -->
+{% include 'admin_panel/_partials/admin_sidebar.html' with active='csv_upload' %}
+<!-- Main Content -->
+      <main class="main-content">
+        <div class="header">
+          <h1>📤 Upload Questions via CSV, Excel, or Word</h1>
+          <p>Bulk import questions from a CSV (.csv), Excel (.xlsx), or Word (.docx, .doc) file</p>
+        </div>
+
+        {% if messages %}
+          <div class="messages" style="margin-bottom: 20px;">
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags|default:'error' }}" style="padding:14px 16px; border-radius:8px; margin-bottom:10px; font-size:14px; line-height:1.5; {% if 'success' in message.tags %}background:#e8f5e9; color:#1b5e20; border-left:4px solid #2e7d32;{% elif 'error' in message.tags %}background:#ffebee; color:#b71c1c; border-left:4px solid #c62828;{% else %}background:#e3f2fd; color:#0d47a1; border-left:4px solid #1565c0;{% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if form.errors %}
+          <div class="alert" style="padding:14px 16px; border-radius:8px; margin-bottom:16px; background:#ffebee; color:#b71c1c; border-left:4px solid #c62828;">
+            <strong>Upload could not start — fix these:</strong>
+            <ul style="margin:8px 0 0 18px;">
+              {% for field, errs in form.errors.items %}
+                {% for e in errs %}
+                  <li>{% if field != '__all__' %}<strong>{{ field }}:</strong> {% endif %}{{ e }}</li>
+                {% endfor %}
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+
+        <div class="form-container">
+          <div class="info-box">
+            <h4>📋 File Format Required (CSV or Excel — same columns either way):</h4>
+            <p style="margin: 4px 0 12px; display:flex; flex-wrap:wrap; gap:10px;">
+              <a href="{% url 'admin_panel:download_sample_template' %}" style="display:inline-flex; align-items:center; gap:6px; background:#667eea; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600;">
+                📥 Download Sample Excel (.xlsx)
+              </a>
+              <a href="{% url 'admin_panel:download_sample_docx' %}" style="display:inline-flex; align-items:center; gap:6px; background:#764ba2; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600;">
+                📥 Download Sample Word (.docx)
+              </a>
+            </p>
+            <ul>
+              <li>
+                <strong>question_text</strong> - The question statement
+              </li>
+              <li>
+                <strong>question_type</strong> - single_choice, multiple_choice, true_false, numerical, matching, or structured
+              </li>
+              <li>
+                <strong>option_a, option_b, option_c, option_d</strong> - Answer options
+              </li>
+              <li>
+                <strong>correct_answer</strong> - e.g., "A" or "A,B" for multiple choice
+              </li>
+              <li>
+                <strong>marks</strong> - Points for the question (default: 1)
+              </li>
+              <li>
+                <strong>explanation</strong> - Optional explanation
+              </li>
+              <li>
+                <strong>topic, paper_code, year, season, zone, question_number</strong> - Optional for saving the question, but <strong>paper_code is required for it to show up in the Exam Builder / Build Question List tools</strong> on the admin and student panels (e.g. topic="Functions", paper_code="0606/23", year=2019, season=winter). Rows left blank are still saved and visible in Manage Questions.
+              </li>
+            </ul>
+          </div>
+
+          <div class="info-box" style="border-left-color: #764ba2; background: #f4f1fb;">
+            <h4>📄 Word (.docx / .doc) Format Instead:</h4>
+            <p style="margin: 4px 0 12px;">
+              <a href="{% url 'admin_panel:download_sample_docx' %}" style="display:inline-flex; align-items:center; gap:6px; background:#764ba2; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600;">
+                📥 Download Sample Word Question Paper (.docx)
+              </a>
+            </p>
+            <ul>
+              <li>
+                Numbered questions (typed "1." or a Word auto-numbered list), each followed by
+                <strong>(a) (b) (c) (d)</strong> options — matching the classic past-paper layout.
+              </li>
+              <li>
+                An <strong>"Answer Sheet"</strong> table/section at the end: a row of question
+                numbers followed by a row of answer letters, repeated in blocks (e.g. 1–10, then
+                their answers b, c, c, d...).
+              </li>
+              <li>
+                Since this file doesn't have topic/paper_code/year/season/zone columns, fill in
+                the optional fields below to apply them to every question in the file at once.
+              </li>
+              <li>
+                ✅ Equations (MS Equation Editor / MathType pictures) are imported
+                <strong>as clear images inside the question text</strong> — no need to retype them.
+              </li>
+              <li>
+                <strong>Paper code is required</strong> for Word uploads (e.g. <code>0606/26</code>)
+                so questions appear in Exam Builder. Fill the Word batch fields below.
+              </li>
+            </ul>
+          </div>
+
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-group">
+              <label>{{ form.course.label }}</label>
+              {{ form.course }} {% if form.course.errors %}
+                <small style="color: #c62828">{{ form.course.errors }}</small>
+              {% endif %}
+            </div>
+
+            <div class="form-group">
+              <label>{{ form.question_bank.label }}</label>
+              {{ form.question_bank }} {% if form.question_bank.errors %}
+                <small style="color: #c62828">{{ form.question_bank.errors }}</small>
+              {% endif %}
+            </div>
+
+            <div class="form-group">
+              <label>{{ form.csv_file.label }}</label>
+              <div class="file-upload-area" onclick="document.getElementById('id_csv_file').click()">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Click to upload or drag and drop</div>
+                <div class="upload-hint">CSV (.csv), Excel (.xlsx, .xls), or Word (.docx, .doc) files (max 5MB CSV/Excel, 25MB Word)</div>
+              </div>
+              {{ form.csv_file }} {% if form.csv_file.errors %}
+                <small style="color: #c62828">{{ form.csv_file.errors }}</small>
+              {% endif %}
+            </div>
+
+            <div id="word-batch-fields" style="display: none; border: 1px dashed #764ba2; border-radius: 8px; padding: 16px; margin-bottom: 20px; background: #faf9ff;">
+              <p style="margin-bottom: 12px; color: #764ba2; font-weight: 600;">📄 Word import — applies to every question in this file</p>
+
+              <div class="form-group">
+                <label>{{ form.topic.label }}</label>
+                {{ form.topic }}
+                <small style="color: #666;">{{ form.topic.help_text }}</small>
+              </div>
+
+              <div class="form-group">
+                <label>{{ form.paper_code.label }}</label>
+                {{ form.paper_code }}
+              </div>
+
+              <div class="form-group">
+                <label>{{ form.year.label }}</label>
+                {{ form.year }}
+              </div>
+
+              <div class="form-group">
+                <label>{{ form.season.label }}</label>
+                {{ form.season }}
+              </div>
+
+              <div class="form-group">
+                <label>{{ form.zone.label }}</label>
+                {{ form.zone }}
+              </div>
+            </div>
+
+            <button type="submit" class="submit-btn">🚀 Upload and Process File</button>
+          </form>
+
+          <div style="margin-top: 18px; padding: 14px 16px; background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px; font-size: 13.5px; color: #1b5e20; line-height: 1.55;">
+            <strong>How to know upload worked</strong><br>
+            After a successful Word/CSV upload you are taken to <strong>Manage Questions</strong>
+            with a green success message (e.g. “✅ Upload successful: 82 question(s) imported”).
+            Equations appear as clear images inside each question — that is success, not a failure.
+            For Exam Builder, fill <strong>Paper code</strong> (required for Word files).
+          </div>
+          <div style="margin-top: 12px; padding: 12px 16px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; font-size: 13px; color: #6d4c00; line-height: 1.5;">
+            <strong>⏱ Word files with equations</strong> may take about <strong>10–30 seconds</strong>
+            while formulas are converted. Keep the tab open — do not click Upload again.
+            CSV/Excel without images is usually under a few seconds.
+          </div>
+          <script>
+            (function () {
+              var form = document.querySelector('form[enctype="multipart/form-data"]');
+              if (!form) return;
+              form.addEventListener('submit', function () {
+                var btn = form.querySelector('button[type="submit"], .submit-btn, input[type="submit"]');
+                if (btn) {
+                  btn.disabled = true;
+                  btn.textContent = 'Uploading… please wait';
+                }
+                var note = document.getElementById('uploadWaitNote');
+                if (note) note.style.display = 'block';
+              });
+            })();
+          </script>
+          <div id="uploadWaitNote" style="display:none; margin-top:12px; padding:12px 16px; background:#e3f2fd; border-radius:8px; color:#0d47a1; font-size:13.5px;">
+            ⏳ Processing file (equations may take a bit)… This page will redirect when finished.
+          </div>
+        </div>
+
+        {% if uploads %}
+          <div class="recent-uploads">
+            <h2>📋 Recent Uploads</h2>
+            {% for upload in uploads %}
+              <div class="upload-item">
+                <div class="upload-info">
+                  <div class="upload-filename">{{ upload.file_name }}</div>
+                  <div class="upload-stats">{{ upload.successful_imports }}/{{ upload.total_questions }}
+                    imported • {{ upload.uploaded_at|date:'M d, Y H:i' }}</div>
+                </div>
+                <span class="status-badge">{{ upload.get_status_display }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </main>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById('id_csv_file')
+      const uploadArea = document.querySelector('.file-upload-area')
+      const wordFields = document.getElementById('word-batch-fields')
+
+      function toggleWordFields() {
+        const file = fileInput.files && fileInput.files[0]
+        const isWord = file && /\.(docx|doc)$/i.test(file.name)
+        wordFields.style.display = isWord ? 'block' : 'none'
+      }
+
+      fileInput.addEventListener('change', toggleWordFields)
+      toggleWordFields()
+
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault()
+        uploadArea.style.borderColor = '#764ba2'
+        uploadArea.style.background = '#e8edff'
+      })
+      
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.borderColor = '#667eea'
+        uploadArea.style.background = '#f0f4ff'
+      })
+      
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault()
+        const files = e.dataTransfer.files
+        if (files.length > 0) {
+          fileInput.files = files
+          toggleWordFields()
+        }
+      })
+    </script>
+  </body>
+</html>

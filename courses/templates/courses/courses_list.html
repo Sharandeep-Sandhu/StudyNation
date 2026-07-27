@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  Courses - Study Nation
+{% endblock %}
+
+{% block content %}
+  <style>
+    .filters-bar {
+      background: #fff;
+      border: 1px solid #eceef1;
+      border-radius: 14px;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(20, 20, 43, 0.04);
+    }
+    
+    .filter-row {
+      display: flex;
+      align-items: baseline;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+    
+    .filter-row + .filter-row {
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid #f1f2f5;
+    }
+    
+    .filter-label {
+      flex: 0 0 auto;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #8a8fa3;
+      min-width: 110px;
+    }
+    
+    .filter-group {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      flex: 1 1 auto;
+    }
+    
+    .filter-group input[type='radio'] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.45rem 1rem;
+      border-radius: 999px;
+      border: 1.5px solid #e3e5eb;
+      background: #fafafc;
+      color: #4b4f5e;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    
+    .filter-chip:hover {
+      border-color: #6c5ce7;
+      color: #6c5ce7;
+      background: #f5f3ff;
+    }
+    
+    .filter-group input[type='radio']:checked + .filter-chip {
+      background: #6c5ce7;
+      border-color: #6c5ce7;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+    }
+    
+    .filter-group input[type='radio']:focus-visible + .filter-chip {
+      outline: 2px solid #6c5ce7;
+      outline-offset: 2px;
+    }
+    
+    @media (max-width: 600px) {
+      .filter-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.6rem;
+      }
+      .filter-label {
+        min-width: 0;
+      }
+    }
+  </style>
+
+  <div style="margin-bottom: 2rem;">
+    <h1 style="color: #333; margin-bottom: 1.5rem;">All Courses</h1>
+
+    <div class="filters-bar">
+      <div class="filter-row">
+        <span class="filter-label">Category</span>
+        <div class="filter-group">
+          <label>
+            <input type="radio" name="category" value="" checked id="cat-all" />
+            <span class="filter-chip">All Categories</span>
+          </label>
+          {% for category in categories %}
+            <label>
+              <input type="radio" name="category" value="{{ category.id }}" id="cat-{{ category.id }}" />
+              <span class="filter-chip">{{ category.name }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <span class="filter-label">Level</span>
+        <div class="filter-group">
+          <label>
+            <input type="radio" name="level" value="" checked id="lvl-all" />
+            <span class="filter-chip">All Levels</span>
+          </label>
+          <label>
+            <input type="radio" name="level" value="beginner" id="lvl-beginner" />
+            <span class="filter-chip">Beginner</span>
+          </label>
+          <label>
+            <input type="radio" name="level" value="intermediate" id="lvl-intermediate" />
+            <span class="filter-chip">Intermediate</span>
+          </label>
+          <label>
+            <input type="radio" name="level" value="advanced" id="lvl-advanced" />
+            <span class="filter-chip">Advanced</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 2rem;">
+    <div id="courseCount" style="color: #666; margin-bottom: 1rem;">Total Courses: {{ courses.count }}</div>
+  </div>
+
+  <div id="coursesList" class="grid">
+    {% for course in courses %}
+      <div class="card" data-category="{{ course.category.id }}" data-level="{{ course.level }}">
+        {% if course.thumbnail %}
+          <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;" />
+        {% else %}
+          <div style="width: 100%; height: 150px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">📚</div>
+        {% endif %}
+        <h3>{{ course.title }}</h3>
+        <p style="font-size: 0.9rem; color: #999;">{{ course.category.name }} • {{ course.get_level_display }}</p>
+        <p>{{ course.description|truncatewords:20 }}</p>
+        <div style="margin: 1rem 0; display: flex; justify-content: space-between; font-size: 0.9rem; color: #666;">
+          <span>⭐ {{ course.rating }}</span>
+          <span>👥 {{ course.students_enrolled }}</span>
+        </div>
+        {% if course.instructor %}
+          <p style="font-size: 0.85rem; color: #999;">Instructor: {{ course.instructor }}</p>
+        {% endif %}
+        <a href="/courses/{{ course.id }}/" class="btn">View Course</a>
+      </div>
+    {% empty %}
+      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+        <p style="font-size: 1.2rem; color: #666;">No courses found matching your criteria.</p>
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const categoryRadios = document.querySelectorAll('input[name="category"]')
+      const levelRadios = document.querySelectorAll('input[name="level"]')
+      const coursesList = document.getElementById('coursesList')
+      const courseCount = document.getElementById('courseCount')
+    
+      function filterCourses() {
+        const selectedCategory = document.querySelector('input[name="category"]:checked').value
+        const selectedLevel = document.querySelector('input[name="level"]:checked').value
+    
+        const cards = coursesList.querySelectorAll('.card')
+        let visibleCount = 0
+    
+        cards.forEach((card) => {
+          const cardCategory = card.getAttribute('data-category')
+          const cardLevel = card.getAttribute('data-level')
+    
+          const matchCategory = !selectedCategory || cardCategory === selectedCategory
+          const matchLevel = !selectedLevel || cardLevel === selectedLevel
+    
+          if (matchCategory && matchLevel) {
+            card.style.display = ''
+            visibleCount++
+          } else {
+            card.style.display = 'none'
+          }
+        })
+    
+        courseCount.textContent = `Showing ${visibleCount} course${visibleCount !== 1 ? 's' : ''}`
+      }
+    
+      categoryRadios.forEach((radio) => radio.addEventListener('change', filterCourses))
+      levelRadios.forEach((radio) => radio.addEventListener('change', filterCourses))
+    })
+  </script>
+{% endblock %}

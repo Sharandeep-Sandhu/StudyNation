@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  My Exams - Study Nation
+{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <h1 style="color: #333; margin-bottom: 0.4rem;">🧾 My Exams</h1>
+      <p style="color: #666;">Exams you've built from topical past papers. Pick up where you left off, or start a new one.</p>
+    </div>
+    <a href="{% url 'courses:student_create_exam' %}" class="btn">➕ New Exam</a>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="{% if message.tags == 'success' %}success{% else %}error{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if exams %}
+    <div class="grid">
+      {% for exam in exams %}
+        <div class="card">
+          <h3>{{ exam.name }}</h3>
+          <p>
+            {{ exam.category.name|default:"No subject set" }}<br />
+            {{ exam.question_count }} question(s) &bull; {{ exam.total_marks }} marks &bull; {{ exam.duration_minutes }} min
+          </p>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <a href="{% url 'courses:student_edit_exam' exam.id %}" class="btn" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;">✏️ Continue editing</a>
+            {% if exam.question_count %}
+              <a href="{% url 'courses:student_practice_start' exam.id %}" class="btn" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; background: #4caf7d;">▶ Practice</a>
+            {% endif %}
+            <a href="{% url 'courses:student_delete_exam' exam.id %}" class="btn btn-secondary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;" onclick="return confirm('Delete this exam? This cannot be undone.');">🗑️ Delete</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="background: white; padding: 3rem 2rem; border-radius: 8px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">🧾</div>
+      <h3 style="color: #555; margin-bottom: 0.5rem;">No exams yet</h3>
+      <p style="color: #888; margin-bottom: 1.5rem;">Click "New Exam" above to build your first custom exam from topical past papers.</p>
+      <a href="{% url 'courses:student_create_exam' %}" class="btn">➕ New Exam</a>
+    </div>
+  {% endif %}
+{% endblock %}

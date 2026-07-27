@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% block title %}
+  Resources - Study Nation
+{% endblock %}
+
+{% block extra_css %}
+{% include 'partials/no_download_media.html' %}
+<style>
+  .rl-wrap { max-width: 1100px; margin: 0 auto; }
+  .rl-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff; border-radius: 16px; padding: 1.75rem 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .rl-hero h1 { margin: 0 0 0.4rem; font-size: 1.7rem; font-weight: 800; }
+  .rl-hero p { margin: 0; opacity: 0.95; }
+  .rl-note {
+    font-size: 0.85rem; color: #6b7280; margin: 0 0 1.25rem;
+    background: #f8f9fd; border: 1px solid #e8ebf5;
+    border-radius: 8px; padding: 10px 14px;
+  }
+  .rl-filters {
+    background: #fff; border: 1px solid #e8ebf5; border-radius: 12px;
+    padding: 1rem 1.15rem; margin-bottom: 1.5rem;
+  }
+  .rl-filters form {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: end;
+  }
+  .rl-filters label { display: block; font-size: 0.78rem; font-weight: 700; color: #555; margin-bottom: 4px; }
+  .rl-filters select {
+    padding: 8px 10px; border-radius: 8px; border: 1px solid #d6dbf2;
+    background: #fff; min-width: 150px;
+  }
+  .rl-filters button, .rl-filters a {
+    padding: 9px 14px; border-radius: 8px; font-weight: 700; font-size: 0.88rem;
+    text-decoration: none; border: none; cursor: pointer;
+  }
+  .rl-filters button { background: #667eea; color: #fff; }
+  .rl-filters a { background: #f1f3f9; color: #444; border: 1px solid #e0e3ef; }
+  .rl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+  .rl-card {
+    background: #fff; border: 1px solid #e8ebf5; border-radius: 14px;
+    overflow: hidden; box-shadow: 0 4px 16px rgba(30,40,90,0.06);
+    display: flex; flex-direction: column;
+  }
+  .rl-card-body { padding: 1.15rem 1.2rem; flex: 1; }
+  .rl-card h3 { margin: 0 0 0.35rem; font-size: 1.05rem; color: #1f2544; }
+  .rl-card .meta { color: #8a91a8; font-size: 0.82rem; margin-bottom: 0.55rem; }
+  .rl-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0.65rem; }
+  .rl-badge {
+    font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+    background: #eef0fd; color: #5b6fd8;
+  }
+  .rl-badge.free { background: #e8f5e9; color: #2e7d32; }
+  .rl-badge.paid { background: #fff8e1; color: #b26a00; }
+  .rl-desc { color: #5c647a; font-size: 0.9rem; line-height: 1.55; margin: 0; }
+  .rl-viewer {
+    border-top: 1px solid #eef0f6;
+    padding: 0.65rem;
+    background: #fafbff;
+  }
+  .rl-viewer iframe {
+    width: 100%; height: 280px; border: 1px solid #e6e9f5;
+    border-radius: 10px; background: #fff;
+  }
+  .rl-actions {
+    padding: 0.85rem 1.15rem 1.1rem;
+    border-top: 1px solid #eef0f6;
+  }
+  .rl-actions a {
+    display: inline-block; background: #667eea; color: #fff;
+    text-decoration: none; font-weight: 700; font-size: 0.88rem;
+    padding: 9px 14px; border-radius: 8px;
+  }
+  .rl-empty {
+    grid-column: 1 / -1; text-align: center; padding: 2.5rem;
+    background: #fff; border-radius: 12px; border: 1px dashed #d8dcf0; color: #666;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rl-wrap">
+  <div class="rl-hero">
+    <h1>Study Resources</h1>
+    <p>Browse free and premium e-books & notes — view online only.</p>
+  </div>
+
+  <p class="rl-note">Files can be viewed on this site only. Direct download is disabled.</p>
+
+  <div class="rl-filters">
+    <form method="get">
+      <div>
+        <label>Type</label>
+        <select name="type">
+          <option value="">All Types</option>
+          <option value="ebook" {% if request.GET.type == "ebook" %}selected{% endif %}>E-Books</option>
+          <option value="handwritten" {% if request.GET.type == "handwritten" %}selected{% endif %}>Handwritten Notes</option>
+          <option value="other" {% if request.GET.type == "other" %}selected{% endif %}>Other</option>
+        </select>
+      </div>
+      <div>
+        <label>Price</label>
+        <select name="is_paid">
+          <option value="">All</option>
+          <option value="free" {% if request.GET.is_paid == "free" %}selected{% endif %}>Free Only</option>
+          <option value="paid" {% if request.GET.is_paid == "paid" %}selected{% endif %}>Paid Only</option>
+        </select>
+      </div>
+      <button type="submit">Apply Filters</button>
+      <a href="{% url 'courses:resources_list' %}">Clear</a>
+    </form>
+  </div>
+
+  <div class="rl-grid">
+    {% for resource in resources %}
+      <div class="rl-card no-dl-zone">
+        <div class="rl-card-body">
+          <h3>{{ resource.title }}</h3>
+          <div class="meta">{{ resource.author|default:"Unknown Author" }}</div>
+          <div class="rl-badges">
+            {% if resource.is_paid %}
+              <span class="rl-badge paid">₹ {{ resource.price }}</span>
+            {% else %}
+              <span class="rl-badge free">FREE</span>
+            {% endif %}
+            <span class="rl-badge">{{ resource.get_resource_type_display }}</span>
+            <span class="rl-badge">View only</span>
+          </div>
+          {% if resource.description %}
+            <p class="rl-desc">{{ resource.description|truncatewords:25 }}</p>
+          {% endif %}
+          {% if resource.course %}
+            <p class="meta" style="margin-top:0.5rem;"><strong>Course:</strong> {{ resource.course.title }}</p>
+          {% endif %}
+        </div>
+
+        {% if resource.file %}
+          <div class="rl-viewer no-dl-media">
+            <iframe
+              src="{{ resource.file.url }}#toolbar=0&navpanes=0&scrollbar=1"
+              title="{{ resource.title }} preview"
+              oncontextmenu="return false;"
+            ></iframe>
+          </div>
+        {% endif %}
+
+        <div class="rl-actions">
+          <a href="{% url 'courses:resource_detail' resource.id %}">Open full view</a>
+        </div>
+      </div>
+    {% empty %}
+      <div class="rl-empty">No resources found matching your filters.</div>
+    {% endfor %}
+  </div>
+
+  {% if is_paginated %}
+    <div style="margin-top:1.5rem; display:flex; justify-content:center; gap:8px;">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" style="padding:8px 12px; border-radius:8px; background:#fff; border:1px solid #e0e3ef; text-decoration:none; color:#444;">Previous</a>
+      {% endif %}
+      <span style="padding:8px 12px; border-radius:8px; background:#667eea; color:#fff; font-weight:700;">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" style="padding:8px 12px; border-radius:8px; background:#fff; border:1px solid #e0e3ef; text-decoration:none; color:#444;">Next</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Questions - Admin Panel</title>
+    {% include 'partials/mathjax.html' %}
+    {% include 'partials/equation_inline_css.html' %}
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
+        .dashboard-wrapper { min-height: 100vh; width: 100%; }
+        .sidebar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 30px 0; position: fixed; top: 0; left: 0; height: 100vh; width: 250px;
+            overflow-y: auto; box-shadow: 2px 0 10px rgba(0,0,0,.1); z-index: 100;
+        }
+        .sidebar-header { padding: 0 20px 30px; border-bottom: 1px solid rgba(255,255,255,.2); margin-bottom: 20px; }
+        .sidebar-header h2 { font-size: 20px; margin-bottom: 5px; }
+        .sidebar-header p { font-size: 12px; opacity: .8; }
+        .sidebar-nav { list-style: none; }
+        .sidebar-nav a {
+            display: block; padding: 14px 20px; color: white; text-decoration: none;
+            transition: all .3s ease; border-left: 3px solid transparent;
+        }
+        .sidebar-nav a:hover, .sidebar-nav a.active { background: rgba(255,255,255,.1); border-left-color: white; }
+        .sidebar-footer {
+            position: absolute; bottom: 20px; left: 0; right: 0; padding: 0 20px;
+            border-top: 1px solid rgba(255,255,255,.2); padding-top: 20px;
+        }
+        .logout-btn {
+            width: 100%; padding: 10px; background: rgba(255,255,255,.2); color: white;
+            border: 1px solid rgba(255,255,255,.4); border-radius: 4px; cursor: pointer;
+            text-decoration: none; display: block; text-align: center; font-size: 14px;
+        }
+        .main-content { margin-left: 250px; padding: 40px; max-width: 1100px; width: auto; box-sizing: border-box; min-width: 0; }
+        .header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+        .header h1 { font-size: 28px; margin-bottom: 6px; }
+        .header p { color: #666; font-size: 14px; }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px;
+            border-radius: 6px; font-size: 14px; font-weight: 600; border: none;
+            cursor: pointer; text-decoration: none;
+        }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+        .btn-outline { background: #fff; color: #667eea; border: 1.5px solid #667eea; }
+        .btn-danger { background: #fff; color: #d64545; border: 1.5px solid #f3c6c6; }
+        .btn-ghost { background: #f1f3f7; color: #444; border: 1px solid #e0e0e0; }
+        .filter-section {
+            background: white; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 24px;
+            display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;
+        }
+        .filter-group { flex: 1; min-width: 200px; }
+        .filter-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px; }
+        .filter-group select, .filter-group input, textarea, .field input, .field select, .field textarea {
+            width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;
+            font-size: 14px; background: #f8f9fa; font-family: inherit;
+        }
+        .filter-group select:focus, .field input:focus, .field textarea:focus, textarea:focus {
+            outline: none; border-color: #667eea; background: #fff;
+        }
+        .questions-section {
+            background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); overflow: hidden;
+        }
+        .question-item { padding: 18px 20px; border-bottom: 1px solid #e0e0e0; }
+        .question-item:hover { background: #fafbff; }
+        .question-item:last-child { border-bottom: none; }
+        .question-text {
+            font-weight: 500; color: #222; margin-bottom: 8px;
+            font-size: 15px; line-height: 1.8; word-wrap: break-word;
+        }
+        /* Force equation images to body-text size on this list (override any residual rules) */
+        .questions-section .question-text img.eq-inline,
+        .questions-section .question-text img {
+            display: inline !important;
+            height: 1.3em !important;
+            width: auto !important;
+            max-height: 1.7em !important;
+            max-width: min(100%, 18em) !important;
+            vertical-align: middle !important;
+            margin: 0 0.12em !important;
+            padding: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            object-fit: contain !important;
+        }
+        .questions-section .q-options img.eq-inline,
+        .questions-section .q-options img {
+            height: 1.2em !important;
+            max-height: 1.5em !important;
+            width: auto !important;
+            vertical-align: middle !important;
+            margin: 0 0.1em !important;
+            padding: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            object-fit: contain !important;
+        }
+        .question-meta { display: flex; gap: 14px; font-size: 12px; color: #999; margin-bottom: 10px; flex-wrap: wrap; }
+        .type-badge {
+            display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px;
+            font-weight: 600; background: #e3f2fd; color: #1565c0;
+        }
+        .q-options { margin: 8px 0 10px; padding-left: 4px; font-size: 14px; color: #444; line-height: 1.7; }
+        .q-options .opt { padding: 3px 0; }
+        .q-options .opt.correct { color: #1c8a4c; font-weight: 600; }
+        .q-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .empty-state { padding: 60px 20px; text-align: center; color: #999; }
+        .empty-state h3 { font-size: 20px; margin-bottom: 10px; color: #667eea; }
+        /* Only show reference strip when formulas are NOT already in the stem */
+        .eq-ref-strip {
+            margin-top: 8px; padding: 8px 10px; background: #f0f7ff;
+            border: 1px solid #c5d8f7; border-radius: 6px;
+        }
+        .eq-ref-strip .eq-images img {
+            height: 26px !important; max-height: 26px !important; max-width: 140px !important;
+        }
+
+        /* Modal editor */
+        .mq-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(20,24,34,.5);
+            z-index: 2000; align-items: flex-start; justify-content: center;
+            overflow-y: auto; padding: 30px 14px;
+        }
+        .mq-overlay.open { display: flex; }
+        .mq-modal {
+            background: #fff; border-radius: 12px; width: 100%; max-width: 820px;
+            box-shadow: 0 24px 70px rgba(0,0,0,.28); margin: auto;
+        }
+        .mq-head {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 22px; border-bottom: 1px solid #eee;
+        }
+        .mq-head h2 { font-size: 18px; }
+        .mq-body { padding: 20px 22px; }
+        .mq-foot {
+            padding: 14px 22px; border-top: 1px solid #eee;
+            display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+        }
+        .field { margin-bottom: 16px; }
+        .field-label {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 13px; font-weight: 700; margin-bottom: 6px; gap: 8px;
+        }
+        .option-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .option-row input[type=text] { flex: 1; }
+        .option-row .mark-correct { width: 18px; height: 18px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .eq-images { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
+        .toast {
+            position: fixed; top: 18px; right: 18px; background: #222; color: #fff;
+            padding: 12px 16px; border-radius: 8px; z-index: 11000; display: none; font-size: 13.5px;
+        }
+        .toast.show { display: block; }
+        .toast.err { background: #d64545; }
+        @media (max-width: 768px) {
+            .dashboard-wrapper { grid-template-columns: 1fr; }
+            .sidebar { position: relative; width: 100%; height: auto; }
+            .main-content { margin-left: 0; padding: 20px; }
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+{% include 'admin_panel/_partials/sidebar_slider.html' %}
+<div class="dashboard-wrapper">
+{% include 'admin_panel/_partials/admin_sidebar.html' with active='manage_questions' %}
+<main class="main-content">
+        <div class="header">
+            <div>
+                <h1>❓ Manage Questions</h1>
+                <p>Full CRUD — edit question text, MCQ options, and answers with the equation editor</p>
+            </div>
+            <div class="header-actions">
+                <a class="btn btn-outline" href="{% url 'admin_panel:csv_upload' %}">📤 Upload</a>
+                <a class="btn btn-primary" href="{% url 'admin_panel:manual_question' %}">➕ Add Question</a>
+            </div>
+        </div>
+
+        {% if messages %}
+        <div style="margin-bottom:18px;">
+          {% for message in messages %}
+            <div style="padding:14px 16px; border-radius:8px; margin-bottom:8px; font-size:14px; line-height:1.5; {% if 'success' in message.tags %}background:#e8f5e9; color:#1b5e20; border-left:4px solid #2e7d32;{% elif 'error' in message.tags %}background:#ffebee; color:#b71c1c; border-left:4px solid #c62828;{% else %}background:#e3f2fd; color:#0d47a1; border-left:4px solid #1565c0;{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="qb-filter">Filter by Question Bank:</label>
+                <form method="get" id="mqFilterForm">
+                    {% if per_page %}<input type="hidden" name="per_page" value="{{ per_page }}" />{% endif %}
+                    <select name="question_bank" id="qb-filter" onchange="this.form.submit();">
+                        <option value="">-- All Question Banks --</option>
+                        {% for qb in question_banks %}
+                        <option value="{{ qb.id }}" {% if selected_qb|add:"" == qb.id|add:"" %}selected{% endif %}>
+                            {{ qb.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+        </div>
+
+        <div class="questions-section" id="questionsList">
+            {% if questions %}
+                {% for question in questions %}
+                <div class="question-item" id="q-row-{{ question.id }}">
+                    <div class="question-text"><span style="color:#667eea;font-weight:700;margin-right:6px;">{{ page_obj.start_index|add:forloop.counter0 }}.</span>{{ question.question_text|safe }}</div>
+                    <div class="question-meta">
+                        <span class="type-badge">{{ question.get_question_type_display }}</span>
+                        <span>📚 {{ question.question_bank.title }}</span>
+                        <span>⭐ {{ question.marks }} marks</span>
+                        <span>🗓️ {{ question.created_at|date:"M d, Y" }}</span>
+                        <span>#{{ question.id }}</span>
+                    </div>
+                    {% with opts=question.options.all %}
+                      {% if opts %}
+                        <div class="q-options">
+                          {% for opt in opts %}
+                            <div class="opt {% if opt.is_correct %}correct{% endif %}">
+                              {% if opt.is_correct %}✓{% else %}○{% endif %} {{ opt.text|safe }}
+                            </div>
+                          {% endfor %}
+                        </div>
+                      {% elif question.option_a or question.option_b %}
+                        <div class="q-options">
+                          {% if question.option_a %}<div class="opt">A. {{ question.option_a|safe }}</div>{% endif %}
+                          {% if question.option_b %}<div class="opt">B. {{ question.option_b|safe }}</div>{% endif %}
+                          {% if question.option_c %}<div class="opt">C. {{ question.option_c|safe }}</div>{% endif %}
+                          {% if question.option_d %}<div class="opt">D. {{ question.option_d|safe }}</div>{% endif %}
+                        </div>
+                      {% endif %}
+                    {% endwith %}
+                    {% if question.correct_answer %}
+                    <div style="font-size: 12px; color: #667eea; margin-bottom: 6px;">
+                        <strong>Answer:</strong> {{ question.correct_answer|safe }}
+                    </div>
+                    {% endif %}
+                    {# Only show reference strip when equations are NOT already inlined (avoids huge duplicate images) #}
+                    {% if question.equation_image_list and '<img' not in question.question_text %}
+                    <div class="eq-ref-strip">
+                        <div style="font-size: 12px; color: #1e4b8f; margin-bottom: 6px;">
+                            ∑ {{ question.equation_image_list|length }} equation image(s) from Word — use Edit + ∑ Math Type to place them in the text
+                        </div>
+                        <div class="eq-images">
+                            {% for img_url in question.equation_image_list %}
+                            <img src="{{ img_url }}" alt="Equation" class="eq-inline">
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="q-actions">
+                        <button type="button" class="btn btn-outline" onclick="openEdit({{ question.id }})">✏️ Edit</button>
+                        <button type="button" class="btn btn-danger" onclick="deleteQuestion({{ question.id }})">🗑️ Delete</button>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if page_obj %}
+                  {% include 'partials/question_pagination.html' %}
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <h3>📭 No Questions Found</h3>
+                    <p>Start by uploading a CSV/Word file or creating questions manually.</p>
+                </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<!-- ===================== EDIT MODAL ===================== -->
+<div class="mq-overlay" id="editOverlay">
+  <div class="mq-modal">
+    <div class="mq-head">
+      <h2 id="editTitle">Edit Question</h2>
+      <button type="button" class="btn btn-ghost" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="mq-body">
+      <div id="eqImagesBox" class="field" style="display:none;">
+        <div class="field-label">Reference equation images (from Word)</div>
+        <div class="eq-images" id="eqImagesList"></div>
+      </div>
+
+      <div class="field" id="passageBox" style="display:none;">
+        <div class="field-label">
+          <span>Passage</span>
+          <button type="button" class="eqed-btn" data-eq-target="#editPassage" onmousedown="event.preventDefault()">∑ Math Type</button>
+        </div>
+        <textarea id="editPassage" rows="3" data-eq-field data-eq-preview="1" placeholder="Comprehension passage"></textarea>
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          <span>Question text</span>
+          <button type="button" class="eqed-btn" data-eq-target="#editQuestionText" onmousedown="event.preventDefault()">∑ Math Type</button>
+        </div>
+        <textarea id="editQuestionText" rows="4" data-eq-field data-eq-preview="1" placeholder="Question (supports $LaTeX$)"></textarea>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <div class="field-label">Difficulty</div>
+          <select id="editDifficulty">
+            <option value="">—</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Marks</div>
+          <input type="number" id="editMarks" min="0" step="1" />
+        </div>
+      </div>
+
+      <!-- MCQ / choice options -->
+      <div class="field" id="optionsBox">
+        <div class="field-label">
+          <span>Answer options (MCQ / multiple)</span>
+          <select id="editAnswerType" style="width:auto; padding:4px 8px;">
+            <option value="single">Single correct</option>
+            <option value="multiple">Multiple correct</option>
+          </select>
+        </div>
+        <div id="editOptionsList"></div>
+        <button type="button" class="btn btn-outline" style="margin-top:8px;" onclick="addOption()">+ Add option</button>
+      </div>
+
+      <!-- Fill blanks -->
+      <div class="field" id="blanksBox" style="display:none;">
+        <div class="field-label">Acceptable answers</div>
+        <div id="editBlanksList"></div>
+        <button type="button" class="btn btn-outline" style="margin-top:8px;" onclick="addBlank()">+ Add answer</button>
+      </div>
+
+      <!-- Numeric / free correct answer -->
+      <div class="field" id="correctBox">
+        <div class="field-label">
+          <span>Correct answer (text / numeric / letters)</span>
+          <button type="button" class="eqed-btn" data-eq-target="#editCorrect" onmousedown="event.preventDefault()">∑ Math Type</button>
+        </div>
+        <input type="text" id="editCorrect" data-eq-field data-eq-preview="1" placeholder="e.g. A, 42, or $x=2$" />
+      </div>
+
+      <div class="field" id="toleranceBox" style="display:none;">
+        <div class="field-label">Numeric tolerance (+/−)</div>
+        <input type="number" id="editTolerance" step="any" />
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          <span>Solution / explanation</span>
+          <button type="button" class="eqed-btn" data-eq-target="#editSolution" onmousedown="event.preventDefault()">∑ Math Type</button>
+        </div>
+        <textarea id="editSolution" rows="3" data-eq-field data-eq-preview="1" placeholder="Detailed solution for students"></textarea>
+      </div>
+    </div>
+    <div class="mq-foot">
+      <button type="button" class="btn btn-danger" onclick="deleteCurrent()">🗑️ Delete</button>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveEdit()">💾 Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{% include 'partials/equation_editor.html' %}
+
+<script>
+  const URLS = {
+    dataTpl: "{% url 'admin_panel:question_wizard_data' 0 %}".replace('0', '__ID__'),
+    saveTpl: "{% url 'admin_panel:question_wizard_save' 0 %}".replace('0', '__ID__'),
+    deleteTpl: "{% url 'admin_panel:question_wizard_delete' 0 %}".replace('0', '__ID__'),
+  };
+
+  let current = null;
+  let _options = [];
+  let _blanks = [];
+
+  function toast(msg, err) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (err ? ' err' : '');
+    setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return m ? m[2] : '';
+  }
+
+  async function api(url, opts) {
+    opts = opts || {};
+    const res = await fetch(url, {
+      method: opts.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
+    return data;
+  }
+
+  function escapeAttr(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  function isChoiceType(t) {
+    return ['mcq','true_false','single_choice','multiple_choice','comprehension'].indexOf(t) !== -1;
+  }
+  function isBlankType(t) { return t === 'fill_blank'; }
+  function isIntegerType(t) { return t === 'integer' || t === 'numerical'; }
+
+  async function openEdit(id) {
+    try {
+      const data = await api(URLS.dataTpl.replace('__ID__', id));
+      current = data.question;
+      renderEditor();
+      document.getElementById('editOverlay').classList.add('open');
+      if (window.EqEditor) EqEditor.enhanceAll(document.getElementById('editOverlay'));
+      if (window.eqTypeset) eqTypeset([document.getElementById('editOverlay')]);
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  function closeEdit() {
+    document.getElementById('editOverlay').classList.remove('open');
+    current = null;
+  }
+
+  function renderEditor() {
+    const q = current;
+    document.getElementById('editTitle').textContent = 'Edit Q#' + q.id + ' — ' + (q.question_type_label || q.question_type);
+    document.getElementById('editQuestionText').value = stripHtml(q.question_text || '');
+    document.getElementById('editSolution').value = q.explanation || '';
+    document.getElementById('editPassage').value = q.passage || '';
+    document.getElementById('editDifficulty').value = q.difficulty_level || '';
+    document.getElementById('editMarks').value = q.marks || 1;
+    document.getElementById('editCorrect').value = q.correct_answer || '';
+    document.getElementById('editTolerance').value = q.numeric_tolerance || '';
+    document.getElementById('editAnswerType').value = q.answer_type || (q.question_type === 'multiple_choice' ? 'multiple' : 'single');
+
+    const showPassage = q.question_type === 'comprehension';
+    document.getElementById('passageBox').style.display = showPassage ? 'block' : 'none';
+
+    const choice = isChoiceType(q.question_type);
+    const blank = isBlankType(q.question_type);
+    const integer = isIntegerType(q.question_type);
+
+    document.getElementById('optionsBox').style.display = choice ? 'block' : 'none';
+    document.getElementById('blanksBox').style.display = blank ? 'block' : 'none';
+    document.getElementById('toleranceBox').style.display = integer ? 'block' : 'none';
+    // correct answer free-text always useful for numerical / structured / matching
+    document.getElementById('correctBox').style.display = choice ? 'none' : 'block';
+
+    if (choice) {
+      _options = (q.options && q.options.length)
+        ? q.options.map(o => ({ text: o.text, is_correct: !!o.is_correct }))
+        : [
+            { text: q.option_a || '', is_correct: false },
+            { text: q.option_b || '', is_correct: false },
+            { text: q.option_c || '', is_correct: false },
+            { text: q.option_d || '', is_correct: false },
+          ].filter((o, i, arr) => o.text || i < 2);
+      if (!_options.length) _options = [{ text: '', is_correct: false }, { text: '', is_correct: false }];
+      renderOptions();
+    } else if (blank) {
+      _blanks = (q.options && q.options.length) ? q.options.map(o => o.text) : [q.correct_answer || ''];
+      if (!_blanks.length) _blanks = [''];
+      renderBlanks();
+    }
+
+    // equation images
+    const imgs = q.equation_images || [];
+    const box = document.getElementById('eqImagesBox');
+    const list = document.getElementById('eqImagesList');
+    if (imgs.length) {
+      box.style.display = 'block';
+      list.innerHTML = imgs.map(u => `<a href="${escapeAttr(u)}" target="_blank"><img src="${escapeAttr(u)}" alt="eq"></a>`).join('');
+    } else {
+      box.style.display = 'none';
+      list.innerHTML = '';
+    }
+  }
+
+  function stripHtml(html) {
+    // Keep $...$ math; strip tags that contenteditable may have saved
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    // Prefer text content but preserve line breaks lightly
+    return (tmp.innerText || tmp.textContent || html).trim();
+  }
+
+  function renderOptions() {
+    const wrap = document.getElementById('editOptionsList');
+    const multi = document.getElementById('editAnswerType').value === 'multiple';
+    wrap.innerHTML = '';
+    _options.forEach((opt, idx) => {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `
+        <input type="${multi ? 'checkbox' : 'radio'}" name="mqCorrect" class="mark-correct"
+          ${opt.is_correct ? 'checked' : ''} onchange="setCorrect(${idx}, this)">
+        <input type="text" id="mqOpt${idx}" value="${escapeAttr(opt.text)}"
+          placeholder="Option ${idx + 1}" data-eq-field data-eq-preview="0"
+          oninput="_options[${idx}].text = this.value">
+        <button type="button" class="eqed-btn eqed-btn-sm" data-eq-target="#mqOpt${idx}"
+          onmousedown="event.preventDefault()" title="Math Type">∑</button>
+        <button type="button" class="btn btn-ghost" style="padding:6px 10px;" onclick="removeOption(${idx})">✕</button>
+      `;
+      wrap.appendChild(row);
+    });
+    if (window.EqEditor) EqEditor.enhanceAll(wrap);
+  }
+
+  function setCorrect(idx, el) {
+    const multi = document.getElementById('editAnswerType').value === 'multiple';
+    if (!multi) {
+      _options.forEach((o, i) => { o.is_correct = i === idx; });
+      renderOptions();
+    } else {
+      _options[idx].is_correct = el.checked;
+    }
+  }
+  function addOption() { _options.push({ text: '', is_correct: false }); renderOptions(); }
+  function removeOption(i) { _options.splice(i, 1); renderOptions(); }
+
+  function renderBlanks() {
+    const wrap = document.getElementById('editBlanksList');
+    wrap.innerHTML = '';
+    _blanks.forEach((val, idx) => {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = `
+        <input type="text" id="mqBlank${idx}" value="${escapeAttr(val)}"
+          placeholder="Acceptable answer ${idx + 1}" data-eq-field data-eq-preview="0"
+          oninput="_blanks[${idx}] = this.value">
+        <button type="button" class="eqed-btn eqed-btn-sm" data-eq-target="#mqBlank${idx}"
+          onmousedown="event.preventDefault()">∑</button>
+        <button type="button" class="btn btn-ghost" style="padding:6px 10px;" onclick="removeBlank(${idx})">✕</button>
+      `;
+      wrap.appendChild(row);
+    });
+    if (window.EqEditor) EqEditor.enhanceAll(wrap);
+  }
+  function addBlank() { _blanks.push(''); renderBlanks(); }
+  function removeBlank(i) { _blanks.splice(i, 1); renderBlanks(); }
+
+  document.getElementById('editAnswerType').addEventListener('change', function () {
+    if (current && isChoiceType(current.question_type)) renderOptions();
+  });
+
+  async function saveEdit() {
+    if (!current) return;
+    const q = current;
+    const payload = {
+      question_text: document.getElementById('editQuestionText').value,
+      explanation: document.getElementById('editSolution').value,
+      passage: document.getElementById('editPassage').value,
+      difficulty_level: document.getElementById('editDifficulty').value,
+      marks: parseInt(document.getElementById('editMarks').value || '1', 10),
+      answer_type: document.getElementById('editAnswerType').value,
+      correct_answer: document.getElementById('editCorrect').value,
+      numeric_tolerance: document.getElementById('editTolerance').value || null,
+    };
+
+    if (isChoiceType(q.question_type)) {
+      payload.options = _options.map(o => ({ text: o.text, is_correct: !!o.is_correct }));
+      // Sync first 4 to legacy fields
+      payload.option_a = (_options[0] && _options[0].text) || '';
+      payload.option_b = (_options[1] && _options[1].text) || '';
+      payload.option_c = (_options[2] && _options[2].text) || '';
+      payload.option_d = (_options[3] && _options[3].text) || '';
+      const letters = [];
+      _options.forEach((o, i) => { if (o.is_correct && i < 26) letters.push(String.fromCharCode(65 + i)); });
+      payload.correct_answer = letters.join(',');
+    } else if (isBlankType(q.question_type)) {
+      payload.options = _blanks.filter(Boolean).map(t => ({ text: t }));
+      payload.correct_answer = _blanks.filter(Boolean).join(' | ');
+    }
+
+    try {
+      const data = await api(URLS.saveTpl.replace('__ID__', q.id), { method: 'POST', body: payload });
+      toast('Saved');
+      // Refresh row text
+      const row = document.getElementById('q-row-' + q.id);
+      if (row) {
+        const qt = row.querySelector('.question-text');
+        if (qt) qt.innerHTML = data.question.question_text || '';
+        if (window.eqTypeset) eqTypeset([row]);
+      }
+      closeEdit();
+      // Soft reload keeps filters
+      setTimeout(() => window.location.reload(), 400);
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  async function deleteQuestion(id) {
+    if (!confirm('Delete this question permanently?')) return;
+    try {
+      await api(URLS.deleteTpl.replace('__ID__', id), { method: 'POST', body: {} });
+      const row = document.getElementById('q-row-' + id);
+      if (row) row.remove();
+      toast('Deleted');
+      if (current && current.id === id) closeEdit();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  function deleteCurrent() {
+    if (current) deleteQuestion(current.id);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.eqTypeset) eqTypeset([document.getElementById('questionsList')]);
+  });
+</script>
+</body>
+</html>

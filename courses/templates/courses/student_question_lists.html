@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  My Question Lists - Study Nation
+{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <h1 style="color: #333; margin-bottom: 0.4rem;">📋 My Question Lists</h1>
+      <p style="color: #666;">Targeted question lists you've built by topic, paper, or year — great for focused practice.</p>
+    </div>
+    <a href="{% url 'courses:student_create_question_list' %}" class="btn">➕ New List</a>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="{% if message.tags == 'success' %}success{% else %}error{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if lists %}
+    <div class="grid">
+      {% for qlist in lists %}
+        <div class="card">
+          <h3>{{ qlist.name }}</h3>
+          <p>
+            {{ qlist.category.name|default:"No subject set" }}<br />
+            {{ qlist.question_count }} question(s) &bull; {{ qlist.total_marks }} marks
+          </p>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <a href="{% url 'courses:student_edit_question_list' qlist.id %}" class="btn" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;">✏️ Continue editing</a>
+            <a href="{% url 'courses:student_delete_question_list' qlist.id %}" class="btn btn-secondary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;" onclick="return confirm('Delete this question list? This cannot be undone.');">🗑️ Delete</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="background: white; padding: 3rem 2rem; border-radius: 8px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+      <h3 style="color: #555; margin-bottom: 0.5rem;">No question lists yet</h3>
+      <p style="color: #888; margin-bottom: 1.5rem;">Click "New List" above to build your first targeted question list by topic, paper, or year.</p>
+      <a href="{% url 'courses:student_create_question_list' %}" class="btn">➕ New List</a>
+    </div>
+  {% endif %}
+{% endblock %}

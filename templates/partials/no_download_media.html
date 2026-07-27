@@ -1,0 +1,80 @@
+{# View-only media: discourage saving / downloading of images, video, embeds. #}
+<style>
+  .no-dl-media,
+  .no-dl-media img,
+  .no-dl-media video,
+  .no-dl-media iframe {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-user-drag: none !important;
+    user-drag: none !important;
+  }
+  .no-dl-media img,
+  .no-dl-media video {
+    pointer-events: auto;
+  }
+  /* Hide download UI where browsers respect it */
+  video::-internal-media-controls-download-button,
+  video::-webkit-media-controls-enclosure {
+    overflow: hidden;
+  }
+  video::-webkit-media-controls-panel {
+    width: calc(100% + 30px);
+  }
+</style>
+<script>
+(function () {
+  if (window.__noDlMediaBound) return;
+  window.__noDlMediaBound = true;
+
+  function isProtected(el) {
+    return el && el.closest && el.closest('.no-dl-media, .no-dl-zone');
+  }
+
+  document.addEventListener('contextmenu', function (e) {
+    if (isProtected(e.target)) {
+      e.preventDefault();
+      return false;
+    }
+  }, true);
+
+  document.addEventListener('dragstart', function (e) {
+    if (isProtected(e.target)) {
+      e.preventDefault();
+      return false;
+    }
+  }, true);
+
+  // Block common save shortcuts when focus is on protected media
+  document.addEventListener('keydown', function (e) {
+    var key = (e.key || '').toLowerCase();
+    if (!(e.ctrlKey || e.metaKey)) return;
+    if (key === 's' || key === 'u') {
+      var t = document.activeElement;
+      if (isProtected(t) || isProtected(e.target)) {
+        e.preventDefault();
+      }
+    }
+  }, true);
+
+  // Harden all videos inside protected zones
+  function hardenVideos(root) {
+    (root || document).querySelectorAll('.no-dl-media video, .no-dl-zone video').forEach(function (v) {
+      v.setAttribute('controlsList', 'nodownload noremoteplayback');
+      v.setAttribute('disablePictureInPicture', '');
+      v.setAttribute('oncontextmenu', 'return false');
+      try { v.controlsList && v.controlsList.add && v.controlsList.add('nodownload'); } catch (err) {}
+    });
+    (root || document).querySelectorAll('.no-dl-media img, .no-dl-zone img').forEach(function (img) {
+      img.setAttribute('draggable', 'false');
+      img.setAttribute('oncontextmenu', 'return false');
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { hardenVideos(); });
+  } else {
+    hardenVideos();
+  }
+})();
+</script>

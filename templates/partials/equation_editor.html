@@ -1,0 +1,1573 @@
+<style>
+  .eqed-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #2b6cb0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: #edf2f7;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    padding: 5px 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .eqed-btn:hover {
+    background: #2b6cb0;
+    border-color: #2b6cb0;
+    color: #fff;
+  }
+  .eqed-btn-sm {
+    padding: 4px 8px;
+    font-size: 0.78rem;
+  }
+  .eqed-field-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+  .eqed-field-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .eqed-live-preview {
+    min-height: 0;
+    background: #fafbff;
+    border: 1px dashed #d8dcf5;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 1rem;
+    color: #222;
+    display: none;
+  }
+  .eqed-live-preview.has-content {
+    display: block;
+  }
+  
+  .eqed-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 24, 34, 0.48);
+    z-index: 10050;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 10px;
+    overflow-y: auto;
+  }
+  .eqed-overlay.eqed-open {
+    display: flex;
+  }
+  
+  .eqed-panel {
+    background: #fff;
+    border-radius: 4px;
+    width: 100%;
+    max-width: 760px;
+    box-shadow: 0 14px 50px rgba(0, 0, 0, 0.38);
+    border: 1px solid #8b939c;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+  }
+  
+  .eqed-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #6b7280;
+    color: #fff;
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    user-select: none;
+  }
+  .eqed-win-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    width: 30px;
+    height: 26px;
+    cursor: pointer;
+    font-size: 1.15rem;
+    border-radius: 3px;
+    line-height: 1;
+  }
+  .eqed-win-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
+  
+  .eqed-ribbon {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 10px 6px;
+    background: #f3f4f6;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .eqed-cat {
+    min-width: 48px;
+    height: 38px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    background: #e5e7eb;
+    color: #1f2937;
+    cursor: pointer;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+  }
+  .eqed-cat:hover {
+    background: #d1d5db;
+  }
+  .eqed-cat.eqed-cat-active {
+    background: #fff;
+    border-color: #9ca3af;
+    box-shadow: inset 0 -2px 0 #3b82f6;
+  }
+  
+  .eqed-palette {
+    min-height: 88px;
+    max-height: 128px;
+    overflow-y: auto;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-content: flex-start;
+  }
+  .eqed-tpl {
+    min-width: 46px;
+    min-height: 40px;
+    padding: 4px 8px;
+    border: 1px solid #c5cdd8;
+    border-radius: 3px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 1.05rem;
+    color: #111827;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+    line-height: 1.1;
+  }
+  .eqed-tpl:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+  .eqed-tpl.eqed-tpl-wide {
+    min-width: 70px;
+    font-size: 0.88rem;
+  }
+  
+  .eqed-workspace {
+    padding: 12px 14px 6px;
+    background: #fff;
+  }
+  .eqed-workspace-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  
+  /* Visual equation canvas */
+  .eqed-canvas {
+    width: 100%;
+    min-height: 110px;
+    max-height: 220px;
+    overflow: auto;
+    padding: 14px 12px;
+    border: 1px solid #9ca3af;
+    border-radius: 2px;
+    background: #fff;
+    font-size: 1.45rem;
+    line-height: 1.55;
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+    color: #111;
+    outline: none;
+    box-sizing: border-box;
+    cursor: text;
+  }
+  .eqed-canvas:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+  .eqed-canvas:empty:before {
+    content: 'Click a template above, then type in the boxes…';
+    color: #b0b7c3;
+    font-size: 0.95rem;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  /* Structure widgets inside the canvas */
+  .eqed-slot {
+    display: inline-block;
+    min-width: 0.85em;
+    min-height: 1.05em;
+    padding: 0 3px;
+    margin: 0 1px;
+    border: 1px dashed #93c5fd;
+    border-radius: 3px;
+    background: #f0f7ff;
+    vertical-align: middle;
+    outline: none;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .eqed-slot:focus,
+  .eqed-slot:focus-within {
+    border-style: solid;
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+  }
+  .eqed-slot:empty:before {
+    content: '□';
+    color: #93c5fd;
+    font-size: 0.85em;
+  }
+  
+  .eqed-frac {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: stretch;
+    vertical-align: middle;
+    margin: 0 3px;
+    text-align: center;
+  }
+  .eqed-frac-num,
+  .eqed-frac-den {
+    padding: 1px 4px;
+    min-width: 1.2em;
+  }
+  .eqed-frac-bar {
+    display: block;
+    height: 0;
+    border-top: 1.5px solid #111;
+    margin: 1px 0;
+  }
+  
+  .eqed-sqrt {
+    display: inline-flex;
+    align-items: stretch;
+    vertical-align: middle;
+    margin: 0 2px;
+  }
+  .eqed-sqrt-sign {
+    font-size: 1.15em;
+    line-height: 1;
+    padding-right: 1px;
+    align-self: stretch;
+    display: flex;
+    align-items: flex-end;
+  }
+  .eqed-sqrt-body {
+    border-top: 1.5px solid #111;
+    padding: 0 4px 1px;
+    min-width: 1em;
+  }
+  .eqed-sqrt-index {
+    font-size: 0.65em;
+    align-self: flex-start;
+    margin-right: -2px;
+    margin-top: 0;
+  }
+  
+  .eqed-scripted {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+  }
+  .eqed-base {
+    display: inline-block;
+  }
+  .eqed-scripts {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    font-size: 0.7em;
+    margin-left: 1px;
+    line-height: 1.05;
+  }
+  .eqed-sup,
+  .eqed-sub {
+    min-width: 0.6em;
+  }
+  
+  .eqed-fence {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 2px;
+  }
+  .eqed-fence-open,
+  .eqed-fence-close {
+    font-size: 1.25em;
+    line-height: 1;
+    padding: 0 1px;
+  }
+  .eqed-fence-body {
+    padding: 0 3px;
+    min-width: 0.8em;
+  }
+  
+  .eqed-limop {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 4px;
+    line-height: 1.1;
+  }
+  .eqed-limop-sym {
+    font-size: 1.35em;
+    line-height: 1;
+  }
+  .eqed-limop-limits {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.62em;
+  }
+  
+  .eqed-matrix {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 4px;
+  }
+  .eqed-matrix-table {
+    display: inline-grid;
+    gap: 3px 6px;
+    vertical-align: middle;
+    border-left: 2px solid #111;
+    border-right: 2px solid #111;
+    padding: 2px 6px;
+    margin: 0 2px;
+  }
+  .eqed-matrix-table .eqed-slot {
+    min-width: 1.1em;
+  }
+  
+  .eqed-preview-wrap {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    min-height: 42px;
+  }
+  .eqed-preview-wrap .eqed-preview-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  #eqedPreview {
+    min-height: 28px;
+    font-size: 1.25rem;
+    color: #111;
+    overflow-x: auto;
+  }
+  #eqedPreview:empty:before {
+    content: 'Preview…';
+    color: #c0c4cc;
+    font-size: 0.9rem;
+  }
+  
+  .eqed-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px 14px;
+    border-top: 1px solid #f3f4f6;
+    flex-wrap: wrap;
+  }
+  .eqed-mode-mini {
+    display: flex;
+    gap: 10px;
+    font-size: 0.78rem;
+    color: #4b5563;
+    flex-wrap: wrap;
+  }
+  .eqed-mode-mini label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  .eqed-foot-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .eqed-ok {
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 22px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    min-width: 72px;
+  }
+  .eqed-ok:hover {
+    background: #2563eb;
+  }
+  .eqed-cancel {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .eqed-clear {
+    background: transparent;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  
+  @media (max-width: 640px) {
+    .eqed-panel {
+      max-width: 100%;
+    }
+    .eqed-canvas {
+      font-size: 1.2rem;
+      min-height: 90px;
+    }
+  }
+</style>
+
+<div class="eqed-overlay" id="eqedOverlay" role="dialog" aria-modal="true" aria-labelledby="eqedTitle">
+  <div class="eqed-panel">
+    <div class="eqed-titlebar">
+      <span id="eqedTitle">Math Type</span>
+      <button type="button" class="eqed-win-btn" onclick="EqEditor.close()" title="Close" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="eqed-ribbon" id="eqedRibbon" role="tablist"></div>
+    <div class="eqed-palette" id="eqedPalette" role="tabpanel"></div>
+
+    <div class="eqed-workspace">
+      <div class="eqed-workspace-label">Equation — click a box and type</div>
+      <div id="eqedCanvas" class="eqed-canvas" contenteditable="true" spellcheck="false"></div>
+
+      <div class="eqed-preview-wrap">
+        <div class="eqed-preview-label">Preview</div>
+        <div id="eqedPreview"></div>
+      </div>
+    </div>
+
+    <div class="eqed-foot">
+      <div class="eqed-mode-mini">
+        <label><input type="radio" name="eqedMode" value="inline" checked />Inline</label>
+        <label><input type="radio" name="eqedMode" value="block" />Display</label>
+        <label><input type="radio" name="eqedMode" value="raw" />Raw only</label>
+      </div>
+      <div class="eqed-foot-actions">
+        <button type="button" class="eqed-clear" onclick="EqEditor.clearInput()">Clear</button>
+        <button type="button" class="eqed-cancel" onclick="EqEditor.close()">Cancel</button>
+        <button type="button" class="eqed-ok" onclick="EqEditor.commit()">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  ;(function () {
+    /* ---------- Template catalog (MathType-style categories) ---------- */
+    var CATEGORIES = [
+      {
+        id: 'frac',
+        label: '√□/□',
+        title: 'Fractions & roots',
+        items: [
+          { label: 'a/b', type: 'frac', title: 'Fraction' },
+          { label: '√x', type: 'sqrt', title: 'Square root' },
+          { label: 'ⁿ√x', type: 'nsqrt', title: 'Nth root' },
+          { label: 'xⁿ', type: 'sup', title: 'Superscript' },
+          { label: 'xₙ', type: 'sub', title: 'Subscript' },
+          { label: 'xₙᵐ', type: 'subsup', title: 'Sub + super' },
+          { label: 'x̅', type: 'over', latex: 'overline', title: 'Overline' },
+          { label: 'x⃗', type: 'over', latex: 'vec', title: 'Vector' },
+          { label: 'x̂', type: 'over', latex: 'hat', title: 'Hat' },
+          { label: 'x̃', type: 'over', latex: 'tilde', title: 'Tilde' }
+        ]
+      },
+      {
+        id: 'symbols',
+        label: '∈∞',
+        title: 'Symbols',
+        items: [
+          { label: '+', type: 'sym', latex: '+' },
+          { label: '−', type: 'sym', latex: '-', text: '−' },
+          { label: '×', type: 'sym', latex: '\\times', text: '×' },
+          { label: '÷', type: 'sym', latex: '\\div', text: '÷' },
+          { label: '±', type: 'sym', latex: '\\pm', text: '±' },
+          { label: '·', type: 'sym', latex: '\\cdot', text: '·' },
+          { label: '=', type: 'sym', latex: '=' },
+          { label: '≠', type: 'sym', latex: '\\neq', text: '≠' },
+          { label: '≈', type: 'sym', latex: '\\approx', text: '≈' },
+          { label: '≡', type: 'sym', latex: '\\equiv', text: '≡' },
+          { label: '≤', type: 'sym', latex: '\\leq', text: '≤' },
+          { label: '≥', type: 'sym', latex: '\\geq', text: '≥' },
+          { label: '<', type: 'sym', latex: '<' },
+          { label: '>', type: 'sym', latex: '>' },
+          { label: '∈', type: 'sym', latex: '\\in', text: '∈' },
+          { label: '∉', type: 'sym', latex: '\\notin', text: '∉' },
+          { label: '⊂', type: 'sym', latex: '\\subset', text: '⊂' },
+          { label: '⊆', type: 'sym', latex: '\\subseteq', text: '⊆' },
+          { label: '∪', type: 'sym', latex: '\\cup', text: '∪' },
+          { label: '∩', type: 'sym', latex: '\\cap', text: '∩' },
+          { label: '∅', type: 'sym', latex: '\\emptyset', text: '∅' },
+          { label: '∞', type: 'sym', latex: '\\infty', text: '∞' },
+          { label: '°', type: 'sym', latex: '^{\\circ}', text: '°' },
+          { label: 'π', type: 'sym', latex: '\\pi', text: 'π' },
+          { label: '∠', type: 'sym', latex: '\\angle', text: '∠' },
+          { label: '⊥', type: 'sym', latex: '\\perp', text: '⊥' },
+          { label: '∥', type: 'sym', latex: '\\parallel', text: '∥' },
+          { label: '∝', type: 'sym', latex: '\\propto', text: '∝' },
+          { label: '∴', type: 'sym', latex: '\\therefore', text: '∴' },
+          { label: '∵', type: 'sym', latex: '\\because', text: '∵' }
+        ]
+      },
+      {
+        id: 'arrows',
+        label: '→',
+        title: 'Arrows',
+        items: [
+          { label: '→', type: 'sym', latex: '\\rightarrow', text: '→' },
+          { label: '←', type: 'sym', latex: '\\leftarrow', text: '←' },
+          { label: '↔', type: 'sym', latex: '\\leftrightarrow', text: '↔' },
+          { label: '⇒', type: 'sym', latex: '\\Rightarrow', text: '⇒' },
+          { label: '⇐', type: 'sym', latex: '\\Leftarrow', text: '⇐' },
+          { label: '⇔', type: 'sym', latex: '\\Leftrightarrow', text: '⇔' },
+          { label: '↦', type: 'sym', latex: '\\mapsto', text: '↦' },
+          { label: '↑', type: 'sym', latex: '\\uparrow', text: '↑' },
+          { label: '↓', type: 'sym', latex: '\\downarrow', text: '↓' }
+        ]
+      },
+      {
+        id: 'greek',
+        label: 'αΩ',
+        title: 'Greek letters',
+        items: [
+          { label: 'α', type: 'sym', latex: '\\alpha', text: 'α' },
+          { label: 'β', type: 'sym', latex: '\\beta', text: 'β' },
+          { label: 'γ', type: 'sym', latex: '\\gamma', text: 'γ' },
+          { label: 'δ', type: 'sym', latex: '\\delta', text: 'δ' },
+          { label: 'ε', type: 'sym', latex: '\\varepsilon', text: 'ε' },
+          { label: 'θ', type: 'sym', latex: '\\theta', text: 'θ' },
+          { label: 'λ', type: 'sym', latex: '\\lambda', text: 'λ' },
+          { label: 'μ', type: 'sym', latex: '\\mu', text: 'μ' },
+          { label: 'π', type: 'sym', latex: '\\pi', text: 'π' },
+          { label: 'ρ', type: 'sym', latex: '\\rho', text: 'ρ' },
+          { label: 'σ', type: 'sym', latex: '\\sigma', text: 'σ' },
+          { label: 'τ', type: 'sym', latex: '\\tau', text: 'τ' },
+          { label: 'φ', type: 'sym', latex: '\\varphi', text: 'φ' },
+          { label: 'ω', type: 'sym', latex: '\\omega', text: 'ω' },
+          { label: 'Γ', type: 'sym', latex: '\\Gamma', text: 'Γ' },
+          { label: 'Δ', type: 'sym', latex: '\\Delta', text: 'Δ' },
+          { label: 'Θ', type: 'sym', latex: '\\Theta', text: 'Θ' },
+          { label: 'Λ', type: 'sym', latex: '\\Lambda', text: 'Λ' },
+          { label: 'Σ', type: 'sym', latex: '\\Sigma', text: 'Σ' },
+          { label: 'Φ', type: 'sym', latex: '\\Phi', text: 'Φ' },
+          { label: 'Ω', type: 'sym', latex: '\\Omega', text: 'Ω' },
+          { label: 'ℝ', type: 'sym', latex: '\\mathbb{R}', text: 'ℝ' },
+          { label: 'ℤ', type: 'sym', latex: '\\mathbb{Z}', text: 'ℤ' },
+          { label: 'ℕ', type: 'sym', latex: '\\mathbb{N}', text: 'ℕ' },
+          { label: 'ℚ', type: 'sym', latex: '\\mathbb{Q}', text: 'ℚ' }
+        ]
+      },
+      {
+        id: 'matrix',
+        label: '[ ]',
+        title: 'Matrices',
+        items: [
+          { label: '2×2', type: 'matrix', rows: 2, cols: 2, wide: true },
+          { label: '3×3', type: 'matrix', rows: 3, cols: 3, wide: true },
+          { label: 'col', type: 'matrix', rows: 3, cols: 1, wide: true },
+          { label: 'row', type: 'matrix', rows: 1, cols: 3, wide: true }
+        ]
+      },
+      {
+        id: 'scripts',
+        label: 'xⁿ',
+        title: 'Scripts',
+        items: [
+          { label: 'xⁿ', type: 'sup' },
+          { label: 'xₙ', type: 'sub' },
+          { label: 'xₙᵐ', type: 'subsup' },
+          { label: 'f′', type: 'sym', latex: "'", text: '′' },
+          { label: 'x̅', type: 'over', latex: 'overline' },
+          { label: 'x⃗', type: 'over', latex: 'vec' }
+        ]
+      },
+      {
+        id: 'brackets',
+        label: '( )',
+        title: 'Brackets',
+        items: [
+          { label: '( )', type: 'fence', open: '(', close: ')', oL: '(', cL: ')' },
+          { label: '[ ]', type: 'fence', open: '[', close: ']', oL: '[', cL: ']' },
+          { label: '{ }', type: 'fence', open: '{', close: '}', oL: '\\{', cL: '\\}' },
+          { label: '| |', type: 'fence', open: '|', close: '|', oL: '|', cL: '|' },
+          { label: '⟨ ⟩', type: 'fence', open: '⟨', close: '⟩', oL: '\\langle', cL: '\\rangle' },
+          { label: '⌊ ⌋', type: 'fence', open: '⌊', close: '⌋', oL: '\\lfloor', cL: '\\rfloor' },
+          { label: '⌈ ⌉', type: 'fence', open: '⌈', close: '⌉', oL: '\\lceil', cL: '\\rceil' }
+        ]
+      },
+      {
+        id: 'sumint',
+        label: '∑∫',
+        title: 'Sums & integrals',
+        items: [
+          { label: '∑', type: 'limop', sym: '∑', latex: '\\sum' },
+          { label: '∑ᵢⁿ', type: 'limop', sym: '∑', latex: '\\sum', limits: true, wide: true },
+          { label: '∏', type: 'limop', sym: '∏', latex: '\\prod', limits: true },
+          { label: '∫', type: 'limop', sym: '∫', latex: '\\int' },
+          { label: '∫ₐᵇ', type: 'limop', sym: '∫', latex: '\\int', limits: true, wide: true },
+          { label: '∬', type: 'sym', latex: '\\iint', text: '∬' },
+          { label: '∭', type: 'sym', latex: '\\iiint', text: '∭' },
+          { label: '∮', type: 'sym', latex: '\\oint', text: '∮' },
+          { label: 'd/dx', type: 'deriv', wide: true },
+          { label: '∂/∂x', type: 'pderiv', wide: true },
+          { label: '∇', type: 'sym', latex: '\\nabla', text: '∇' }
+        ]
+      },
+      {
+        id: 'functions',
+        label: 'lim',
+        title: 'Functions & limits',
+        items: [
+          { label: 'lim', type: 'lim', wide: true },
+          { label: 'sin', type: 'sym', latex: '\\sin', text: 'sin' },
+          { label: 'cos', type: 'sym', latex: '\\cos', text: 'cos' },
+          { label: 'tan', type: 'sym', latex: '\\tan', text: 'tan' },
+          { label: 'log', type: 'sym', latex: '\\log', text: 'log' },
+          { label: 'ln', type: 'sym', latex: '\\ln', text: 'ln' },
+          { label: 'exp', type: 'sym', latex: '\\exp', text: 'exp' },
+          { label: 'log_b', type: 'logb', wide: true },
+          { label: 'binom', type: 'binom', wide: true }
+        ]
+      }
+    ]
+  
+    var overlay, canvas, preview, paletteEl, ribbonEl
+    var target = null
+    var mode = 'inline'
+    var savedRange = null
+    var savedInputSel = null
+    var lastFocused = null
+    var lastInputSel = { start: 0, end: 0 }
+    var ready = false
+    var activeCat = 'frac'
+    var previewTimer = null
+  
+    function byId(id) {
+      return document.getElementById(id)
+    }
+  
+    function isTextField(el) {
+      if (!el) return false
+      if (el.isContentEditable) return true
+      var tag = (el.tagName || '').toUpperCase()
+      if (tag === 'TEXTAREA') return true
+      if (tag === 'INPUT') {
+        var t = (el.type || 'text').toLowerCase()
+        return !t || t === 'text' || t === 'search' || t === 'url'
+      }
+      return false
+    }
+  
+    function rememberFocus(el) {
+      if (!isTextField(el)) return
+      lastFocused = el
+      if (!el.isContentEditable && typeof el.selectionStart === 'number') {
+        lastInputSel = { start: el.selectionStart, end: el.selectionEnd }
+      }
+    }
+  
+    function captureSelection(el) {
+      savedRange = null
+      savedInputSel = null
+      if (!el) return
+      if (el.isContentEditable) {
+        var sel = window.getSelection()
+        if (sel && sel.rangeCount > 0) {
+          try {
+            var r = sel.getRangeAt(0)
+            if (el.contains(r.commonAncestorContainer) || el === r.commonAncestorContainer) {
+              savedRange = r.cloneRange()
+            }
+          } catch (e) {}
+        }
+        if (!savedRange) {
+          try {
+            var range = document.createRange()
+            range.selectNodeContents(el)
+            range.collapse(false)
+            savedRange = range
+          } catch (e2) {}
+        }
+      } else if (typeof el.selectionStart === 'number') {
+        savedInputSel = { start: el.selectionStart, end: el.selectionEnd }
+      } else if (lastFocused === el) {
+        savedInputSel = { start: lastInputSel.start, end: lastInputSel.end }
+      }
+    }
+  
+    function resolveTarget(el) {
+      if (!el) return lastFocused
+      if (typeof el === 'string') {
+        return document.querySelector(el) || byId(String(el).replace(/^#/, ''))
+      }
+      return el
+    }
+  
+    /* ---------- Build visual widgets ---------- */
+    function makeSlot(initial) {
+      var s = document.createElement('span')
+      s.className = 'eqed-slot'
+      s.contentEditable = 'true'
+      s.setAttribute('data-eq-slot', '1')
+      if (initial) s.textContent = initial
+      s.addEventListener('keydown', function (e) {
+        // Keep Enter from creating huge breaks
+        if (e.key === 'Enter') {
+          e.preventDefault()
+        }
+        e.stopPropagation()
+      })
+      s.addEventListener('input', schedulePreview)
+      return s
+    }
+  
+    function widget(type, item) {
+      item = item || {}
+      if (type === 'frac' || type === 'deriv' || type === 'pderiv' || type === 'binom') {
+        var wrap = document.createElement('span')
+        wrap.className = 'eqed-frac'
+        wrap.setAttribute('data-eq-type', type === 'binom' ? 'binom' : type === 'pderiv' ? 'pderiv' : type === 'deriv' ? 'deriv' : 'frac')
+        wrap.contentEditable = 'false'
+        var num = makeSlot(type === 'deriv' ? 'y' : type === 'pderiv' ? 'f' : type === 'binom' ? 'n' : '')
+        num.classList.add('eqed-frac-num')
+        var bar = document.createElement('span')
+        bar.className = 'eqed-frac-bar'
+        var den = makeSlot(type === 'deriv' ? 'x' : type === 'pderiv' ? 'x' : type === 'binom' ? 'k' : '')
+        den.classList.add('eqed-frac-den')
+        if (type === 'deriv') {
+          num.textContent = ''
+          num.appendChild(document.createTextNode('d'))
+          var yn = makeSlot('y')
+          num.appendChild(yn)
+          den.textContent = ''
+          den.appendChild(document.createTextNode('d'))
+          den.appendChild(makeSlot('x'))
+        } else if (type === 'pderiv') {
+          num.textContent = ''
+          num.appendChild(document.createTextNode('∂'))
+          num.appendChild(makeSlot('f'))
+          den.textContent = ''
+          den.appendChild(document.createTextNode('∂'))
+          den.appendChild(makeSlot('x'))
+        }
+        wrap.appendChild(num)
+        wrap.appendChild(bar)
+        wrap.appendChild(den)
+        return wrap
+      }
+  
+      if (type === 'sqrt' || type === 'nsqrt') {
+        var root = document.createElement('span')
+        root.className = 'eqed-sqrt'
+        root.setAttribute('data-eq-type', type)
+        root.contentEditable = 'false'
+        if (type === 'nsqrt') {
+          var idx = makeSlot('n')
+          idx.className += ' eqed-sqrt-index'
+          root.appendChild(idx)
+        }
+        var sign = document.createElement('span')
+        sign.className = 'eqed-sqrt-sign'
+        sign.textContent = '√'
+        var body = document.createElement('span')
+        body.className = 'eqed-sqrt-body'
+        body.appendChild(makeSlot(''))
+        root.appendChild(sign)
+        root.appendChild(body)
+        return root
+      }
+  
+      if (type === 'sup' || type === 'sub' || type === 'subsup') {
+        var sc = document.createElement('span')
+        sc.className = 'eqed-scripted'
+        sc.setAttribute('data-eq-type', type)
+        sc.contentEditable = 'false'
+        var base = makeSlot('x')
+        base.classList.add('eqed-base')
+        var scripts = document.createElement('span')
+        scripts.className = 'eqed-scripts'
+        if (type === 'sup' || type === 'subsup') {
+          var sup = makeSlot(type === 'sup' ? 'n' : 'm')
+          sup.classList.add('eqed-sup')
+          scripts.appendChild(sup)
+        }
+        if (type === 'sub' || type === 'subsup') {
+          var sub = makeSlot('n')
+          sub.classList.add('eqed-sub')
+          scripts.appendChild(sub)
+        }
+        sc.appendChild(base)
+        sc.appendChild(scripts)
+        return sc
+      }
+  
+      if (type === 'over') {
+        var ov = document.createElement('span')
+        ov.className = 'eqed-scripted'
+        ov.setAttribute('data-eq-type', 'over')
+        ov.setAttribute('data-eq-cmd', item.latex || 'overline')
+        ov.contentEditable = 'false'
+        var body = makeSlot('x')
+        body.style.textDecoration = item.latex === 'underline' ? 'underline' : 'overline'
+        ov.appendChild(body)
+        return ov
+      }
+  
+      if (type === 'fence') {
+        var f = document.createElement('span')
+        f.className = 'eqed-fence'
+        f.setAttribute('data-eq-type', 'fence')
+        f.setAttribute('data-eq-open', item.oL || item.open || '(')
+        f.setAttribute('data-eq-close', item.cL || item.close || ')')
+        f.contentEditable = 'false'
+        var o = document.createElement('span')
+        o.className = 'eqed-fence-open'
+        o.textContent = item.open || '('
+        var mid = document.createElement('span')
+        mid.className = 'eqed-fence-body'
+        mid.appendChild(makeSlot(''))
+        var c = document.createElement('span')
+        c.className = 'eqed-fence-close'
+        c.textContent = item.close || ')'
+        f.appendChild(o)
+        f.appendChild(mid)
+        f.appendChild(c)
+        return f
+      }
+  
+      if (type === 'limop') {
+        var lo = document.createElement('span')
+        lo.className = 'eqed-limop'
+        lo.setAttribute('data-eq-type', 'limop')
+        lo.setAttribute('data-eq-latex', item.latex || '\\sum')
+        lo.contentEditable = 'false'
+        if (item.limits) {
+          var up = makeSlot(item.latex === '\\int' ? 'b' : 'n')
+          lo.appendChild(up)
+        }
+        var sym = document.createElement('span')
+        sym.className = 'eqed-limop-sym'
+        sym.textContent = item.sym || '∑'
+        lo.appendChild(sym)
+        if (item.limits) {
+          var low = makeSlot(item.latex === '\\int' ? 'a' : 'i=1')
+          lo.appendChild(low)
+        }
+        return lo
+      }
+  
+      if (type === 'lim') {
+        var lm = document.createElement('span')
+        lm.className = 'eqed-limop'
+        lm.setAttribute('data-eq-type', 'lim')
+        lm.contentEditable = 'false'
+        var sym2 = document.createElement('span')
+        sym2.className = 'eqed-limop-sym'
+        sym2.style.fontSize = '1em'
+        sym2.textContent = 'lim'
+        lm.appendChild(sym2)
+        var low2 = makeSlot('x→a')
+        low2.style.fontSize = '0.7em'
+        lm.appendChild(low2)
+        return lm
+      }
+  
+      if (type === 'logb') {
+        var lg = document.createElement('span')
+        lg.className = 'eqed-scripted'
+        lg.setAttribute('data-eq-type', 'logb')
+        lg.contentEditable = 'false'
+        lg.appendChild(document.createTextNode('log'))
+        var scripts2 = document.createElement('span')
+        scripts2.className = 'eqed-scripts'
+        var sub2 = makeSlot('b')
+        sub2.classList.add('eqed-sub')
+        scripts2.appendChild(sub2)
+        lg.appendChild(scripts2)
+        return lg
+      }
+  
+      if (type === 'matrix') {
+        var rows = item.rows || 2,
+          cols = item.cols || 2
+        var mx = document.createElement('span')
+        mx.className = 'eqed-matrix'
+        mx.setAttribute('data-eq-type', 'matrix')
+        mx.setAttribute('data-eq-rows', rows)
+        mx.setAttribute('data-eq-cols', cols)
+        mx.contentEditable = 'false'
+        var left = document.createElement('span')
+        left.textContent = '['
+        left.style.fontSize = '1.4em'
+        var grid = document.createElement('span')
+        grid.className = 'eqed-matrix-table'
+        grid.style.gridTemplateColumns = 'repeat(' + cols + ', auto)'
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) grid.appendChild(makeSlot(''))
+        }
+        var right = document.createElement('span')
+        right.textContent = ']'
+        right.style.fontSize = '1.4em'
+        mx.appendChild(left)
+        mx.appendChild(grid)
+        mx.appendChild(right)
+        return mx
+      }
+  
+      // plain symbol
+      var t = document.createTextNode(item.text != null ? item.text : item.label || '')
+      var span = document.createElement('span')
+      span.setAttribute('data-eq-type', 'sym')
+      span.setAttribute('data-eq-latex', item.latex != null ? item.latex : item.text || item.label || '')
+      span.appendChild(t)
+      return span
+    }
+  
+    /* ---------- Serialize canvas → LaTeX ---------- */
+    function slotLatex(slot) {
+      if (!slot) return ''
+      // slot may contain nested widgets
+      return nodesToLatex(slot.childNodes)
+    }
+  
+    function nodesToLatex(nodeList) {
+      var out = ''
+      Array.prototype.forEach.call(nodeList, function (node) {
+        out += nodeToLatex(node)
+      })
+      return out
+    }
+  
+    function nodeToLatex(node) {
+      if (!node) return ''
+      if (node.nodeType === 3) {
+        // text
+        return escapeText(node.textContent || '')
+      }
+      if (node.nodeType !== 1) return ''
+      var el = node
+      if (el.classList && el.classList.contains('eqed-slot')) {
+        return slotLatex(el)
+      }
+      var typ = el.getAttribute('data-eq-type')
+      if (typ === 'frac') {
+        var num = el.querySelector('.eqed-frac-num')
+        var den = el.querySelector('.eqed-frac-den')
+        return '\\frac{' + slotLatex(num) + '}{' + slotLatex(den) + '}'
+      }
+      if (typ === 'deriv' || typ === 'pderiv') {
+        var n2 = el.querySelector('.eqed-frac-num')
+        var d2 = el.querySelector('.eqed-frac-den')
+        return '\\frac{' + slotLatex(n2) + '}{' + slotLatex(d2) + '}'
+      }
+      if (typ === 'binom') {
+        var n3 = el.querySelector('.eqed-frac-num')
+        var d3 = el.querySelector('.eqed-frac-den')
+        return '\\binom{' + slotLatex(n3) + '}{' + slotLatex(d3) + '}'
+      }
+      if (typ === 'sqrt') {
+        var body = el.querySelector('.eqed-sqrt-body .eqed-slot') || el.querySelector('.eqed-sqrt-body')
+        return '\\sqrt{' + slotLatex(body) + '}'
+      }
+      if (typ === 'nsqrt') {
+        var idx = el.querySelector('.eqed-sqrt-index')
+        var body2 = el.querySelector('.eqed-sqrt-body .eqed-slot') || el.querySelector('.eqed-sqrt-body')
+        return '\\sqrt[' + slotLatex(idx) + ']{' + slotLatex(body2) + '}'
+      }
+      if (typ === 'sup') {
+        var base = el.querySelector('.eqed-base')
+        var sup = el.querySelector('.eqed-sup')
+        return '{' + slotLatex(base) + '}^{' + slotLatex(sup) + '}'
+      }
+      if (typ === 'sub') {
+        var base2 = el.querySelector('.eqed-base')
+        var sub = el.querySelector('.eqed-sub')
+        return '{' + slotLatex(base2) + '}_{' + slotLatex(sub) + '}'
+      }
+      if (typ === 'subsup') {
+        var b3 = el.querySelector('.eqed-base')
+        var su = el.querySelector('.eqed-sup')
+        var sb = el.querySelector('.eqed-sub')
+        return '{' + slotLatex(b3) + '}_{' + slotLatex(sb) + '}^{' + slotLatex(su) + '}'
+      }
+      if (typ === 'over') {
+        var cmd = el.getAttribute('data-eq-cmd') || 'overline'
+        var sl = el.querySelector('.eqed-slot')
+        return '\\' + cmd + '{' + slotLatex(sl) + '}'
+      }
+      if (typ === 'fence') {
+        var o = el.getAttribute('data-eq-open') || '('
+        var c = el.getAttribute('data-eq-close') || ')'
+        var mid = el.querySelector('.eqed-fence-body')
+        return '\\left' + o + ' ' + slotLatex(mid) + ' \\right' + c
+      }
+      if (typ === 'limop') {
+        var L = el.getAttribute('data-eq-latex') || '\\sum'
+        var slots = []
+        for (var ci = 0; ci < el.children.length; ci++) {
+          if (el.children[ci].classList && el.children[ci].classList.contains('eqed-slot')) {
+            slots.push(el.children[ci])
+          }
+        }
+        // DOM order for limits: upper slot, symbol, lower slot (when both present)
+        if (slots.length === 2) {
+          return L + '_{' + slotLatex(slots[1]) + '}^{' + slotLatex(slots[0]) + '}'
+        }
+        if (slots.length === 1) return L + '_{' + slotLatex(slots[0]) + '}'
+        return L
+      }
+      if (typ === 'lim') {
+        var low = el.querySelector('.eqed-slot')
+        return '\\lim_{' + slotLatex(low) + '}'
+      }
+      if (typ === 'logb') {
+        var sb2 = el.querySelector('.eqed-sub')
+        return '\\log_{' + slotLatex(sb2) + '}'
+      }
+      if (typ === 'matrix') {
+        var rows = parseInt(el.getAttribute('data-eq-rows') || '2', 10)
+        var cols = parseInt(el.getAttribute('data-eq-cols') || '2', 10)
+        var cells = el.querySelectorAll('.eqed-matrix-table .eqed-slot')
+        var lines = []
+        for (var r = 0; r < rows; r++) {
+          var parts = []
+          for (var c = 0; c < cols; c++) {
+            var cell = cells[r * cols + c]
+            parts.push(slotLatex(cell))
+          }
+          lines.push(parts.join(' & '))
+        }
+        return '\\begin{bmatrix} ' + lines.join(' \\\\ ') + ' \\end{bmatrix}'
+      }
+      if (typ === 'sym') {
+        return el.getAttribute('data-eq-latex') || escapeText(el.textContent || '')
+      }
+      // generic element
+      return nodesToLatex(el.childNodes)
+    }
+  
+    function escapeText(s) {
+      // Escape LaTeX specials in plain typed text
+      return String(s || '')
+        .replace(/\\/g, '\\textbackslash{}')
+        .replace(/([#$%&_{}])/g, '\\$1')
+        .replace(/~/g, '\\textasciitilde{}')
+        .replace(/\^/g, '\\^{}')
+        .replace(/\u2212/g, '-') // unicode minus
+        .replace(/\u00d7/g, '\\times ')
+        .replace(/\u00f7/g, '\\div ')
+        .replace(/\u00b1/g, '\\pm ')
+        .replace(/\u00b7/g, '\\cdot ')
+        .replace(/\u2260/g, '\\neq ')
+        .replace(/\u2264/g, '\\leq ')
+        .replace(/\u2265/g, '\\geq ')
+        .replace(/\u2208/g, '\\in ')
+        .replace(/\u2209/g, '\\notin ')
+        .replace(/\u221e/g, '\\infty ')
+        .replace(/\u03c0/g, '\\pi ')
+        .replace(/\s+/g, ' ')
+    }
+  
+    function getLatex() {
+      if (!canvas) return ''
+      return nodesToLatex(canvas.childNodes).replace(/\s+/g, ' ').trim()
+    }
+  
+    function wrapLatex(latex) {
+      if (!latex) return ''
+      if (mode === 'block') return '$$' + latex + '$$'
+      if (mode === 'raw') return latex
+      return '$' + latex + '$'
+    }
+  
+    /* ---------- UI ribbon / palette ---------- */
+    function buildRibbon() {
+      if (!ribbonEl) return
+      ribbonEl.innerHTML = ''
+      CATEGORIES.forEach(function (cat) {
+        var btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'eqed-cat' + (cat.id === activeCat ? ' eqed-cat-active' : '')
+        btn.title = cat.title
+        btn.textContent = cat.label
+        btn.onclick = function () {
+          setCategory(cat.id)
+        }
+        ribbonEl.appendChild(btn)
+      })
+    }
+  
+    function setCategory(id) {
+      activeCat = id
+      buildRibbon()
+      buildPalette()
+    }
+  
+    function buildPalette() {
+      if (!paletteEl) return
+      paletteEl.innerHTML = ''
+      var cat = null
+      for (var i = 0; i < CATEGORIES.length; i++) {
+        if (CATEGORIES[i].id === activeCat) {
+          cat = CATEGORIES[i]
+          break
+        }
+      }
+      if (!cat) return
+      cat.items.forEach(function (item) {
+        var b = document.createElement('button')
+        b.type = 'button'
+        b.className = 'eqed-tpl' + (item.wide ? ' eqed-tpl-wide' : '')
+        b.title = item.title || item.label
+        b.textContent = item.label
+        b.onclick = function () {
+          insertItem(item)
+        }
+        paletteEl.appendChild(b)
+      })
+    }
+  
+    function insertItem(item) {
+      if (!canvas) return
+      var node
+      if (item.type === 'sym') {
+        node = widget('sym', item)
+      } else {
+        node = widget(item.type, item)
+      }
+      // Insert at caret if inside canvas, else append
+      var sel = window.getSelection()
+      var inserted = false
+      if (sel && sel.rangeCount > 0) {
+        var range = sel.getRangeAt(0)
+        if (canvas.contains(range.commonAncestorContainer)) {
+          // If inside a slot, insert into that slot
+          var slot = range.commonAncestorContainer
+          if (slot.nodeType === 3) slot = slot.parentElement
+          while (slot && slot !== canvas && !(slot.classList && slot.classList.contains('eqed-slot'))) {
+            slot = slot.parentElement
+          }
+          if (slot && slot.classList && slot.classList.contains('eqed-slot')) {
+            // replace selection inside slot or append widget
+            try {
+              range.deleteContents()
+              range.insertNode(node)
+              inserted = true
+            } catch (e) {
+              slot.appendChild(node)
+              inserted = true
+            }
+          } else {
+            try {
+              range.deleteContents()
+              range.insertNode(node)
+              // add trailing space for continued typing
+              var sp = document.createTextNode('\u00a0')
+              node.parentNode.insertBefore(sp, node.nextSibling)
+              inserted = true
+            } catch (e2) {}
+          }
+        }
+      }
+      if (!inserted) canvas.appendChild(node)
+  
+      // Focus first empty slot inside widget
+      var firstSlot = (node.querySelector && node.querySelector('.eqed-slot')) || null
+      if (firstSlot) {
+        firstSlot.focus()
+        placeCaret(firstSlot)
+      } else {
+        canvas.focus()
+      }
+      schedulePreview()
+    }
+  
+    function placeCaret(el) {
+      try {
+        var range = document.createRange()
+        range.selectNodeContents(el)
+        range.collapse(false)
+        var sel = window.getSelection()
+        sel.removeAllRanges()
+        sel.addRange(range)
+      } catch (e) {}
+    }
+  
+    function schedulePreview() {
+      if (previewTimer) clearTimeout(previewTimer)
+      previewTimer = setTimeout(updatePreview, 120)
+    }
+  
+    function updatePreview() {
+      if (!preview) return
+      var latex = getLatex()
+      if (!latex) {
+        preview.innerHTML = ''
+        return
+      }
+      var wrapped = mode === 'block' ? '$$' + latex + '$$' : '$' + latex + '$'
+      if (mode === 'raw') wrapped = '$' + latex + '$'
+      preview.textContent = wrapped
+      if (window.eqTypeset) window.eqTypeset([preview])
+      else if (window.MathJax && window.MathJax.typesetPromise) {
+        try {
+          window.MathJax.typesetClear && window.MathJax.typesetClear([preview])
+        } catch (e) {}
+        window.MathJax.typesetPromise([preview]).catch(function () {})
+      }
+    }
+  
+    function setMode(m) {
+      mode = m || 'inline'
+      var radio = document.querySelector('input[name="eqedMode"][value="' + mode + '"]')
+      if (radio) radio.checked = true
+      updatePreview()
+    }
+  
+    function clearInput() {
+      if (canvas) canvas.innerHTML = ''
+      if (preview) preview.innerHTML = ''
+      if (canvas) canvas.focus()
+    }
+  
+    function open(el, opts) {
+      opts = opts || {}
+      if (!ready) init()
+      target = resolveTarget(el)
+      if (!target) {
+        console.warn('EqEditor: no target field')
+        return
+      }
+      mode = opts.mode === 'block' ? 'block' : opts.mode === 'raw' ? 'raw' : 'inline'
+      setMode(mode)
+      if (!savedRange && !savedInputSel) captureSelection(target)
+  
+      clearInput()
+      if (opts.seed) {
+        // Seed as plain text slot content
+        var s = makeSlot(opts.seed)
+        canvas.appendChild(s)
+        s.focus()
+      }
+      setCategory(activeCat || 'frac')
+      overlay.classList.add('eqed-open')
+      setTimeout(function () {
+        if (canvas) canvas.focus()
+        updatePreview()
+      }, 40)
+    }
+  
+    function close() {
+      if (overlay) overlay.classList.remove('eqed-open')
+      target = null
+      savedRange = null
+      savedInputSel = null
+    }
+  
+    function insertIntoTarget(snippet) {
+      if (!target) return
+      if (target.isContentEditable) {
+        target.focus()
+        var sel = window.getSelection()
+        if (savedRange) {
+          try {
+            sel.removeAllRanges()
+            sel.addRange(savedRange)
+          } catch (e) {}
+        }
+        var ok = false
+        try {
+          if (document.queryCommandSupported && document.queryCommandSupported('insertText')) {
+            ok = document.execCommand('insertText', false, snippet)
+          }
+        } catch (e2) {
+          ok = false
+        }
+        if (!ok) {
+          if (sel && sel.rangeCount) {
+            var range = sel.getRangeAt(0)
+            range.deleteContents()
+            var node = document.createTextNode(snippet)
+            range.insertNode(node)
+            range.setStartAfter(node)
+            range.collapse(true)
+            sel.removeAllRanges()
+            sel.addRange(range)
+          } else {
+            target.appendChild(document.createTextNode(snippet))
+          }
+        }
+        target.dispatchEvent(new Event('input', { bubbles: true }))
+        return
+      }
+      var start, end
+      if (savedInputSel) {
+        start = savedInputSel.start
+        end = savedInputSel.end
+      } else if (typeof target.selectionStart === 'number') {
+        start = target.selectionStart
+        end = target.selectionEnd
+      } else {
+        start = (target.value || '').length
+        end = start
+      }
+      var current = target.value || ''
+      target.value = current.slice(0, start) + snippet + current.slice(end)
+      var cursorPos = start + snippet.length
+      target.focus()
+      try {
+        target.setSelectionRange(cursorPos, cursorPos)
+      } catch (e3) {}
+      target.dispatchEvent(new Event('input', { bubbles: true }))
+      target.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+  
+    function commit() {
+      var latex = getLatex()
+      if (!latex || !target) {
+        close()
+        return
+      }
+      insertIntoTarget(wrapLatex(latex))
+      if (target._eqLivePreview) refreshLivePreview(target)
+      if (window.eqTypeset) {
+        var host = target.closest ? target.closest('.question-item, .q-list-item, .pc-post, .modal-box, .eqed-field-wrap, form, main, .modal-overlay') || document.body : document.body
+        window.eqTypeset([host])
+      }
+      close()
+    }
+  
+    function refreshLivePreview(field) {
+      var box = field._eqLivePreview
+      if (!box) return
+      var val = field.isContentEditable ? field.innerText : field.value || ''
+      if (!val || !/[\$\\]/.test(val)) {
+        box.innerHTML = ''
+        box.classList.remove('has-content')
+        return
+      }
+      box.textContent = val
+      box.classList.add('has-content')
+      if (window.eqTypeset) window.eqTypeset([box])
+    }
+  
+    function enhance(field, options) {
+      options = options || {}
+      if (!field || field._eqEnhanced) return field
+      field._eqEnhanced = true
+      var wrap = field.closest('.eqed-field-wrap')
+      if (!wrap) {
+        wrap = document.createElement('div')
+        wrap.className = 'eqed-field-wrap'
+        field.parentNode.insertBefore(wrap, field)
+        wrap.appendChild(field)
+      }
+      var tools = wrap.querySelector('.eqed-field-tools')
+      if (!tools) {
+        tools = document.createElement('div')
+        tools.className = 'eqed-field-tools'
+        wrap.insertBefore(tools, field)
+      }
+      var alreadyHasBtn = !!(tools.querySelector('.eqed-btn') || (field.id && document.querySelector('[data-eq-target="#' + field.id + '"]')) || (field.parentNode && field.parentNode.querySelector && field.parentNode.querySelector('.eqed-btn, [data-eq-target]')))
+      if (!alreadyHasBtn) {
+        var btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'eqed-btn'
+        btn.innerHTML = options.buttonLabel || '∑ Math Type'
+        btn.addEventListener('mousedown', function (e) {
+          e.preventDefault()
+          captureSelection(field)
+        })
+        btn.addEventListener('click', function (e) {
+          e.preventDefault()
+          open(field)
+        })
+        tools.appendChild(btn)
+      }
+      if (options.preview !== false) {
+        var prev = wrap.querySelector('.eqed-live-preview')
+        if (!prev) {
+          prev = document.createElement('div')
+          prev.className = 'eqed-live-preview'
+          wrap.appendChild(prev)
+        }
+        field._eqLivePreview = prev
+        var onChange = function () {
+          refreshLivePreview(field)
+        }
+        field.addEventListener('input', onChange)
+        field.addEventListener('change', onChange)
+        refreshLivePreview(field)
+      }
+      return field
+    }
+  
+    function enhanceAll(root) {
+      root = root || document
+      root.querySelectorAll('[data-eq-field]').forEach(function (el) {
+        enhance(el, {
+          preview: el.getAttribute('data-eq-preview') !== '0',
+          buttonLabel: el.getAttribute('data-eq-label') || '∑ Math Type'
+        })
+      })
+    }
+  
+    function init() {
+      if (ready) return
+      overlay = byId('eqedOverlay')
+      canvas = byId('eqedCanvas')
+      preview = byId('eqedPreview')
+      paletteEl = byId('eqedPalette')
+      ribbonEl = byId('eqedRibbon')
+      if (!overlay || !canvas) return
+  
+      buildRibbon()
+      buildPalette()
+      ready = true
+  
+      canvas.addEventListener('input', schedulePreview)
+      canvas.addEventListener('keyup', schedulePreview)
+      canvas.addEventListener('click', function (e) {
+        // Clicking empty canvas places a text slot if empty
+        if (canvas.childNodes.length === 0) {
+          var s = makeSlot('')
+          canvas.appendChild(s)
+          s.focus()
+        }
+      })
+  
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) close()
+      })
+      document.addEventListener('keydown', function (e) {
+        if (!overlay.classList.contains('eqed-open')) return
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          close()
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault()
+          commit()
+        }
+      })
+  
+      document.querySelectorAll('input[name="eqedMode"]').forEach(function (r) {
+        r.addEventListener('change', function () {
+          if (r.checked) setMode(r.value)
+        })
+      })
+  
+      document.addEventListener('focusin', function (e) {
+        rememberFocus(e.target)
+      })
+      document.addEventListener('selectionchange', function () {
+        var el = document.activeElement
+        if (isTextField(el) && !el.isContentEditable && typeof el.selectionStart === 'number') {
+          lastInputSel = { start: el.selectionStart, end: el.selectionEnd }
+          lastFocused = el
+        }
+      })
+  
+      document.addEventListener(
+        'mousedown',
+        function (e) {
+          var btn = e.target.closest('[data-eq-target]')
+          if (!btn) return
+          e.preventDefault()
+          var sel = btn.getAttribute('data-eq-target')
+          var t = document.querySelector(sel) || byId(String(sel).replace(/^#/, ''))
+          if (t) captureSelection(t)
+        },
+        true
+      )
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-eq-target]')
+        if (!btn) return
+        e.preventDefault()
+        open(btn.getAttribute('data-eq-target'))
+      })
+  
+      enhanceAll()
+    }
+  
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init)
+    } else {
+      init()
+    }
+  
+    if (typeof MutationObserver !== 'undefined') {
+      document.addEventListener('DOMContentLoaded', function () {
+        var obs = new MutationObserver(function (mutations) {
+          var needs = false
+          mutations.forEach(function (m) {
+            m.addedNodes &&
+              m.addedNodes.forEach(function (n) {
+                if (n.nodeType === 1 && ((n.matches && n.matches('[data-eq-field]')) || (n.querySelector && n.querySelector('[data-eq-field]')))) needs = true
+              })
+          })
+          if (needs) enhanceAll()
+        })
+        obs.observe(document.body, { childList: true, subtree: true })
+      })
+    }
+  
+    window.EqEditor = {
+      open: open,
+      close: close,
+      commit: commit,
+      setMode: setMode,
+      clearInput: clearInput,
+      updatePreview: updatePreview,
+      enhance: enhance,
+      enhanceAll: enhanceAll,
+      captureSelection: captureSelection,
+      setCategory: setCategory
+    }
+  })()
+</script>

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  {{ resource.title }} - Study Nation
+{% endblock %}
+
+{% block extra_css %}
+{% include 'partials/no_download_media.html' %}
+<style>
+  .rd-wrap { max-width: 1000px; margin: 0 auto; }
+  .rd-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: #667eea; font-weight: 700; font-size: 0.9rem;
+    text-decoration: none; margin-bottom: 1rem;
+  }
+  .rd-card {
+    background: #fff;
+    border: 1px solid #e8ebf5;
+    border-radius: 16px;
+    box-shadow: 0 8px 28px rgba(30, 40, 90, 0.07);
+    overflow: hidden;
+  }
+  .rd-head { padding: 1.5rem 1.75rem 1rem; border-bottom: 1px solid #eef0f6; }
+  .rd-head h1 { font-size: 1.55rem; color: #1a1f36; margin: 0 0 0.4rem; font-weight: 800; }
+  .rd-meta { color: #6b7280; font-size: 0.9rem; margin: 0; }
+  .rd-desc { color: #4b5563; margin: 0.85rem 0 0; line-height: 1.6; }
+  .rd-note {
+    margin: 0 1.75rem 1rem;
+    font-size: 0.82rem; color: #6b7280;
+    background: #f8f9fd; border: 1px solid #e8ebf5;
+    border-radius: 8px; padding: 8px 12px;
+  }
+  .rd-viewer {
+    padding: 0 1rem 1.25rem;
+  }
+  .rd-viewer iframe {
+    width: 100%;
+    min-height: 75vh;
+    border: 1px solid #e6e9f5;
+    border-radius: 12px;
+    background: #fafbff;
+  }
+  .rd-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.75rem; }
+  .rd-badge {
+    display: inline-block; font-size: 0.72rem; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px;
+    background: #eef0fd; color: #5b6fd8;
+  }
+  .rd-badge.free { background: #e8f5e9; color: #2e7d32; }
+  .rd-badge.paid { background: #fff8e1; color: #b26a00; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rd-wrap">
+  <a class="rd-back" href="{% url 'courses:resources' %}">← Back to Resources</a>
+
+  <div class="rd-card no-dl-zone">
+    <div class="rd-head">
+      <h1>{{ resource.title }}</h1>
+      {% if resource.author %}
+        <p class="rd-meta">By {{ resource.author }}</p>
+      {% endif %}
+      <div class="rd-badges">
+        {% if resource.is_paid %}
+          <span class="rd-badge paid">₹ {{ resource.price }}</span>
+        {% else %}
+          <span class="rd-badge free">FREE</span>
+        {% endif %}
+        <span class="rd-badge">{{ resource.get_resource_type_display }}</span>
+        <span class="rd-badge">View only</span>
+      </div>
+      {% if resource.description %}
+        <p class="rd-desc">{{ resource.description }}</p>
+      {% endif %}
+    </div>
+
+    <p class="rd-note">View only — downloading this file is not available.</p>
+
+    {% if resource.file %}
+      <div class="rd-viewer no-dl-media">
+        {# toolbar=0 hides PDF download UI in most browsers' built-in viewers #}
+        <iframe
+          src="{{ resource.file.url }}#toolbar=0&navpanes=0&scrollbar=1&view=FitH"
+          title="{{ resource.title }} viewer"
+          oncontextmenu="return false;"
+        ></iframe>
+      </div>
+    {% else %}
+      <div style="padding:1.5rem 1.75rem; color:#b26a00;">Resource file not found.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

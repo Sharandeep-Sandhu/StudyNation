@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Login - Study Nation</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+      
+      .login-container {
+        width: 100%;
+        max-width: 420px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        animation: slideUp 0.6s ease-out;
+      }
+      
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      .login-header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      
+      .login-header h1 {
+        color: #667eea;
+        font-size: 28px;
+        margin-bottom: 5px;
+      }
+      
+      .login-header p {
+        color: #666;
+        font-size: 14px;
+      }
+      
+      .form-group {
+        margin-bottom: 20px;
+      }
+      
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 500;
+        font-size: 14px;
+      }
+      
+      .form-group input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+      }
+      
+      .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+      
+      .login-btn {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+      }
+      
+      .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+      }
+      
+      .login-btn:active {
+        transform: translateY(0);
+      }
+      
+      .messages {
+        margin-bottom: 20px;
+      }
+      
+      .alert {
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+      
+      .alert-error {
+        background: #ffebee;
+        color: #c62828;
+        border-left: 4px solid #c62828;
+      }
+      
+      .alert-success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        border-left: 4px solid #2e7d32;
+      }
+      
+      .back-link {
+        text-align: center;
+        margin-top: 20px;
+      }
+      
+      .back-link a {
+        color: #667eea;
+        text-decoration: none;
+        font-size: 14px;
+        transition: color 0.3s ease;
+      }
+      
+      .back-link a:hover {
+        color: #764ba2;
+      }
+      
+      .feature-list {
+        background: #f0f4ff;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 25px;
+        font-size: 13px;
+        color: #555;
+      }
+      
+      .feature-list h4 {
+        color: #667eea;
+        margin-bottom: 10px;
+        font-size: 13px;
+      }
+      
+      .feature-list ul {
+        list-style: none;
+        padding-left: 0;
+      }
+      
+      .feature-list li {
+        margin-bottom: 6px;
+        padding-left: 20px;
+        position: relative;
+      }
+      
+      .feature-list li:before {
+        content: '✓';
+        position: absolute;
+        left: 0;
+        color: #667eea;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container">
+      <div class="login-header">
+        <h1>🔐 Admin Panel</h1>
+        <p>Study Nation Management System</p>
+      </div>
+
+      {% if messages %}
+        <div class="messages">
+          {% for message in messages %}
+            <div class="alert alert-{% if message.tags %}
+                {{ message.tags }}
+              {% else %}
+                error
+              {% endif %}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" action="{% url 'admin_panel:login' %}">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label for="id_username">{{ form.username.label }}</label>
+          {{ form.username }}
+          {% if form.username.errors %}
+            <small style="color: #c62828;">{{ form.username.errors }}</small>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="id_password">{{ form.password.label }}</label>
+          {{ form.password }}
+          {% if form.password.errors %}
+            <small style="color: #c62828;">{{ form.password.errors }}</small>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="login-btn">Login to Admin Panel</button>
+      </form>
+
+      <div class="feature-list">
+        <h4>Admin Features:</h4>
+        <ul>
+          <li>Upload questions via CSV</li>
+          <li>Add questions manually</li>
+          <li>Manage question banks</li>
+          <li>Track upload history</li>
+          <li>View statistics</li>
+        </ul>
+      </div>
+
+      <div class="back-link">
+        <a href="/">← Back to Website</a>
+      </div>
+    </div>
+  </body>
+</html>

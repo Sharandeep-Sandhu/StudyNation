@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% block title %}Blogs - Study Nation{% endblock %}
+
+{% block extra_css %}
+<style>
+  .bl-page { max-width: 1180px; margin: 0 auto; padding-bottom: 2rem; }
+
+  .bl-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 55%, #8b5cf6 100%);
+    border-radius: 20px;
+    padding: 2.75rem 2.4rem;
+    color: #fff;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 16px 40px rgba(102, 126, 234, 0.25);
+  }
+  .bl-hero::after {
+    content: "";
+    position: absolute;
+    width: 260px; height: 260px;
+    right: -50px; top: -70px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 50%;
+  }
+  .bl-hero-inner { position: relative; z-index: 1; max-width: 640px; }
+  .bl-kicker {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.25);
+    padding: 5px 12px; border-radius: 999px;
+    font-size: 0.75rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; margin-bottom: 0.85rem;
+  }
+  .bl-hero h1 {
+    font-size: clamp(1.8rem, 3vw, 2.45rem);
+    font-weight: 800; letter-spacing: -0.5px;
+    margin: 0 0 0.6rem; line-height: 1.2;
+  }
+  .bl-hero p { margin: 0; opacity: 0.95; font-size: 1.05rem; line-height: 1.65; }
+
+  .bl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .bl-card {
+    background: #fff;
+    border: 1px solid #e8ebf5;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 6px 22px rgba(30, 40, 90, 0.06);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    text-decoration: none;
+    color: inherit;
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+  }
+  .bl-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(30, 40, 90, 0.12);
+    border-color: #d5dbf5;
+  }
+
+  .bl-card-media {
+    position: relative;
+    height: 200px;
+    background: linear-gradient(135deg, #eef1ff, #f3e8ff);
+    overflow: hidden;
+  }
+  .bl-card-media img {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+    transition: transform .35s ease;
+  }
+  .bl-card:hover .bl-card-media img { transform: scale(1.04); }
+  .bl-card-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem; opacity: 0.4;
+  }
+  .bl-card-badges {
+    position: absolute; left: 12px; bottom: 12px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .bl-badge {
+    background: rgba(255,255,255,0.95);
+    color: #4c5fd5;
+    font-size: 0.68rem; font-weight: 700;
+    padding: 4px 8px; border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .bl-card-body {
+    padding: 1.2rem 1.3rem 1.35rem;
+    display: flex; flex-direction: column; flex: 1;
+  }
+  .bl-card-title {
+    font-size: 1.12rem; font-weight: 700; color: #1f2544;
+    line-height: 1.35; margin: 0 0 0.5rem;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .bl-card-excerpt {
+    color: #5c647a; font-size: 0.92rem; line-height: 1.6;
+    margin: 0 0 1rem; flex: 1;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .bl-card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding-top: 0.85rem;
+    border-top: 1px solid #f0f2f8; margin-top: auto;
+  }
+  .bl-author {
+    display: flex; align-items: center; gap: 8px; min-width: 0;
+  }
+  .bl-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff; font-size: 0.75rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .bl-author-name {
+    font-size: 0.82rem; font-weight: 700; color: #333;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bl-author-date { font-size: 0.75rem; color: #8a91a8; }
+  .bl-read {
+    font-size: 0.82rem; font-weight: 700; color: #667eea; white-space: nowrap;
+  }
+
+  .bl-empty {
+    text-align: center; padding: 4rem 1.5rem;
+    background: #fff; border-radius: 16px;
+    border: 1px dashed #d8dcf0; color: #666;
+  }
+  .bl-empty h3 { color: #333; margin-bottom: 0.5rem; }
+
+  @media (max-width: 640px) {
+    .bl-hero { padding: 1.75rem 1.3rem; border-radius: 14px; }
+    .bl-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bl-page">
+  <section class="bl-hero">
+    <div class="bl-hero-inner">
+      <div class="bl-kicker">Study Nation Blog</div>
+      <h1>Ideas, tips & learning guides</h1>
+      <p>Practical articles from our team to help you study smarter and prepare with confidence.</p>
+    </div>
+  </section>
+
+  {% if blogs %}
+    <div class="bl-grid">
+      {% for blog in blogs %}
+        <a class="bl-card" href="{% url 'courses:blog_detail' blog.slug %}">
+          <div class="bl-card-media">
+            {% if blog.image %}
+              <img src="{{ blog.image.url }}" alt="{{ blog.title }}" loading="lazy" draggable="false" />
+            {% else %}
+              <div class="bl-card-placeholder">📝</div>
+            {% endif %}
+            <div class="bl-card-badges">
+              {% if blog.video %}<span class="bl-badge">Video</span>{% endif %}
+              {% if blog.pdf %}<span class="bl-badge">Document</span>{% endif %}
+              {% if blog.ppt %}<span class="bl-badge">Slides</span>{% endif %}
+            </div>
+          </div>
+          <div class="bl-card-body">
+            <h2 class="bl-card-title">{{ blog.title }}</h2>
+            <p class="bl-card-excerpt">{{ blog.content|striptags|truncatewords:28 }}</p>
+            <div class="bl-card-footer">
+              <div class="bl-author">
+                <div class="bl-avatar">{{ blog.author|default:"S"|slice:":1"|upper }}</div>
+                <div>
+                  <div class="bl-author-name">{{ blog.author|default:"Study Nation Team" }}</div>
+                  <div class="bl-author-date">{{ blog.created_at|date:"M d, Y" }}</div>
+                </div>
+              </div>
+              <span class="bl-read">Read →</span>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="bl-empty">
+      <h3>No blogs published yet</h3>
+      <p>Check back soon for new articles and study tips.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

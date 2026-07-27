@@ -1,0 +1,98 @@
+<style id="eq-inline-css">
+  /*
+    Word-imported equation PNGs — size like normal body text.
+    Source files are often ~70–130px tall; always scale down to em units.
+  */
+  img.eq-inline {
+    display: inline !important;
+    height: 1.25em !important;
+    width: auto !important;
+    max-height: 1.6em !important;
+    max-width: min(100%, 16em) !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
+    vertical-align: -0.2em !important;
+    margin: 0 0.12em !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    object-fit: contain !important;
+    image-rendering: auto;
+  }
+
+  /* Question stems: room for superscripts without looking huge */
+  .question-text img.eq-inline,
+  .question-item .question-text img.eq-inline,
+  .q-stem img.eq-inline,
+  .eb-q-stem img.eq-inline,
+  .eb-preview-body img.eq-inline,
+  .eb-preview-body .eb-q-stem img.eq-inline,
+  .preview-body img.eq-inline,
+  .preview-body .eb-q-stem img.eq-inline,
+  .pq-question-text img.eq-inline,
+  .pr-review-text img.eq-inline,
+  .pc-comment-text img.eq-inline,
+  .pc-post-content img.eq-inline,
+  .mq-body img.eq-inline,
+  .bank-questions img.eq-inline,
+  .cd-question-text img.eq-inline {
+    height: 1.3em !important;
+    max-height: 1.75em !important;
+    max-width: min(100%, 18em) !important;
+    vertical-align: middle !important;
+  }
+
+  /* Options A–D */
+  .q-options img.eq-inline,
+  .eb-opt-text img.eq-inline,
+  .eb-preview-body .eb-opt-text img.eq-inline,
+  .preview-body .eb-opt-text img.eq-inline,
+  .pq-option-text img.eq-inline {
+    height: 1.2em !important;
+    max-height: 1.55em !important;
+    vertical-align: middle !important;
+  }
+
+  /*
+    Thumbnail strip — only when equations are NOT already inlined.
+    Keep chips small so they never dominate the list.
+  */
+  .eq-images img,
+  .eq-images img.eq-inline {
+    display: inline-block !important;
+    height: 28px !important;
+    max-height: 28px !important;
+    max-width: 160px !important;
+    width: auto !important;
+    vertical-align: middle !important;
+    border: 1px solid #d6dbf2 !important;
+    border-radius: 4px !important;
+    background: #fff !important;
+    padding: 2px !important;
+    margin: 0 !important;
+  }
+
+  /* MathJax SVG — match body text */
+  mjx-container {
+    font-size: 100% !important;
+    margin: 0 0.06em !important;
+  }
+  mjx-container[display="true"] {
+    font-size: 105% !important;
+    margin: 0.35em 0 !important;
+  }
+
+  .question-text,
+  .question-item .question-text,
+  .eb-q-stem,
+  .pq-question-text,
+  .pr-review-text,
+  .cd-question-text {
+    line-height: 1.75;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+</style>
+

@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Questions - Exam Builder</title>
+    {% include 'partials/mathjax.html' %}
+    {% include 'partials/equation_inline_css.html' %}
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f7fa;
+        color: #333;
+      }
+
+      /* Layout: fixed sidebar + fluid main (do NOT combine grid col + margin-left) */
+      .dashboard-wrapper { min-height: 100vh; width: 100%; }
+
+      /* Sidebar (shared look) */
+      .sidebar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white; padding: 30px 0; position: fixed; top: 0; left: 0; height: 100vh; width: 250px;
+        overflow-y: auto; box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1); z-index: 100;
+      }
+      .sidebar-header { padding: 0 20px 30px; border-bottom: 1px solid rgba(255,255,255,.2); margin-bottom: 20px; }
+      .sidebar-header h2 { font-size: 20px; margin-bottom: 5px; }
+      .sidebar-header p { font-size: 12px; opacity: .8; }
+      .sidebar-nav { list-style: none; }
+      .sidebar-nav a { display: block; padding: 14px 20px; color: white; text-decoration: none; transition: all .3s ease; border-left: 3px solid transparent; }
+      .sidebar-nav a:hover, .sidebar-nav a.active { background: rgba(255,255,255,.1); border-left-color: white; }
+      .sidebar-footer { position: absolute; bottom: 20px; left: 0; right: 0; padding: 0 20px; border-top: 1px solid rgba(255,255,255,.2); padding-top: 20px; }
+      .logout-btn { width: 100%; padding: 10px; background: rgba(255,255,255,.2); color: white; border: 1px solid rgba(255,255,255,.4); border-radius: 4px; cursor: pointer; text-decoration: none; display: block; text-align: center; font-size: 14px; }
+      .logout-btn:hover { background: rgba(255,255,255,.3); }
+
+      .main-content {
+        margin-left: 250px;
+        padding: 32px 40px 48px;
+        width: auto;
+        max-width: none;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+
+      .header-row {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+        width: 100%;
+      }
+      .header-row h1 { font-size: 24px; color: #222; }
+      .header-row p { color: #666; font-size: 13px; margin-top: 4px; max-width: 520px; line-height: 1.45; }
+
+      .bank-select-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .bank-select-row label { font-size: 13px; font-weight: 700; color: #333; }
+      #bankSelect {
+        min-width: 280px; max-width: 420px;
+        font-family: inherit; font-size: 14px; padding: 10px 12px;
+        border: 1.5px solid #dfe3ea; border-radius: 6px; background: #fff; color: #222;
+      }
+      #bankSelect.field-missing {
+        border-color: #d64545 !important;
+        box-shadow: 0 0 0 3px rgba(214,69,69,.18);
+        background: #fff8f8;
+      }
+      .bank-required-hint {
+        display: none; margin-top: 8px; font-size: 13px; color: #d64545; font-weight: 600;
+      }
+      .bank-required-hint.show { display: block; }
+
+      select, input[type=text], input[type=number], textarea {
+        font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1.5px solid #dfe3ea; border-radius: 6px; background: #fff; color: #222;
+      }
+      select:focus, input:focus, textarea:focus { outline: none; border-color: #4f7cff; box-shadow: 0 0 0 3px rgba(79,124,255,.12); }
+
+      .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; text-decoration: none; }
+      .btn-primary { background: #4f7cff; color: #fff; }
+      .btn-primary:hover { background: #3d68e6; }
+      .btn-outline { background: #fff; color: #4f7cff; border: 1.5px solid #4f7cff; }
+      .btn-outline:hover { background: #eef2ff; }
+      .btn-ghost { background: transparent; color: #555; border: 1.5px solid #dfe3ea; }
+      .btn-ghost:hover { background: #f1f3f7; }
+      .btn-danger { background: #fff; color: #d64545; border: 1.5px solid #f3c6c6; }
+      .btn-danger:hover { background: #fdeeee; }
+      .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+      .card {
+        background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        padding: 24px; width: 100%; max-width: 100%; box-sizing: border-box;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 56px 32px;
+        width: 100%;
+        max-width: 720px;
+        margin: 0 auto;
+      }
+      .empty-state .icon {
+        width: 70px; height: 70px; border-radius: 50%; background: #eef2ff;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 18px; font-size: 30px;
+      }
+      .empty-state h3 {
+        font-size: 20px; margin-bottom: 10px; color: #222;
+        white-space: normal; word-break: normal; line-height: 1.35;
+      }
+      .empty-state p {
+        color: #666; font-size: 14px; margin-bottom: 22px;
+        line-height: 1.55; max-width: 480px; margin-left: auto; margin-right: auto;
+      }
+      .empty-state .actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+      .empty-state .required-badge {
+        display: inline-block; background: #fdeeee; color: #d64545;
+        font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+        margin-bottom: 14px;
+      }
+
+      #questionListWrap { width: 100%; max-width: 1000px; }
+      .q-list-item { border: 1px solid #eceff3; border-radius: 8px; padding: 16px 18px; margin-bottom: 12px; }
+      .q-list-item .q-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+      .q-list-item .q-index { font-weight: 700; color: #4f7cff; margin-right: 8px; flex-shrink: 0; }
+      .q-list-item .q-stem {
+        font-size: 1rem; line-height: 1.7; color: #222; font-weight: 500;
+        word-wrap: break-word; overflow-wrap: anywhere; flex: 1; min-width: 0;
+      }
+      .q-list-item .q-stem img.eq-inline {
+        max-height: 1.45em !important;
+        vertical-align: middle;
+      }
+      .q-badges { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+      .q-badges span { display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 10px; background: #f1f3f7; color: #555; margin-left: 0; }
+      .q-options { margin-top: 10px; padding-left: 26px; color: #444; font-size: 1rem; line-height: 1.6; }
+      .q-options .opt { padding: 3px 0; }
+      .q-options .opt.correct { color: #1c8a4c; font-weight: 600; }
+      .q-actions { margin-top: 10px; display: flex; gap: 16px; }
+      .q-actions a, .q-actions button { background: none; border: none; color: #4f7cff; font-size: 13px; cursor: pointer; font-weight: 600; padding: 0; }
+      .q-actions .del { color: #d64545; }
+
+      /* ---- Modal shell ---- */
+      .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(20,24,34,.45); z-index: 200; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 40px 16px; }
+      .modal-overlay.open { display: flex; }
+      .modal-box { background: #fff; border-radius: 10px; width: 100%; max-width: 620px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+      .modal-box.wide { max-width: 900px; }
+      .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 26px; border-bottom: 1px solid #eee; }
+      .modal-head h2 { font-size: 19px; }
+      .modal-head .close-x { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; }
+      .modal-body { padding: 24px 26px; }
+      .modal-foot { padding: 16px 26px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+
+      /* Type picker list */
+      .type-option { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1.5px solid #eceff3; border-radius: 8px; margin-bottom: 12px; cursor: pointer; transition: all .15s ease; }
+      .type-option:hover { border-color: #4f7cff; background: #f7f9ff; }
+      .type-option .emoji { font-size: 22px; }
+      .type-option .label { font-weight: 600; font-size: 15px; }
+      .type-option .desc { font-size: 12.5px; color: #777; margin-top: 2px; }
+
+      /* Count/marks dialog */
+      .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+      .field-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #333; }
+      .field-group input, .field-group select { width: 100%; }
+      .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-top: 1px solid #f0f0f0; }
+      .toggle-row .toggle-label { font-size: 14px; font-weight: 600; }
+      .switch { position: relative; width: 42px; height: 24px; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider-pill { position: absolute; inset: 0; background: #ccc; border-radius: 24px; cursor: pointer; transition: .2s; }
+      .slider-pill:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .2s; }
+      .switch input:checked + .slider-pill { background: #4f7cff; }
+      .switch input:checked + .slider-pill:before { transform: translateX(18px); }
+
+      /* Editor modal */
+      .editor-head-left { display: flex; align-items: center; gap: 10px; }
+      .editor-head-left .badge { background: #eef2ff; color: #4f7cff; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+      .editor-nav { display: flex; gap: 8px; }
+
+      .q-field-label { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+      .rt-toolbar { display: flex; gap: 4px; border: 1.5px solid #dfe3ea; border-bottom: none; border-radius: 6px 6px 0 0; padding: 6px; background: #fafbfc; flex-wrap: wrap; }
+      .rt-toolbar button { border: none; background: transparent; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 700; color: #444; }
+      .rt-toolbar button:hover { background: #eef2ff; }
+      .rt-editable { min-height: 90px; border: 1.5px solid #dfe3ea; border-radius: 0 0 6px 6px; padding: 12px; font-size: 14px; }
+      .rt-editable:focus { outline: none; border-color: #4f7cff; }
+      .rt-editable img { max-width: 100%; }
+
+      .answers-head { display: flex; justify-content: space-between; align-items: center; margin: 22px 0 12px; }
+      #answersWrap {
+        margin: 18px 0;
+        padding: 14px 14px 16px;
+        border: 1.5px solid #e1e3fb;
+        border-radius: 10px;
+        background: #fafbff;
+      }
+      #answersWrap .answers-hint {
+        font-size: 12px; color: #666; margin-bottom: 10px; font-weight: 500;
+      }
+      .option-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+      .option-row input[type=text] { flex: 1; min-width: 0; }
+      .option-row .mark-correct { width: 20px; height: 20px; flex-shrink: 0; cursor: pointer; accent-color: #4f7cff; }
+      .option-row .del-opt { background: none; border: none; color: #d64545; cursor: pointer; font-size: 13px; font-weight: 600; }
+      .add-option-btn { width: 100%; padding: 12px; border: 1.5px dashed #4f7cff; border-radius: 6px; background: #f7f9ff; color: #4f7cff; font-weight: 600; cursor: pointer; }
+      /* Keep live equation previews compact so Answers stay visible */
+      .eqed-live-preview { max-height: 72px; overflow: auto; font-size: 0.95rem; }
+      .eqed-field-tools:empty { display: none; }
+
+      .tags-box { display: flex; flex-wrap: wrap; gap: 8px; border: 1.5px solid #dfe3ea; border-radius: 6px; padding: 8px; }
+      .tag-chip { background: #eef2ff; color: #4f7cff; font-size: 12.5px; padding: 4px 8px; border-radius: 12px; display: flex; align-items: center; gap: 6px; }
+      .tag-chip button { border: none; background: none; color: #4f7cff; cursor: pointer; font-weight: 700; }
+      .tags-box input { flex: 1; min-width: 120px; border: none; padding: 4px; }
+      .tags-box input:focus { outline: none; }
+
+      .form-row { margin-bottom: 20px; }
+      .toast { position: fixed; top: 20px; right: 20px; background: #222; color: #fff; padding: 12px 18px; border-radius: 6px; font-size: 13.5px; z-index: 500; display: none; }
+      .toast.show { display: block; }
+      .toast.error { background: #d64545; }
+
+      .messages { margin-bottom: 20px; }
+      .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 10px; font-size: 14px; }
+      .alert-error { background: #ffebee; color: #c62828; border-left: 4px solid #c62828; }
+      .alert-success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid #2e7d32; }
+
+      @media (max-width: 768px) {
+        .sidebar { position: relative; width: 100%; height: auto; }
+        .main-content { margin-left: 0; padding: 20px; }
+        .field-grid { grid-template-columns: 1fr; }
+        #bankSelect { min-width: 100%; max-width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    {% include 'admin_panel/_partials/sidebar_slider.html' %}
+    <div class="dashboard-wrapper">
+{% include 'admin_panel/_partials/admin_sidebar.html' with active='manual_question' %}
+<main class="main-content">
+        <div class="header-row">
+          <div>
+            <h1>➕ Create Questions</h1>
+            <p>Pick a question bank, then build questions with the guided wizard.</p>
+          </div>
+          <div class="bank-select-row">
+            <label for="bankSelect">Question Bank <span style="color:#d64545;">*</span></label>
+            <select id="bankSelect" onchange="onBankChange(this.value)" aria-required="true">
+              <option value="">-- Select a question bank --</option>
+              {% for qb in question_banks %}
+                <option value="{{ qb.id }}" {% if selected_bank and selected_bank.id == qb.id %}selected{% endif %}>{{ qb.title }} ({{ qb.course.title }})</option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-primary" onclick="openCreateBankModal()">+ Create Question Bank</button>
+          </div>
+        </div>
+        <div class="bank-required-hint" id="bankRequiredHint">
+          ⚠ Required field empty: <strong>Question Bank</strong> — choose a bank from the dropdown, or click <strong>+ Create Question Bank</strong>.
+        </div>
+
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags|default:'error' }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if not selected_bank %}
+          <div class="card empty-state" id="emptyBankCard">
+            <div class="icon">🗂️</div>
+            <div class="required-badge">Required field not filled</div>
+            <h3>Select or create a question bank</h3>
+            <p>
+              The <strong>Question Bank</strong> dropdown above is empty.
+              Choose an existing bank, or create a new one to start adding questions.
+            </p>
+            <div class="actions">
+              <button type="button" class="btn btn-primary" onclick="openCreateBankModal()">+ Create Question Bank</button>
+              <button type="button" class="btn btn-outline" onclick="focusBankSelect()">Select Existing Bank</button>
+            </div>
+          </div>
+        {% else %}
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 18px; flex-wrap:wrap; gap:12px;">
+              <div>
+                <strong style="font-size:16px;">{{ selected_bank.title }}</strong>
+                <span style="color:#777; font-size:13px;"> — {% if page_obj %}{{ page_obj.paginator.count }} Question{{ page_obj.paginator.count|pluralize }}{% else %}{{ bank_questions|length }} Question{{ bank_questions|length|pluralize }}{% endif %}</span>
+              </div>
+              <button class="btn btn-primary" onclick="openTypeModal()">+ Create Questions</button>
+            </div>
+
+            {% if not bank_questions %}
+              <div class="empty-state">
+                <div class="icon">❔</div>
+                <h3>Let's add questions</h3>
+                <p>Use <strong>Create Questions</strong> to build questions with the guided wizard.</p>
+                <div class="actions">
+                  <button class="btn btn-primary" onclick="openTypeModal()">Create Questions</button>
+                </div>
+              </div>
+            {% else %}
+              <div id="questionListWrap">
+                {% for q in bank_questions %}
+                  <div class="q-list-item" id="q-item-{{ q.id }}">
+                    <div class="q-top">
+                      <div class="q-stem question-text">
+                        <span class="q-index">{% if page_obj %}{{ page_obj.start_index|add:forloop.counter0 }}{% else %}{{ forloop.counter }}{% endif %}.</span>{% if q.question_text %}{{ q.question_text|safe }}{% else %}(untitled question){% endif %}
+                      </div>
+                      <div class="q-badges">
+                        <span>{{ q.get_question_type_display }}</span>
+                        {% if q.difficulty_level %}<span>{{ q.get_difficulty_level_display }}</span>{% endif %}
+                        <span>{{ q.marks }} mark{{ q.marks|pluralize }}</span>
+                      </div>
+                    </div>
+                    {% with opts=q.options.all %}
+                      {% if opts %}
+                        <div class="q-options">
+                          {% for opt in opts %}
+                            <div class="opt eb-opt-text {% if opt.is_correct %}correct{% endif %}">{% if opt.is_correct %}✓{% else %}○{% endif %} {{ opt.text|safe }}</div>
+                          {% endfor %}
+                        </div>
+                      {% elif q.option_a or q.option_b %}
+                        <div class="q-options">
+                          {% if q.option_a %}<div class="opt eb-opt-text">A. {{ q.option_a|safe }}</div>{% endif %}
+                          {% if q.option_b %}<div class="opt eb-opt-text">B. {{ q.option_b|safe }}</div>{% endif %}
+                          {% if q.option_c %}<div class="opt eb-opt-text">C. {{ q.option_c|safe }}</div>{% endif %}
+                          {% if q.option_d %}<div class="opt eb-opt-text">D. {{ q.option_d|safe }}</div>{% endif %}
+                        </div>
+                      {% endif %}
+                    {% endwith %}
+                    <div class="q-actions">
+                      <button onclick="editQuestion({{ q.id }})">✏️ Edit</button>
+                      <button class="del" onclick="deleteQuestion({{ q.id }})">🗑️ Delete</button>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              {% if page_obj %}
+                {% include 'partials/question_pagination.html' %}
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endif %}
+      </main>
+    </div>
+
+    <!-- ===================== CREATE QUESTION BANK ===================== -->
+    <div class="modal-overlay" id="createBankModal">
+      <div class="modal-box">
+        <div class="modal-head">
+          <h2>Create Question Bank</h2>
+          <button class="close-x" onclick="closeModal('createBankModal')">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:13.5px; color:#666; margin-bottom:16px; line-height:1.45;">
+            A question bank groups questions under a course (e.g. “Algebra Midterm”, “Past Papers 2019”).
+          </p>
+          <div class="field-group" style="margin-bottom:14px;">
+            <label for="newBankCourse">Course <span style="color:#d64545;">*</span></label>
+            <select id="newBankCourse" style="width:100%;">
+              <option value="">-- Select a course --</option>
+              {% for c in courses %}
+                <option value="{{ c.id }}">{{ c.title }}</option>
+              {% empty %}
+                <option value="" disabled>No courses found — create a course first</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field-group" style="margin-bottom:14px;">
+            <label for="newBankTitle">Bank title <span style="color:#d64545;">*</span></label>
+            <input type="text" id="newBankTitle" style="width:100%;" placeholder="e.g. Chapter 1 – Practice Set" maxlength="200" />
+          </div>
+          <div class="field-group" style="margin-bottom:14px;">
+            <label for="newBankDifficulty">Difficulty</label>
+            <select id="newBankDifficulty" style="width:100%;">
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <div class="field-group" style="margin-bottom:6px;">
+            <label for="newBankDescription">Description (optional)</label>
+            <textarea id="newBankDescription" rows="3" style="width:100%;" placeholder="Brief description of this bank"></textarea>
+          </div>
+          <div id="createBankError" style="display:none; margin-top:12px; padding:10px 12px; background:#ffebee; color:#c62828; border-radius:6px; font-size:13px;"></div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('createBankModal')">Cancel</button>
+          <button type="button" class="btn btn-primary" id="createBankSubmitBtn" onclick="submitCreateBank()">Create Bank</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== STEP 1: Type picker modal ===================== -->
+    <div class="modal-overlay" id="typeModal">
+      <div class="modal-box">
+        <div class="modal-head">
+          <h2>Select Question Type</h2>
+          <button class="close-x" onclick="closeModal('typeModal')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="type-option" onclick="chooseType('mcq')">
+            <span class="emoji">🔘</span>
+            <div><div class="label">Multiple Choice Questions</div><div class="desc">One or more correct options, chosen by the student</div></div>
+          </div>
+          <div class="type-option" onclick="chooseType('true_false')">
+            <span class="emoji">✅</span>
+            <div><div class="label">True / False Questions</div><div class="desc">A single statement students mark True or False</div></div>
+          </div>
+          <div class="type-option" onclick="chooseType('comprehension')">
+            <span class="emoji">📖</span>
+            <div><div class="label">Comprehension Questions</div><div class="desc">A passage followed by a question about it</div></div>
+          </div>
+          <div class="type-option" onclick="chooseType('fill_blank')">
+            <span class="emoji">✏️</span>
+            <div><div class="label">Fill in the Blanks Questions</div><div class="desc">Student types the missing word or phrase</div></div>
+          </div>
+          <div class="type-option" onclick="chooseType('integer')">
+            <span class="emoji">🔢</span>
+            <div><div class="label">Integer Type Questions</div><div class="desc">Answer is a single numeric value</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== STEP 2: Count / marks dialog ===================== -->
+    <div class="modal-overlay" id="countModal">
+      <div class="modal-box">
+        <div class="modal-head">
+          <h2 id="countModalTitle">Set up questions</h2>
+          <button class="close-x" onclick="closeModal('countModal')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="field-grid">
+            <div class="field-group">
+              <label>No. Of questions</label>
+              <input type="number" id="fieldCount" min="1" max="100" value="1" />
+            </div>
+            <div class="field-group">
+              <label>Marks per question</label>
+              <input type="number" id="fieldMarks" min="0" value="4" />
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <span class="toggle-label">Negative Marks</span>
+            <label class="switch">
+              <input type="checkbox" id="fieldNegativeToggle" onchange="toggleNegativeInput()" />
+              <span class="slider-pill"></span>
+            </label>
+          </div>
+          <div class="field-group" id="negativeMarksWrap" style="display:none; margin-bottom: 12px;">
+            <label>Negative marks per wrong attempt</label>
+            <input type="number" id="fieldNegative" min="0" step="0.25" value="1" style="width:100%;" />
+          </div>
+
+          <div class="toggle-row" id="partialRow">
+            <div>
+              <span class="toggle-label">Partial Marking</span>
+              <div style="font-size:12px;color:#888;">Give proportional marks for partially-correct multi-answers</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="fieldPartial" />
+              <span class="slider-pill"></span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-ghost" onclick="closeModal('countModal')">Cancel</button>
+          <button class="btn btn-primary" onclick="submitCount()">Create Questions</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== STEP 3: Question editor modal ===================== -->
+    <div class="modal-overlay" id="editorModal">
+      <div class="modal-box wide">
+        <div class="modal-head">
+          <div class="editor-head-left">
+            <h2 id="editorTitle">1. Multiple Choice</h2>
+            <span class="badge" id="editorCounter">1 / 1</span>
+          </div>
+          <div class="editor-nav">
+            <button class="btn btn-ghost" id="btnPrev" onclick="goPrev()">Previous</button>
+            <button class="btn btn-outline" onclick="saveCurrent(function(){ showToast('Saved'); })">Save</button>
+            <button class="btn btn-primary" id="btnNext" onclick="goNext()">Next</button>
+            <button class="close-x" onclick="closeEditor()">✕</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="form-row" id="passageWrap" style="display:none;">
+            <div class="q-field-label">
+              Passage
+              <button type="button" class="btn btn-ghost eqed-btn" style="padding:3px 10px; font-size:12px;" data-eq-target="#passageField" onmousedown="event.preventDefault()">∑ Math Type</button>
+            </div>
+            <textarea id="passageField" rows="4" style="width:100%;" data-eq-field data-eq-preview="1" placeholder="Enter the comprehension passage (supports $LaTeX$)"></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="q-field-label">
+              <span>Question</span>
+              <span style="display:flex; align-items:center; gap:8px; font-weight:400;">
+                Difficulty Level
+                <select id="difficultyField">
+                  {% for value, label in difficulty_levels %}
+                    <option value="{{ value }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </span>
+            </div>
+            <div class="rt-toolbar">
+              <button type="button" onclick="rtCmd('bold')"><b>B</b></button>
+              <button type="button" onclick="rtCmd('italic')"><i>I</i></button>
+              <button type="button" onclick="rtCmd('underline')"><u>U</u></button>
+              <button type="button" onclick="rtCmd('insertUnorderedList')">&#8226; List</button>
+              <button type="button" onclick="rtCmd('insertOrderedList')">1. List</button>
+              <button type="button" onclick="rtInsertImage()">🖼️</button>
+              <button type="button" class="eqed-btn" style="width:auto; padding:0 8px;" data-eq-target="#questionField" onmousedown="event.preventDefault()" title="Math Type">∑ Math Type</button>
+            </div>
+            <div class="rt-editable" id="questionField" contenteditable="true" data-eq-field data-eq-preview="1" data-placeholder="Enter the question text (supports $LaTeX$)"></div>
+          </div>
+
+          <!-- Answers: MCQ / True-False / Single Choice / Multiple Choice -->
+          <div id="answersWrap">
+            <div class="answers-head">
+              <div class="q-field-label" style="margin:0;">Answers</div>
+              <select id="answerTypeField" onchange="renderOptions()">
+                <option value="single">Single correct</option>
+                <option value="multiple">Multiple correct</option>
+              </select>
+            </div>
+            <div class="answers-hint">Select the circle/checkbox on the left to mark the correct option(s). Use ∑ on each row for equations.</div>
+            <div id="optionsList"></div>
+            <button type="button" class="add-option-btn" id="addOptionBtn" onclick="addOption()">+ Add new option</button>
+          </div>
+
+          <!-- Fill in the blanks -->
+          <div id="blanksWrap" style="display:none;">
+            <div class="q-field-label">Acceptable Answers</div>
+            <div id="blanksList"></div>
+            <button type="button" class="add-option-btn" onclick="addBlank()">+ Add another acceptable answer</button>
+          </div>
+
+          <!-- Integer type -->
+          <div id="integerWrap" style="display:none;">
+            <div class="field-grid">
+              <div class="field-group">
+                <label>Correct Answer</label>
+                <input type="number" id="integerAnswer" step="any" style="width:100%;" />
+              </div>
+              <div class="field-group">
+                <label>Tolerance (+/-, optional)</label>
+                <input type="number" id="integerTolerance" step="any" style="width:100%;" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-top: 22px;">
+            <div class="q-field-label">
+              Solution
+              <button type="button" class="btn btn-ghost eqed-btn" style="padding:3px 10px; font-size:12px;" data-eq-target="#solutionField" onmousedown="event.preventDefault()">∑ Math Type</button>
+            </div>
+            <textarea id="solutionField" rows="3" style="width:100%;" data-eq-field data-eq-preview="1" placeholder="Enter detailed solution (supports $LaTeX$)"></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="q-field-label">Tags</div>
+            <div class="tags-box" id="tagsBox" onclick="document.getElementById('tagInput').focus()">
+              <input type="text" id="tagInput" placeholder="Type a tag and press Enter" onkeydown="onTagKeydown(event)" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    {% include 'partials/equation_editor.html' %}
+
+    <script>
+      const BANK_ID = {{ selected_bank.id|default:"null" }};
+      const URLS = {
+        bulkCreate: "{% url 'admin_panel:question_wizard_bulk_create' %}",
+        dataTpl: "{% url 'admin_panel:question_wizard_data' 0 %}".replace('0', '__ID__'),
+        saveTpl: "{% url 'admin_panel:question_wizard_save' 0 %}".replace('0', '__ID__'),
+        deleteTpl: "{% url 'admin_panel:question_wizard_delete' 0 %}".replace('0', '__ID__'),
+        manualQuestion: "{% url 'admin_panel:manual_question' %}",
+        createBank: "{% url 'admin_panel:create_question_bank' %}",
+      };
+
+      const TYPE_LABELS = {
+        mcq: "Multiple Choice",
+        true_false: "True / False",
+        comprehension: "Comprehension",
+        fill_blank: "Fill in the Blanks",
+        integer: "Integer Type",
+        // Legacy CSV / Word import types
+        single_choice: "Single Choice",
+        multiple_choice: "Multiple Choice",
+        numerical: "Numerical",
+        matching: "Matching",
+        structured: "Structured",
+      };
+
+      function isChoiceType(type) {
+        return ['mcq', 'true_false', 'single_choice', 'multiple_choice', 'comprehension'].indexOf(type) !== -1;
+      }
+      function isBlankType(type) { return type === 'fill_blank'; }
+      function isIntegerType(type) { return type === 'integer' || type === 'numerical'; }
+
+      let wizardQueue = [];   // question objects currently open in the editor
+      let currentIndex = 0;
+      let pendingType = null;
+      let tags = [];
+
+      function getCookie(name) {
+        const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return match ? match.pop() : '';
+      }
+
+      async function apiFetch(url, options) {
+        options = options || {};
+        options.headers = Object.assign(
+          { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' },
+          options.headers || {}
+        );
+        const res = await fetch(url, options);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Something went wrong');
+        return data;
+      }
+
+      function showToast(msg, isError) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => { t.className = 'toast'; }, 2200);
+      }
+
+      function onBankChange(id) {
+        window.location.href = id ? `${URLS.manualQuestion}?question_bank=${id}` : URLS.manualQuestion;
+      }
+
+      function highlightMissingBank() {
+        const sel = document.getElementById('bankSelect');
+        const hint = document.getElementById('bankRequiredHint');
+        if (!sel) return;
+        sel.classList.add('field-missing');
+        if (hint) hint.classList.add('show');
+        sel.focus();
+        sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      function focusBankSelect() {
+        highlightMissingBank();
+        showToast('Required field empty: Question Bank — select a bank from the dropdown.', true);
+      }
+
+      function openModal(id) { document.getElementById(id).classList.add('open'); }
+      function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+      function openCreateBankModal() {
+        const err = document.getElementById('createBankError');
+        if (err) { err.style.display = 'none'; err.textContent = ''; }
+        const title = document.getElementById('newBankTitle');
+        if (title && !title.value) title.value = '';
+        openModal('createBankModal');
+        setTimeout(function () {
+          const course = document.getElementById('newBankCourse');
+          if (course) course.focus();
+        }, 50);
+      }
+
+      async function submitCreateBank() {
+        const course = document.getElementById('newBankCourse').value;
+        const title = (document.getElementById('newBankTitle').value || '').trim();
+        const difficulty = document.getElementById('newBankDifficulty').value || 'medium';
+        const description = (document.getElementById('newBankDescription').value || '').trim();
+        const errBox = document.getElementById('createBankError');
+        const btn = document.getElementById('createBankSubmitBtn');
+
+        function showErr(msg) {
+          if (errBox) {
+            errBox.textContent = msg;
+            errBox.style.display = 'block';
+          }
+          showToast(msg, true);
+        }
+
+        if (!course) {
+          showErr('Please select a Course (required).');
+          document.getElementById('newBankCourse').focus();
+          return;
+        }
+        if (!title) {
+          showErr('Please enter a Bank title (required).');
+          document.getElementById('newBankTitle').focus();
+          return;
+        }
+
+        if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+        try {
+          const res = await fetch(URLS.createBank, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+              course: course,
+              course_id: course,
+              title: title,
+              description: description,
+              difficulty: difficulty,
+            }),
+          });
+          const data = await res.json().catch(function () { return {}; });
+          if (!res.ok) {
+            throw new Error(data.error || 'Failed to create question bank');
+          }
+          showToast('Question bank created: ' + (data.question_bank && data.question_bank.title));
+          // Reload page with new bank selected
+          const id = data.question_bank && data.question_bank.id;
+          window.location.href = id
+            ? (URLS.manualQuestion + '?question_bank=' + id)
+            : URLS.manualQuestion;
+        } catch (e) {
+          showErr(e.message || 'Failed to create question bank');
+          if (btn) { btn.disabled = false; btn.textContent = 'Create Bank'; }
+        }
+      }
+
+      function openTypeModal() {
+        if (!BANK_ID) {
+          focusBankSelect();
+          return;
+        }
+        openModal('typeModal');
+      }
+
+      function chooseType(type) {
+        pendingType = type;
+        closeModal('typeModal');
+        document.getElementById('countModalTitle').textContent = `Set up "${TYPE_LABELS[type]}" questions`;
+        document.getElementById('partialRow').style.display = type === 'mcq' ? 'flex' : 'none';
+        openModal('countModal');
+      }
+
+      function toggleNegativeInput() {
+        document.getElementById('negativeMarksWrap').style.display =
+          document.getElementById('fieldNegativeToggle').checked ? 'block' : 'none';
+      }
+
+      async function submitCount() {
+        const count = parseInt(document.getElementById('fieldCount').value || '1', 10);
+        const marks = parseInt(document.getElementById('fieldMarks').value || '1', 10);
+        const negativeOn = document.getElementById('fieldNegativeToggle').checked;
+        const negative = negativeOn ? parseFloat(document.getElementById('fieldNegative').value || '0') : 0;
+        const partial = document.getElementById('fieldPartial').checked;
+
+        try {
+          const data = await apiFetch(URLS.bulkCreate, {
+            method: 'POST',
+            body: JSON.stringify({
+              question_bank_id: BANK_ID,
+              question_type: pendingType,
+              count, marks,
+              negative_marks: negative,
+              partial_marking: partial,
+            }),
+          });
+          closeModal('countModal');
+          wizardQueue = data.questions;
+          currentIndex = 0;
+          openEditor();
+        } catch (e) {
+          showToast(e.message, true);
+        }
+      }
+
+      function rtCmd(cmd) {
+        document.getElementById('questionField').focus();
+        document.execCommand(cmd, false, null);
+      }
+
+      function rtInsertImage() {
+        const url = prompt('Image URL:');
+        if (url) {
+          document.getElementById('questionField').focus();
+          document.execCommand('insertImage', false, url);
+        }
+      }
+
+      function currentType() {
+        return wizardQueue[currentIndex] ? wizardQueue[currentIndex].question_type : pendingType;
+      }
+
+      function openEditor() {
+        openModal('editorModal');
+        renderEditor();
+      }
+
+      function closeEditor() {
+        if (!wizardQueue.length) { closeModal('editorModal'); return; }
+        saveCurrent(function () {
+          closeModal('editorModal');
+          window.location.href = `${URLS.manualQuestion}?question_bank=${BANK_ID}`;
+        }, true);
+      }
+
+      function renderEditor() {
+        const q = wizardQueue[currentIndex];
+        const type = q.question_type;
+        document.getElementById('editorTitle').textContent = `${currentIndex + 1}. ${TYPE_LABELS[type] || q.question_type_label}`;
+        document.getElementById('editorCounter').textContent = `${currentIndex + 1} / ${wizardQueue.length}`;
+        document.getElementById('btnPrev').disabled = currentIndex === 0;
+        document.getElementById('btnNext').textContent = currentIndex === wizardQueue.length - 1 ? 'Save & Close' : 'Next';
+
+        document.getElementById('questionField').innerHTML = q.question_text || '';
+        document.getElementById('difficultyField').value = q.difficulty_level || '';
+        document.getElementById('solutionField').value = q.explanation || '';
+        document.getElementById('passageField').value = q.passage || '';
+        document.getElementById('passageWrap').style.display = type === 'comprehension' ? 'block' : 'none';
+
+        tags = (q.tags || []).slice();
+        renderTags();
+
+        const choice = isChoiceType(type);
+        const blank = isBlankType(type);
+        const integer = isIntegerType(type);
+
+        document.getElementById('answersWrap').style.display = choice ? 'block' : 'none';
+        document.getElementById('blanksWrap').style.display = blank ? 'block' : 'none';
+        document.getElementById('integerWrap').style.display = integer ? 'block' : 'none';
+
+        // Map answer_type from legacy type names
+        let answerType = q.answer_type || 'single';
+        if (type === 'multiple_choice') answerType = 'multiple';
+        if (type === 'single_choice' || type === 'true_false') answerType = 'single';
+        document.getElementById('answerTypeField').value = answerType;
+        document.getElementById('answerTypeField').disabled = (type === 'true_false' || type === 'single_choice');
+        document.getElementById('addOptionBtn').style.display = type === 'true_false' ? 'none' : 'block';
+
+        if (choice) {
+          if (q.options && q.options.length) {
+            window._options = q.options.map(o => ({ text: o.text || '', is_correct: !!o.is_correct }));
+          } else if (type === 'true_false') {
+            window._options = [
+              { text: 'True', is_correct: false },
+              { text: 'False', is_correct: false },
+            ];
+          } else {
+            // Default 4 options for single/multiple choice (CSV-style)
+            window._options = [
+              { text: q.option_a || '', is_correct: false },
+              { text: q.option_b || '', is_correct: false },
+              { text: q.option_c || '', is_correct: false },
+              { text: q.option_d || '', is_correct: false },
+            ];
+            // If all empty, keep 4 blank rows ready to fill
+            if (!window._options.some(o => o.text)) {
+              window._options = [
+                { text: '', is_correct: false },
+                { text: '', is_correct: false },
+                { text: '', is_correct: false },
+                { text: '', is_correct: false },
+              ];
+            }
+            // Restore correct letter(s) from correct_answer (A/B/C/D)
+            const correct = String(q.correct_answer || '').toUpperCase().replace(/\s/g, '');
+            if (correct) {
+              window._options.forEach((o, i) => {
+                const letter = String.fromCharCode(65 + i);
+                o.is_correct = correct.indexOf(letter) !== -1;
+              });
+            }
+          }
+          renderOptions();
+        } else if (blank) {
+          window._blanks = (q.options && q.options.length) ? q.options.map(o => o.text) : [q.correct_answer || ''];
+          if (!window._blanks.length) window._blanks = [''];
+          renderBlanks();
+        } else if (integer) {
+          document.getElementById('integerAnswer').value = q.correct_answer || '';
+          document.getElementById('integerTolerance').value = q.numeric_tolerance || '';
+        }
+        if (window.EqEditor) EqEditor.enhanceAll(document.getElementById('editorModal'));
+        if (window.eqTypeset) eqTypeset([document.getElementById('editorModal')]);
+      }
+
+      function renderOptions() {
+        const type = currentType();
+        const answerType = document.getElementById('answerTypeField').value;
+        const wrap = document.getElementById('optionsList');
+        wrap.innerHTML = '';
+        (window._options || []).forEach((opt, idx) => {
+          const row = document.createElement('div');
+          row.className = 'option-row';
+          const inputType = answerType === 'multiple' ? 'checkbox' : 'radio';
+          row.innerHTML = `
+            <input type="${inputType}" name="correctOpt" class="mark-correct" ${opt.is_correct ? 'checked' : ''} onchange="setOptionCorrect(${idx}, this)">
+            <input type="text" id="optInput${idx}" value="${escapeAttr(opt.text)}" placeholder="Option ${idx + 1} (supports $LaTeX$)" data-eq-field data-eq-preview="0" oninput="window._options[${idx}].text = this.value">
+            <button type="button" class="eqed-btn" style="flex-shrink:0;" title="Math Type" data-eq-target="#optInput${idx}" onmousedown="event.preventDefault()">∑</button>
+            ${type === 'true_false' ? '' : `<button type="button" class="del-opt" onclick="removeOption(${idx})">Delete</button>`}
+          `;
+          wrap.appendChild(row);
+        });
+        if (window.EqEditor) EqEditor.enhanceAll(wrap);
+      }
+
+      function setOptionCorrect(idx, el) {
+        const answerType = document.getElementById('answerTypeField').value;
+        if (answerType === 'single') {
+          window._options.forEach((o, i) => { o.is_correct = (i === idx); });
+          renderOptions();
+        } else {
+          window._options[idx].is_correct = el.checked;
+        }
+      }
+
+      function addOption() {
+        window._options.push({ text: '', is_correct: false });
+        renderOptions();
+      }
+
+      function removeOption(idx) {
+        window._options.splice(idx, 1);
+        renderOptions();
+      }
+
+      function renderBlanks() {
+        const wrap = document.getElementById('blanksList');
+        wrap.innerHTML = '';
+        (window._blanks || []).forEach((val, idx) => {
+          const row = document.createElement('div');
+          row.className = 'option-row';
+          row.innerHTML = `
+            <input type="text" id="blankInput${idx}" value="${escapeAttr(val)}" placeholder="Acceptable answer ${idx + 1}" data-eq-field data-eq-preview="0" oninput="window._blanks[${idx}] = this.value">
+            <button type="button" class="eqed-btn" style="flex-shrink:0;" title="Math Type" data-eq-target="#blankInput${idx}" onmousedown="event.preventDefault()">∑</button>
+            <button type="button" class="del-opt" onclick="removeBlank(${idx})">Delete</button>
+          `;
+          wrap.appendChild(row);
+        });
+        if (window.EqEditor) EqEditor.enhanceAll(wrap);
+      }
+
+      function addBlank() { window._blanks.push(''); renderBlanks(); }
+      function removeBlank(idx) { window._blanks.splice(idx, 1); renderBlanks(); }
+
+      function renderTags() {
+        const box = document.getElementById('tagsBox');
+        box.querySelectorAll('.tag-chip').forEach(el => el.remove());
+        const input = document.getElementById('tagInput');
+        tags.forEach((tag, idx) => {
+          const chip = document.createElement('span');
+          chip.className = 'tag-chip';
+          chip.innerHTML = `${escapeHtml(tag)} <button type="button" onclick="removeTag(${idx})">✕</button>`;
+          box.insertBefore(chip, input);
+        });
+      }
+
+      function onTagKeydown(e) {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const val = e.target.value.trim();
+          if (val) { tags.push(val); e.target.value = ''; renderTags(); }
+        } else if (e.key === 'Backspace' && !e.target.value && tags.length) {
+          tags.pop();
+          renderTags();
+        }
+      }
+
+      function removeTag(idx) { tags.splice(idx, 1); renderTags(); }
+
+      function escapeHtml(str) {
+        return (str || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      }
+      function escapeAttr(str) { return escapeHtml(str).replace(/"/g, '&quot;'); }
+
+      function collectPayload() {
+        const type = currentType();
+        const payload = {
+          question_text: document.getElementById('questionField').innerHTML.trim(),
+          difficulty_level: document.getElementById('difficultyField').value,
+          explanation: document.getElementById('solutionField').value,
+          passage: type === 'comprehension' ? document.getElementById('passageField').value : '',
+          answer_type: document.getElementById('answerTypeField').value,
+          tags: tags,
+        };
+        if (isChoiceType(type)) {
+          // Keep option text in sync from live inputs (in case oninput missed)
+          (window._options || []).forEach((o, idx) => {
+            const el = document.getElementById('optInput' + idx);
+            if (el) o.text = el.value;
+          });
+          payload.options = (window._options || []).map(o => ({ text: o.text, is_correct: !!o.is_correct }));
+          payload.option_a = (window._options[0] && window._options[0].text) || '';
+          payload.option_b = (window._options[1] && window._options[1].text) || '';
+          payload.option_c = (window._options[2] && window._options[2].text) || '';
+          payload.option_d = (window._options[3] && window._options[3].text) || '';
+          const letters = [];
+          (window._options || []).forEach((o, i) => {
+            if (o.is_correct && i < 26) letters.push(String.fromCharCode(65 + i));
+          });
+          payload.correct_answer = letters.join(',');
+        } else if (isBlankType(type)) {
+          (window._blanks || []).forEach((t, idx) => {
+            const el = document.getElementById('blankInput' + idx);
+            if (el) window._blanks[idx] = el.value;
+          });
+          payload.options = (window._blanks || []).filter(Boolean).map(t => ({ text: t }));
+          payload.correct_answer = (window._blanks || []).filter(Boolean).join(' | ');
+        } else if (isIntegerType(type)) {
+          payload.correct_answer = document.getElementById('integerAnswer').value;
+          payload.numeric_tolerance = document.getElementById('integerTolerance').value || null;
+        }
+        return payload;
+      }
+
+      function validateBeforeSave() {
+        const type = currentType();
+        const qText = document.getElementById('questionField').innerText.trim();
+        if (!qText && !isBlankType(type) && !isIntegerType(type)) {
+          showToast('Question text is required.', true);
+          return false;
+        }
+        if (isChoiceType(type)) {
+          const opts = window._options || [];
+          const filled = opts.filter(o => (o.text || '').trim());
+          if (type !== 'true_false' && filled.length < 2) {
+            showToast('Add at least two answer options.', true);
+            return false;
+          }
+          if (!opts.some(o => o.is_correct)) {
+            showToast('Mark at least one option as correct (click the circle/checkbox on the left of an option).', true);
+            // Make sure Answers section is visible and scrolled into view
+            const wrap = document.getElementById('answersWrap');
+            if (wrap) {
+              wrap.style.display = 'block';
+              wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              wrap.style.outline = '2px solid #d64545';
+              setTimeout(() => { wrap.style.outline = ''; }, 2000);
+            }
+            return false;
+          }
+        }
+        return true;
+      }
+
+      async function saveCurrent(onDone, silent) {
+        const q = wizardQueue[currentIndex];
+        if (!silent && !validateBeforeSave()) return;
+        try {
+          const data = await apiFetch(URLS.saveTpl.replace('__ID__', q.id), {
+            method: 'POST',
+            body: JSON.stringify(collectPayload()),
+          });
+          wizardQueue[currentIndex] = data.question;
+          if (onDone) onDone();
+        } catch (e) {
+          if (!silent) showToast(e.message, true);
+        }
+      }
+
+      function goNext() {
+        saveCurrent(function () {
+          if (currentIndex < wizardQueue.length - 1) {
+            currentIndex++;
+            renderEditor();
+          } else {
+            closeModal('editorModal');
+            window.location.href = `${URLS.manualQuestion}?question_bank=${BANK_ID}`;
+          }
+        });
+      }
+
+      function goPrev() {
+        if (currentIndex === 0) return;
+        saveCurrent(function () {
+          currentIndex--;
+          renderEditor();
+        });
+      }
+
+      async function editQuestion(id) {
+        try {
+          const data = await apiFetch(URLS.dataTpl.replace('__ID__', id));
+          wizardQueue = [data.question];
+          currentIndex = 0;
+          openEditor();
+        } catch (e) {
+          showToast(e.message, true);
+        }
+      }
+
+      async function deleteQuestion(id) {
+        if (!confirm('Delete this question?')) return;
+        try {
+          await apiFetch(URLS.deleteTpl.replace('__ID__', id), { method: 'POST' });
+          document.getElementById(`q-item-${id}`).remove();
+          showToast('Question deleted');
+        } catch (e) {
+          showToast(e.message, true);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        if (window.EqEditor) EqEditor.enhanceAll();
+        if (window.eqTypeset) {
+          var list = document.getElementById('questionListWrap');
+          if (list) eqTypeset([list]);
+        }
+        // No bank selected → mark the required field clearly
+        if (!BANK_ID) {
+          var sel = document.getElementById('bankSelect');
+          var hint = document.getElementById('bankRequiredHint');
+          if (sel) sel.classList.add('field-missing');
+          if (hint) hint.classList.add('show');
+        } else {
+          var sel2 = document.getElementById('bankSelect');
+          if (sel2) {
+            sel2.classList.remove('field-missing');
+            sel2.addEventListener('change', function () {
+              sel2.classList.remove('field-missing');
+            });
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

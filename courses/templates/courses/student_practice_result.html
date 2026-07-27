@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  Results: {{ exam.name }}
+{% endblock %}
+
+{% block extra_css %}
+  {% include 'partials/mathjax.html' %}
+  <style>
+    .pr-wrap { max-width: 900px; margin: 20px auto; padding: 0 20px; }
+    .pr-summary {
+      background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .pr-summary h1 { font-size: 1.3rem; color: #333; margin: 0 0 4px; }
+    .pr-summary .pr-sub { font-size: 0.85rem; color: #888; margin-bottom: 18px; }
+    .pr-score-row { display: flex; gap: 14px; flex-wrap: wrap; }
+    .pr-stat {
+      flex: 1; min-width: 120px; background: #f8f9fd; border-radius: 8px; padding: 14px 16px; text-align: center;
+    }
+    .pr-stat .pr-stat-value { font-size: 1.5rem; font-weight: 800; }
+    .pr-stat .pr-stat-label { font-size: 0.75rem; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: .3px; }
+    .pr-stat.pr-score .pr-stat-value { color: #5b6fd8; }
+    .pr-stat.pr-correct .pr-stat-value { color: #2f8a4e; }
+    .pr-stat.pr-wrong .pr-stat-value { color: #c0392b; }
+    .pr-stat.pr-unanswered .pr-stat-value { color: #999; }
+    .pr-stat.pr-time .pr-stat-value { color: #555; }
+
+    .pr-actions { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .pr-btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 6px; font-size: 0.85rem;
+      font-weight: 700; text-decoration: none; border: none; cursor: pointer;
+    }
+    .pr-btn-primary { background: #5b6fd8; color: white; }
+    .pr-btn-primary:hover { background: #4a5bc4; }
+    .pr-btn-secondary { background: #f0f1f8; color: #444; }
+    .pr-btn-secondary:hover { background: #e4e6f5; }
+
+    .pr-review-item {
+      background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 1.25rem 1.5rem;
+      margin-bottom: 12px; border-left: 4px solid #ddd;
+    }
+    .pr-review-item.pr-item-correct { border-left-color: #4caf7d; }
+    .pr-review-item.pr-item-wrong { border-left-color: #e05656; }
+    .pr-review-item.pr-item-unanswered { border-left-color: #ccc; }
+    .pr-review-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .pr-review-num { font-size: 0.8rem; color: #999; font-weight: 700; }
+    .pr-review-badge { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: .3px; }
+    .pr-review-badge.pr-badge-correct { background: #e3f7e9; color: #2f8a4e; }
+    .pr-review-badge.pr-badge-wrong { background: #fbe9e7; color: #c0392b; }
+    .pr-review-badge.pr-badge-unanswered { background: #f0f0f0; color: #888; }
+    .pr-review-text {
+      font-size: 1rem; color: #222; line-height: 1.7; margin-bottom: 10px;
+      word-wrap: break-word; overflow-wrap: anywhere;
+    }
+    .pr-review-answers { font-size: 0.85rem; color: #555; display: flex; gap: 24px; flex-wrap: wrap; }
+    .pr-review-answers strong { color: #333; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="pr-wrap">
+  <div class="pr-summary">
+    <h1>Practice Results — {{ exam.name }}</h1>
+    <div class="pr-sub">Submitted {{ attempt.submitted_at|date:"d M Y, H:i" }} · Time taken: {{ attempt.time_taken_display }}</div>
+
+    <div class="pr-score-row">
+      <div class="pr-stat pr-score">
+        <div class="pr-stat-value">{{ attempt.marks_scored|floatformat:0 }}/{{ attempt.total_marks|floatformat:0 }}</div>
+        <div class="pr-stat-label">Score ({{ attempt.score_percent }}%)</div>
+      </div>
+      <div class="pr-stat pr-correct">
+        <div class="pr-stat-value">{{ attempt.correct_count }}</div>
+        <div class="pr-stat-label">Correct</div>
+      </div>
+      <div class="pr-stat pr-wrong">
+        <div class="pr-stat-value">{{ attempt.wrong_count }}</div>
+        <div class="pr-stat-label">Wrong</div>
+      </div>
+      <div class="pr-stat pr-unanswered">
+        <div class="pr-stat-value">{{ attempt.unanswered_count }}</div>
+        <div class="pr-stat-label">Unanswered</div>
+      </div>
+      <div class="pr-stat pr-time">
+        <div class="pr-stat-value">{{ attempt.time_taken_display }}</div>
+        <div class="pr-stat-label">Time Taken</div>
+      </div>
+    </div>
+
+    <div class="pr-actions">
+      <a href="{% url 'courses:student_practice_start' exam.id %}" class="pr-btn pr-btn-primary">↻ Restart Practice</a>
+      <a href="{% url 'courses:student_edit_exam' exam.id %}#practice" class="pr-btn pr-btn-secondary">← Back to Exam</a>
+    </div>
+  </div>
+
+  <h3 style="font-size: 1rem; color: #2b2b55; margin: 0 0 12px;">Review</h3>
+  {% for ans in answers %}
+    <div class="pr-review-item {% if ans.is_correct is None %}pr-item-unanswered{% elif ans.is_correct %}pr-item-correct{% else %}pr-item-wrong{% endif %}">
+      <div class="pr-review-head">
+        <span class="pr-review-num">Q{{ forloop.counter }} · {{ ans.question.question_code }} · {{ ans.marks_awarded|floatformat:0 }}/{{ ans.question.marks }} mark{{ ans.question.marks|pluralize }}</span>
+        <span class="pr-review-badge {% if ans.is_correct is None %}pr-badge-unanswered{% elif ans.is_correct %}pr-badge-correct{% else %}pr-badge-wrong{% endif %}">
+          {% if ans.is_correct is None %}Unanswered{% elif ans.is_correct %}Correct{% else %}Wrong{% endif %}
+        </span>
+      </div>
+      <div class="pr-review-text">{{ ans.question.question_text|safe }}</div>
+      {% if ans.question.equation_image_list and '<img' not in ans.question.question_text %}
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          {% for img in ans.question.equation_image_list %}
+            <img src="{{ img }}" alt="equation" class="eq-inline" />
+          {% endfor %}
+        </div>
+      {% endif %}
+      <div class="pr-review-answers">
+        <div><strong>Your answer:</strong> {{ ans.given_answer|default:"—"|safe }}</div>
+        <div><strong>Correct answer:</strong> {{ ans.question.correct_answer|default:"—"|safe }}</div>
+      </div>
+      {% if ans.question.explanation %}
+        <div class="pr-review-answers" style="margin-top: 6px;"><div><strong>Explanation:</strong> {{ ans.question.explanation|safe }}</div></div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+<script>
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise();
+  }
+</script>
+{% endblock %}

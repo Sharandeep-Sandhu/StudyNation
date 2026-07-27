@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Categories - Admin Panel</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f7fa;
+        color: #333;
+      }
+      .dashboard-wrapper {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        min-height: 100vh;
+      }
+      .sidebar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px 0;
+        position: fixed;
+        height: 100vh;
+        width: 250px;
+        overflow-y: auto;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .sidebar-header {
+        padding: 0 20px 30px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        margin-bottom: 20px;
+      }
+      .sidebar-header h2 {
+        font-size: 20px;
+        margin-bottom: 5px;
+      }
+      .sidebar-header p {
+        font-size: 12px;
+        opacity: 0.8;
+      }
+      .sidebar-nav {
+        list-style: none;
+      }
+      .sidebar-nav li {
+        margin: 0;
+      }
+      .sidebar-nav a {
+        display: block;
+        padding: 14px 20px;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+      }
+      .sidebar-nav a:hover,
+      .sidebar-nav a.active {
+        background: rgba(255, 255, 255, 0.1);
+        border-left-color: white;
+      }
+      .sidebar-footer {
+        position: absolute;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        padding: 0 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        padding-top: 20px;
+      }
+      .logout-btn {
+        width: 100%;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        display: block;
+        text-align: center;
+        font-size: 14px;
+      }
+      .main-content {
+        margin-left: 250px;
+        padding: 40px;
+        min-width: 700px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        background: white;
+        padding: 20px 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+      .header h1 {
+        font-size: 26px;
+        color: #333;
+      }
+      .content-section {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+      }
+      .form-section {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+      }
+      .form-section h2 {
+        font-size: 20px;
+        margin-bottom: 20px;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 10px;
+      }
+      .form-group {
+        margin-bottom: 18px;
+      }
+      .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #555;
+        font-size: 14px;
+      }
+      .form-group input,
+      .form-group textarea,
+      .form-group select {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+      .form-group input:focus,
+      .form-group textarea:focus {
+        border-color: #667eea;
+        outline: none;
+      }
+      .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 25px;
+      }
+      .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+      .btn-secondary {
+        background: #f5f7fa;
+        color: #555;
+        border: 1px solid #e0e0e0;
+      }
+      .btn-danger {
+        background: linear-gradient(135deg, #f5576c 0%, #e63946 100%);
+        color: white;
+        padding: 8px 16px;
+        font-size: 13px;
+      }
+      .btn-sm {
+        padding: 8px 14px;
+        font-size: 13px;
+      }
+      .upload-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .upload-table th,
+      .upload-table td {
+        padding: 14px 12px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+        font-size: 14px;
+      }
+      .upload-table th {
+        background: #f5f7fa;
+        font-weight: 600;
+        color: #667eea;
+        text-transform: uppercase;
+        font-size: 12px;
+      }
+      .alert {
+        padding: 14px 18px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 14px;
+      }
+      .alert-success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        border-left: 4px solid #4caf50;
+      }
+      .alert-error {
+        background: #ffebee;
+        color: #c62828;
+        border-left: 4px solid #f44336;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    {% include 'admin_panel/_partials/sidebar_slider.html' %}
+    <div class="dashboard-wrapper">
+{% include 'admin_panel/_partials/admin_sidebar.html' with active='manage_categories' %}
+<main class="main-content">
+        <div class="header">
+          <div>
+            <h1>📁 Manage Categories</h1>
+            <p style="color:#666; font-size:14px; margin-top:4px;">Add, edit and organize Course Subjects / Categories</p>
+          </div>
+          <div>
+            <a href="{% url 'admin_panel:create_category' %}" class="btn btn-primary btn-sm">➕ New Category</a>
+          </div>
+        </div>
+
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'success' %}
+                success
+              {% else %}
+                error
+              {% endif %}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+
+        {% if form %}
+          <div class="form-section">
+            <h2>{{ action }} Category</h2>
+            <form method="post">
+              {% csrf_token %}
+              <div class="form-group">{{ form.name.label_tag }}{{ form.name }}</div>
+              <div class="form-group">{{ form.description.label_tag }}{{ form.description }}</div>
+              {% if form.icon %}
+                <div class="form-group">{{ form.icon.label_tag }}{{ form.icon }}</div>
+              {% endif %}
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">✅ {{ action }} Category</button>
+                <a href="{% url 'admin_panel:manage_categories' %}" class="btn btn-secondary">Cancel</a>
+              </div>
+            </form>
+          </div>
+        {% endif %}
+
+        <div class="content-section">
+          <h2>📋 All Categories</h2>
+          {% if categories %}
+            <table class="upload-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for cat in categories %}
+                  <tr>
+                    <td>
+                      <strong>{{ cat.name }}</strong>
+                    </td>
+                    <td>{{ cat.description|default:'-'|truncatewords:15 }}</td>
+                    <td>
+                      <div style="display:flex; gap:8px;">
+                        <a href="{% url 'admin_panel:edit_category' cat.id %}" class="btn btn-primary btn-sm">✏️ Edit</a>
+                        <a href="{% url 'admin_panel:delete_category' cat.id %}" class="btn btn-danger" onclick="return confirm('Delete this category? Courses using it may be affected.');">🗑️ Delete</a>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="empty-state">
+              <span style="font-size:48px;">📁</span>
+              <h3>No categories yet</h3>
+              <p>Click "New Category" to create your first subject/category.</p>
+            </div>
+          {% endif %}
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

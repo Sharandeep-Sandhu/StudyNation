@@ -1,0 +1,311 @@
+{% comment %}
+  Shared admin shell: canonical sidebar layout + collapse toggle.
+  Include once right after <body>, before .dashboard-wrapper.
+
+  Per-page CSS often sets broken rules (grid + fixed sidebar + margin,
+  absolute footer overlapping nav, width:max-content). This file
+  overrides those so every admin page looks the same.
+{% endcomment %}
+<style>
+  /* ========== Canonical admin shell ========== */
+  .dashboard-wrapper {
+    display: block !important;
+    min-height: 100vh;
+    width: 100%;
+    position: relative;
+  }
+
+  /* Fixed left sidebar — flex column so footer never covers links */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 250px !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: #fff !important;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.12);
+    overflow: hidden !important;
+    z-index: 150;
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar-header {
+    flex: 0 0 auto;
+    padding: 22px 18px 16px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    margin: 0 !important;
+    text-align: center;
+  }
+
+  .sidebar-logo {
+    display: block;
+    height: 56px;
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto 10px !important;
+    border-radius: 8px;
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .sidebar-header h2 {
+    font-size: 1.15rem !important;
+    font-weight: 700;
+    margin: 0 0 4px !important;
+    color: #fff !important;
+    line-height: 1.25;
+  }
+
+  .sidebar-header p {
+    font-size: 12px !important;
+    opacity: 0.85;
+    margin: 0 !important;
+    color: #fff !important;
+  }
+
+  /* Scrollable nav area */
+  .sidebar-nav-wrap,
+  .sidebar > nav {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 10px 0 8px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar-nav {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 0 8px !important;
+  }
+
+  .sidebar-nav li {
+    margin: 0 !important;
+  }
+
+  /* Group labels — dependency order sections */
+  .sidebar-nav li.sidebar-section-label {
+    list-style: none;
+    padding: 14px 18px 4px !important;
+    margin: 4px 0 0 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55) !important;
+    border-left: 3px solid transparent !important;
+    pointer-events: none;
+    user-select: none;
+    line-height: 1.2;
+  }
+  .sidebar-nav li.sidebar-section-label:first-child {
+    padding-top: 6px !important;
+    margin-top: 0 !important;
+  }
+
+  .sidebar-nav a {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px !important;
+    color: #fff !important;
+    text-decoration: none !important;
+    font-size: 14px !important;
+    font-weight: 500;
+    line-height: 1.35;
+    border-left: 3px solid transparent !important;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .sidebar-nav a:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  .sidebar-nav a.active {
+    background: rgba(255, 255, 255, 0.18) !important;
+    border-left-color: #fff !important;
+    font-weight: 700;
+  }
+
+  /* Footer pinned to bottom of flex column — NOT position:absolute */
+  .sidebar-footer {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    padding: 14px 16px 18px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.22) !important;
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .sidebar-user {
+    font-size: 12px !important;
+    margin: 0 0 10px !important;
+    opacity: 0.9;
+    text-align: center;
+    word-break: break-word;
+  }
+
+  .logout-btn {
+    display: block !important;
+    width: 100% !important;
+    padding: 10px 12px !important;
+    background: rgba(255, 255, 255, 0.18) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    border-radius: 6px !important;
+    text-align: center !important;
+    text-decoration: none !important;
+    font-size: 14px !important;
+    font-weight: 600;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+
+  .logout-btn:hover {
+    background: rgba(255, 255, 255, 0.28) !important;
+  }
+
+  /* Main content sits to the right of the fixed sidebar */
+  .main-content {
+    margin-left: 250px !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    min-height: 100vh;
+    transition: margin-left 0.25s ease;
+  }
+
+  /* ========== Collapse toggle ========== */
+  .dashboard-wrapper.sidebar-collapsed .sidebar,
+  html.sidebar-collapsed-pref .sidebar {
+    transform: translateX(-250px);
+  }
+
+  .dashboard-wrapper.sidebar-collapsed .main-content,
+  html.sidebar-collapsed-pref .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  #sidebarToggleTab {
+    position: fixed;
+    top: 18px;
+    left: 250px;
+    z-index: 200;
+    width: 30px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15);
+    transition: left 0.25s ease;
+  }
+
+  #sidebarToggleTab:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46a3 100%);
+  }
+
+  .dashboard-wrapper.sidebar-collapsed #sidebarToggleTab,
+  html.sidebar-collapsed-pref #sidebarToggleTab {
+    left: 0;
+  }
+
+  .dashboard-wrapper.sidebar-collapsed #sidebarToggleTab .tab-arrow,
+  html.sidebar-collapsed-pref #sidebarToggleTab .tab-arrow {
+    transform: rotate(180deg);
+  }
+
+  .tab-arrow {
+    display: inline-block;
+    transition: transform 0.25s ease;
+  }
+
+  /* Mobile: stack sidebar on top */
+  @media (max-width: 900px) {
+    #sidebarToggleTab {
+      display: none;
+    }
+
+    .sidebar {
+      position: relative !important;
+      width: 100% !important;
+      height: auto !important;
+      max-height: none !important;
+      transform: none !important;
+    }
+
+    .sidebar-nav-wrap,
+    .sidebar > nav {
+      max-height: none;
+      overflow: visible !important;
+    }
+
+    .main-content {
+      margin-left: 0 !important;
+      width: 100% !important;
+    }
+
+    html.sidebar-collapsed-pref .sidebar,
+    .dashboard-wrapper.sidebar-collapsed .sidebar {
+      transform: none !important;
+    }
+  }
+</style>
+
+<button id="sidebarToggleTab" type="button" onclick="toggleAdminSidebar()" title="Show/hide sidebar" aria-label="Toggle sidebar">
+  <span class="tab-arrow">◀</span>
+</button>
+
+<script>
+  (function () {
+    try {
+      if (localStorage.getItem('studyNationAdminSidebarCollapsed') === '1') {
+        document.documentElement.classList.add('sidebar-collapsed-pref');
+      }
+    } catch (e) { /* ignore */ }
+  })();
+
+  function applyCollapsedPref() {
+    var wrapper = document.querySelector('.dashboard-wrapper');
+    if (!wrapper) return;
+    if (document.documentElement.classList.contains('sidebar-collapsed-pref')) {
+      wrapper.classList.add('sidebar-collapsed');
+    } else {
+      wrapper.classList.remove('sidebar-collapsed');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyCollapsedPref);
+  } else {
+    applyCollapsedPref();
+  }
+
+  function toggleAdminSidebar() {
+    var wrapper = document.querySelector('.dashboard-wrapper');
+    if (!wrapper) return;
+    var collapsed = wrapper.classList.toggle('sidebar-collapsed');
+    document.documentElement.classList.toggle('sidebar-collapsed-pref', collapsed);
+    try {
+      localStorage.setItem('studyNationAdminSidebarCollapsed', collapsed ? '1' : '0');
+    } catch (e) { /* ignore */ }
+  }
+</script>

@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  Practice: {{ exam.name }}
+{% endblock %}
+
+{% block extra_css %}
+  {% include 'partials/mathjax.html' %}
+  <style>
+    .pq-wrap { max-width: 1200px; }
+    .pq-header {
+      background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    .pq-header h1 { font-size: 1.15rem; color: #333; margin: 0; }
+    .pq-timer {
+      font-family: 'Courier New', monospace; font-size: 1.15rem; font-weight: 700; color: #5b6fd8;
+      background: #eef0fd; padding: 6px 16px; border-radius: 6px;
+    }
+    .pq-progress { font-size: 0.85rem; color: #777; }
+
+    .pq-workspace { display: grid; grid-template-columns: 260px 1fr; gap: 1rem; align-items: start; }
+    .pq-qlist {
+      background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-height: 70vh;
+      overflow-y: auto; padding: 8px;
+    }
+    .pq-qlist-item {
+      display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 6px;
+      cursor: pointer; font-size: 0.85rem; color: #444; margin-bottom: 2px;
+    }
+    .pq-qlist-item:hover { background: #f5f6fd; }
+    .pq-qlist-item.pq-current { background: #eef0fd; font-weight: 700; color: #4a5bc4; }
+    .pq-qnum-badge {
+      width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; background: #e4e6f5; color: #666; flex-shrink: 0;
+    }
+    .pq-qlist-item.pq-answered .pq-qnum-badge { background: #d4f4dd; color: #2f8a4e; }
+
+    .pq-panel { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem; min-height: 60vh; display: flex; flex-direction: column; }
+    .pq-question-block { flex: 1; }
+    .pq-topic { font-size: 0.8rem; color: #a33; margin-bottom: 10px; }
+    .pq-question-text {
+      font-size: 1rem; color: #222; line-height: 1.7; margin-bottom: 18px;
+      word-wrap: break-word; overflow-wrap: anywhere;
+    }
+    .pq-marks { font-size: 0.8rem; color: #888; margin-bottom: 18px; }
+
+    .pq-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+    .pq-option {
+      display: flex; align-items: center; gap: 12px; border: 1.5px solid #e0e3f5; border-radius: 8px;
+      padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .pq-option:hover { border-color: #b9c0f0; }
+    .pq-option.pq-selected { border-color: #5b6fd8; background: #f2f4ff; }
+    .pq-option .pq-option-letter {
+      width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid #ccc; display: flex; align-items: center;
+      justify-content: center; font-size: 0.8rem; font-weight: 700; color: #666; flex-shrink: 0;
+    }
+    .pq-option.pq-selected .pq-option-letter { border-color: #5b6fd8; background: #5b6fd8; color: white; }
+    .pq-option-text { font-size: 1rem; color: #333; line-height: 1.6; }
+
+    .pq-text-answer textarea {
+      width: 100%; min-height: 90px; padding: 10px 12px; border-radius: 8px; border: 1.5px solid #e0e3f5;
+      font-size: 0.92rem; font-family: inherit; resize: vertical;
+    }
+    .pq-text-answer textarea:focus { outline: none; border-color: #5b6fd8; }
+    .pq-hint { font-size: 0.78rem; color: #999; margin-top: 6px; }
+
+    .pq-nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee; }
+    .pq-nav-btn {
+      background: #f0f1f8; color: #444; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer;
+      font-size: 0.85rem; font-weight: 600;
+    }
+    .pq-nav-btn:hover { background: #e4e6f5; }
+    .pq-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pq-submit-btn {
+      background: #4caf7d; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 700;
+    }
+    .pq-submit-btn:hover { background: #3d9968; }
+
+    @media (max-width: 900px) {
+      .pq-workspace { grid-template-columns: 1fr; }
+      .pq-qlist { max-height: 240px; }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="pq-wrap" style="margin: 20px auto; padding: 0 20px;">
+  <div class="pq-header">
+    <h1>▶ Practicing: {{ exam.name }}</h1>
+    <div class="pq-progress"><span id="answeredCount">0</span> / {{ exam_questions|length }} answered</div>
+    <div class="pq-timer" id="pqTimer">00:00</div>
+  </div>
+
+  <form id="practiceForm" method="post" action="{% url 'courses:student_practice_submit' exam.id %}">
+    {% csrf_token %}
+    <input type="hidden" name="started_at" value="{{ started_at_iso }}" />
+
+    <div class="pq-workspace">
+      <div class="pq-qlist" id="pqList">
+        {% for eq in exam_questions %}
+          <div class="pq-qlist-item {% if forloop.first %}pq-current{% endif %}" data-index="{{ forloop.counter0 }}" onclick="goToQuestion({{ forloop.counter0 }})">
+            <span>Q{{ forloop.counter }}</span>
+            <span class="pq-qnum-badge">{{ forloop.counter }}</span>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="pq-panel">
+        <div class="pq-question-block" id="pqQuestionBlock">
+          {% for eq in exam_questions %}
+            {% with q=eq.question %}
+              <div class="pq-question" data-index="{{ forloop.counter0 }}" style="{% if not forloop.first %}display:none;{% endif %}">
+                {% if q.topic %}<div class="pq-topic"><strong>Topic(s):</strong> {{ q.topic }}</div>{% endif %}
+                <div class="pq-question-text">{{ q.question_text|safe }}</div>
+                {% if q.equation_image_list and '<img' not in q.question_text %}
+                  <div class="pq-equation-images">
+                    <div class="pq-hint" style="margin-bottom:6px;">Embedded formulas from the original document:</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+                      {% for img in q.equation_image_list %}
+                        <img src="{{ img }}" alt="equation" class="eq-inline" />
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+                <div class="pq-marks">[{{ q.marks }} mark{{ q.marks|pluralize }}]</div>
+
+                {% if q.question_type == 'single_choice' or q.question_type == 'true_false' %}
+                  <div class="pq-options" data-qid="{{ q.id }}" data-mode="single">
+                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="selectOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe }}</span></div>{% endif %}
+                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="selectOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe }}</span></div>{% endif %}
+                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="selectOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe }}</span></div>{% endif %}
+                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="selectOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe }}</span></div>{% endif %}
+                  </div>
+                {% elif q.question_type == 'multiple_choice' %}
+                  <div class="pq-options" data-qid="{{ q.id }}" data-mode="multi">
+                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="toggleMultiOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe }}</span></div>{% endif %}
+                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="toggleMultiOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe }}</span></div>{% endif %}
+                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="toggleMultiOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe }}</span></div>{% endif %}
+                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="toggleMultiOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe }}</span></div>{% endif %}
+                  </div>
+                  <div class="pq-hint">Select all that apply.</div>
+                {% else %}
+                  <div class="pq-text-answer">
+                    <textarea data-qid="{{ q.id }}" placeholder="Type your answer..." oninput="onTextAnswerInput(this)"></textarea>
+                  </div>
+                  <div class="pq-hint">
+                    {% if q.question_type == 'numerical' %}Enter a number.{% else %}Free-text answers are matched against the answer key as a best-effort check.{% endif %}
+                  </div>
+                {% endif %}
+
+                <input type="hidden" name="answer_{{ q.id }}" id="answerField_{{ q.id }}" value="" />
+              </div>
+            {% endwith %}
+          {% endfor %}
+        </div>
+
+        <div class="pq-nav-row">
+          <button type="button" class="pq-nav-btn" id="pqPrevBtn" onclick="navQuestion(-1)" disabled>← Previous</button>
+          <button type="button" class="pq-nav-btn" id="pqNextBtn" onclick="navQuestion(1)">Next →</button>
+          <button type="button" class="pq-submit-btn" onclick="confirmSubmit()">✓ Submit Practice</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  const TOTAL_QUESTIONS = {{ exam_questions|length }};
+  let currentIndex = 0;
+  const answeredIds = new Set();
+
+  function updateAnsweredCount() {
+    document.getElementById('answeredCount').textContent = answeredIds.size;
+  }
+
+  function selectOption(el) {
+    const group = el.parentElement;
+    group.querySelectorAll('.pq-option').forEach(o => o.classList.remove('pq-selected'));
+    el.classList.add('pq-selected');
+    const qid = group.dataset.qid;
+    document.getElementById('answerField_' + qid).value = el.dataset.value;
+    markAnswered(qid);
+  }
+
+  function toggleMultiOption(el) {
+    el.classList.toggle('pq-selected');
+    const group = el.parentElement;
+    const qid = group.dataset.qid;
+    const selected = Array.from(group.querySelectorAll('.pq-option.pq-selected')).map(o => o.dataset.value);
+    document.getElementById('answerField_' + qid).value = selected.join(',');
+    if (selected.length) { markAnswered(qid); } else { unmarkAnswered(qid); }
+  }
+
+  function onTextAnswerInput(el) {
+    const qid = el.dataset.qid;
+    document.getElementById('answerField_' + qid).value = el.value;
+    if (el.value.trim()) { markAnswered(qid); } else { unmarkAnswered(qid); }
+  }
+
+  function markAnswered(qid) {
+    answeredIds.add(qid);
+    updateAnsweredCount();
+    const item = document.querySelector(`.pq-qlist-item[data-index]`);
+    document.querySelectorAll('.pq-question').forEach(q => {
+      if (q.querySelector(`[data-qid="${qid}"]`) || q.querySelector(`#answerField_${qid}`)) {
+        const idx = q.dataset.index;
+        const listItem = document.querySelector(`.pq-qlist-item[data-index="${idx}"]`);
+        if (listItem) listItem.classList.add('pq-answered');
+      }
+    });
+  }
+
+  function unmarkAnswered(qid) {
+    answeredIds.delete(qid);
+    updateAnsweredCount();
+    document.querySelectorAll('.pq-question').forEach(q => {
+      if (q.querySelector(`#answerField_${qid}`)) {
+        const idx = q.dataset.index;
+        const listItem = document.querySelector(`.pq-qlist-item[data-index="${idx}"]`);
+        if (listItem) listItem.classList.remove('pq-answered');
+      }
+    });
+  }
+
+  function goToQuestion(index) {
+    document.querySelectorAll('.pq-question').forEach(q => {
+      q.style.display = (parseInt(q.dataset.index) === index) ? 'block' : 'none';
+    });
+    document.querySelectorAll('.pq-qlist-item').forEach(item => {
+      item.classList.toggle('pq-current', parseInt(item.dataset.index) === index);
+    });
+    currentIndex = index;
+    document.getElementById('pqPrevBtn').disabled = (index === 0);
+    document.getElementById('pqNextBtn').disabled = (index === TOTAL_QUESTIONS - 1);
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([document.getElementById('pqQuestionBlock')]);
+    }
+  }
+
+  function navQuestion(delta) {
+    const next = currentIndex + delta;
+    if (next >= 0 && next < TOTAL_QUESTIONS) goToQuestion(next);
+  }
+
+  function confirmSubmit() {
+    const unanswered = TOTAL_QUESTIONS - answeredIds.size;
+    const msg = unanswered > 0
+      ? `You have ${unanswered} unanswered question(s). Submit anyway?`
+      : 'Submit your answers now?';
+    if (confirm(msg)) {
+      document.getElementById('practiceForm').submit();
+    }
+  }
+
+  // Timer — counts up from page load.
+  let elapsedSeconds = 0;
+  setInterval(() => {
+    elapsedSeconds++;
+    const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+    const s = String(elapsedSeconds % 60).padStart(2, '0');
+    document.getElementById('pqTimer').textContent = `${m}:${s}`;
+  }, 1000);
+
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise();
+  }
+</script>
+{% endblock %}

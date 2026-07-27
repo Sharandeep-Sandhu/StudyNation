@@ -1,0 +1,496 @@
+{% extends 'base.html' %}
+{% load course_extras %}
+
+{% block title %}
+  {{ exam.name }} - Exam Builder
+{% endblock %}
+
+{% block extra_css %}
+  {% include 'partials/mathjax.html' %}
+  <style>
+    .eb-wrap { max-width: 1200px; }
+
+    .eb-header { background: white; border-radius: 8px; padding: 1.5rem 1.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+    .eb-header h1 { font-size: 1.5rem; color: #333; display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; }
+    .eb-header .desc { color: #666; font-size: 0.92rem; line-height: 1.55; max-width: 900px; }
+
+    .eb-name-row { display: flex; align-items: center; gap: 12px; margin-top: 1rem; flex-wrap: wrap; }
+    .eb-name-row form { display: flex; align-items: center; gap: 10px; }
+    .eb-name-row label { font-size: 0.85rem; color: #888; }
+    .eb-name-row input[type="text"] {
+      font-size: 1rem; font-weight: 700; color: #222; border: none; border-bottom: 2px solid transparent;
+      padding: 2px 4px; background: transparent; min-width: 220px;
+    }
+    .eb-name-row input[type="text"]:focus { outline: none; border-bottom-color: #667eea; background: #f5f7fa; }
+    .eb-name-row button { font-size: 0.8rem; padding: 6px 12px; border-radius: 5px; border: 1px solid #667eea; background: #fff; color: #667eea; cursor: pointer; }
+    .eb-name-row button:hover { background: #667eea; color: #fff; }
+
+    .eb-tabs { display: flex; gap: 24px; border-bottom: 1px solid #eee; margin-top: 1.25rem; flex-wrap: wrap; }
+    .eb-tab {
+      padding: 12px 2px; font-size: 0.82rem; font-weight: 700; letter-spacing: .3px; color: #888;
+      text-decoration: none; border-bottom: 3px solid transparent; text-transform: uppercase; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none;
+    }
+    .eb-tab.eb-active { color: #3b3b78; border-bottom-color: #667eea; }
+    .eb-tab .eb-badge { background: #eef0fb; color: #667eea; border-radius: 10px; padding: 1px 8px; font-size: 0.68rem; margin-left: 4px; }
+
+    .eb-filter-card { background: #eef1fc; border: 1px solid #dde2f7; border-radius: 10px; padding: 1.1rem 1.3rem; margin-bottom: 1.25rem; }
+    .eb-filter-top { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 0.85rem; font-size: 0.85rem; color: #444; }
+    .eb-filter-top strong { color: #2b2b55; }
+    .eb-filter-top select { border: none; background: transparent; font-weight: 600; color: #2b2b55; font-size: 0.85rem; cursor: pointer; }
+    .eb-chip { background: #5b6fd8; color: white; font-size: 0.72rem; padding: 4px 10px; border-radius: 14px; font-weight: 600; }
+
+    .eb-filter-grid { display: grid; grid-template-columns: repeat(3, 1fr) 130px; gap: 12px; align-items: end; }
+    .eb-filter-grid .eb-field label { display: block; font-size: 0.75rem; color: #777; margin-bottom: 4px; }
+    .eb-filter-grid .eb-field select {
+      width: 100%; padding: 8px 9px; border-radius: 6px; border: 1px solid #d6dbf2; background: white; font-size: 0.82rem; color: #333;
+    }
+    .eb-search-btn {
+      background: #5b6fd8; border: none; border-radius: 6px; color: white; height: 36px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 700;
+      letter-spacing: .3px; padding: 0 16px; gap: 6px;
+    }
+    .eb-search-btn:hover { background: #4a5bc4; }
+
+    .eb-workspace { display: grid; grid-template-columns: 300px 1fr; gap: 0; border: 1px solid #dde2f7; border-radius: 10px; overflow: hidden; background: white; }
+    .eb-qlist-pane { border-right: 1px solid #eee; display: flex; flex-direction: column; max-height: 640px; }
+    .eb-qlist-toolbar { display: flex; justify-content: space-around; padding: 10px 6px; border-bottom: 1px solid #eee; background: #fafbff; font-size: 0.7rem; color: #667eea; }
+    .eb-qlist-scroll { flex: 1; overflow-y: auto; }
+    .eb-qrow {
+      display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f1f1f8;
+      cursor: pointer; font-size: 0.8rem; color: #333;
+    }
+    .eb-qrow:hover { background: #f5f7ff; }
+    .eb-qrow.eb-selected { background: #eef3ff; }
+    .eb-qrow.eb-active-row { background: #e4eaff; font-weight: 600; }
+    .eb-qrow .eb-code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .eb-add-btn {
+      width: 22px; height: 22px; border-radius: 50%; border: none; background: #e9f7ef; color: #2e7d32;
+      font-weight: 700; cursor: pointer; flex-shrink: 0; font-size: 14px; line-height: 1;
+    }
+    .eb-add-btn.eb-added { background: #fdecea; color: #c0392b; }
+    .eb-add-btn.eb-added::before { content: "−"; }
+    .eb-add-btn:not(.eb-added)::before { content: "+"; }
+    .eb-qlist-empty { padding: 36px 16px; text-align: center; color: #999; font-size: 0.8rem; }
+
+    .eb-pagination { display: flex; justify-content: center; align-items: center; gap: 4px; padding: 8px; border-top: 1px solid #eee; background: #fafbff; flex-wrap: wrap; }
+    .eb-pagination a, .eb-pagination span {
+      min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 4px; font-size: 0.72rem; color: #555; text-decoration: none;
+    }
+    .eb-pagination a:hover { background: #eef0fb; }
+    .eb-pagination .eb-current { background: #667eea; color: white; }
+
+    .eb-preview-pane { display: flex; flex-direction: column; max-height: 640px; }
+    .eb-preview-toggle { display: flex; justify-content: center; gap: 30px; padding: 12px; border-bottom: 1px solid #eee; }
+    .eb-ptoggle { font-size: 0.72rem; font-weight: 700; color: #888; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; text-transform: uppercase; background: none; border: none; }
+    .eb-ptoggle.eb-active-toggle { color: #667eea; }
+    .eb-preview-scroll { flex: 1; overflow-y: auto; padding: 20px 24px; }
+    .eb-preview-topic { color: #b5474d; font-size: 0.78rem; margin-bottom: 12px; }
+    .eb-preview-empty { color: #999; text-align: center; padding: 64px 16px; font-size: 0.85rem; }
+    .eb-preview-marks { text-align: right; color: #555; font-size: 0.82rem; margin-top: 6px; }
+    .eb-preview-body {
+      font-size: 1rem;
+      line-height: 1.75;
+      color: #222;
+    }
+    .eb-answer-block { display: none; }
+    .eb-answer-block.eb-shown { display: block; }
+    .eb-question-block.eb-hidden-block { display: none; }
+
+    .eb-selected-list { background: white; border: 1px solid #dde2f7; border-radius: 10px; margin-bottom: 1rem; overflow: hidden; }
+    .eb-selected-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f1f1f8; cursor: grab; background: white; }
+    .eb-selected-row:last-child { border-bottom: none; }
+    .eb-selected-row .eb-drag-handle { color: #ccc; font-size: 15px; }
+    .eb-selected-row .eb-order-num { width: 24px; height: 24px; border-radius: 50%; background: #eef0fb; color: #667eea; font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .eb-selected-row .eb-meta { flex: 1; }
+    .eb-selected-row .eb-meta .eb-code { font-weight: 600; font-size: 0.82rem; color: #333; }
+    .eb-selected-row .eb-meta .eb-topic { font-size: 0.72rem; color: #888; margin-top: 2px; }
+    .eb-selected-row .eb-marks-tag { font-size: 0.72rem; color: #667eea; font-weight: 600; }
+    .eb-selected-row .eb-remove-btn { background: none; border: none; color: #c0392b; font-size: 0.78rem; cursor: pointer; padding: 6px 10px; }
+    .eb-selected-row.eb-dragging { opacity: .4; }
+    .eb-selected-empty { text-align: center; padding: 50px 16px; color: #999; }
+
+    .eb-summary-bar { display: flex; gap: 24px; padding: 14px 18px; background: #fafbff; border-top: 1px solid #eee; font-size: 0.8rem; color: #444; flex-wrap: wrap; }
+    .eb-summary-bar strong { color: #2b2b55; }
+
+    .eb-settings-card { background: white; border: 1px solid #dde2f7; border-radius: 10px; padding: 1.5rem; max-width: 560px; }
+    .eb-settings-card .form-group select {
+      width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: 0.95rem;
+    }
+    .eb-settings-card .eb-checkbox-row { display: flex; align-items: center; gap: 8px; }
+    .eb-settings-card .eb-checkbox-row input { width: auto; }
+
+    .eb-practice-card { background: white; border: 1px solid #dde2f7; border-radius: 10px; padding: 1.5rem; max-width: 640px; }
+    .eb-practice-start-btn {
+      display: inline-flex; align-items: center; gap: 8px; background: #5b6fd8; color: white;
+      padding: 10px 22px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 0.9rem;
+    }
+    .eb-practice-start-btn:hover { background: #4a5bc4; }
+    .eb-attempts-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .eb-attempts-table th { text-align: left; padding: 8px 10px; color: #777; font-weight: 600; border-bottom: 1px solid #eee; }
+    .eb-attempts-table td { padding: 8px 10px; border-bottom: 1px solid #f2f2f8; color: #333; }
+    .eb-attempts-table a { color: #667eea; text-decoration: none; font-weight: 600; }
+
+    @media (max-width: 1000px) {
+      .eb-workspace { grid-template-columns: 1fr; }
+      .eb-filter-grid { grid-template-columns: 1fr 1fr; }
+      .eb-filter-grid .eb-search-btn { grid-column: 1 / -1; }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="eb-wrap">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="{% if message.tags == 'success' %}success{% else %}error{% endif %}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="eb-header">
+      <h1>🧾 Exam Builder</h1>
+      <p class="desc">Build a personalised exam from real questions in the question bank, filtered by topic, year, and type (category). Your exams are saved to your account.</p>
+
+      <div class="eb-name-row">
+        <span>📝</span>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="rename_exam" value="1" />
+          <label for="examNameInput">exam name:</label>
+          <input id="examNameInput" type="text" name="name" value="{{ exam.name }}" />
+          <button type="submit">Save name</button>
+        </form>
+        <a href="{% url 'courses:student_exams' %}" style="margin-left: auto; font-size: 0.82rem; color: #667eea; text-decoration: none;">← Back to My Exams</a>
+      </div>
+
+      <div class="eb-tabs">
+        <a class="eb-tab {% if active_tab != 'settings' %}eb-active{% endif %}" data-tab="select">Select Questions</a>
+        <a class="eb-tab" data-tab="selected">Selected Questions <span class="eb-badge">{{ selected_count }}</span></a>
+        <a class="eb-tab" data-tab="practice">Practice{% if practice_attempts %} <span class="eb-badge">{{ practice_attempts|length }}</span>{% endif %}</a>
+        <a class="eb-tab {% if active_tab == 'settings' %}eb-active{% endif %}" data-tab="settings">Settings</a>
+      </div>
+    </div>
+
+    <!-- ============ SELECT QUESTIONS TAB ============ -->
+    <div id="eb-tab-select" class="eb-tab-panel">
+      <div class="eb-filter-card">
+        <div class="eb-filter-top">
+          <div>🌐 Curriculum: <strong>CIE IGCSE</strong></div>
+          {% if years %}<span class="eb-chip">Latest: {{ years|first }}</span>{% endif %}
+        </div>
+
+        <form method="get" id="filterForm">
+          <div class="eb-filter-grid">
+            <div class="eb-field">
+              <label>Topic(s)</label>
+              <select name="topic">
+                <option value="">Select Topic</option>
+                {% for t in topics %}
+                  <option value="{{ t }}" {% if filters.topic == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="eb-field">
+              <label>Year(s)</label>
+              <select name="year">
+                <option value="">Select Year</option>
+                {% for y in years %}
+                  <option value="{{ y }}" {% if filters.year == y|stringformat:'s' %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="eb-field">
+              <label>Type (Category)</label>
+              <select name="category">
+                <option value="">All Types</option>
+                {% for cat in categories %}
+                  <option value="{{ cat.id }}" {% if filters.category == cat.id|stringformat:'s' %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="eb-search-btn">🔍 Submit</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="eb-workspace">
+        <div class="eb-qlist-pane">
+          <div class="eb-qlist-toolbar">
+            <span>{{ page_obj.paginator.count }} question(s)</span>
+          </div>
+
+          <div class="eb-qlist-scroll" id="qlistScroll">
+            {% if questions %}
+              {% for q in questions %}
+                <div class="eb-qrow {% if q.id in selected_ids %}eb-selected{% endif %}"
+                     data-question-id="{{ q.id }}"
+                     onclick="previewQuestion({{ q.id }}, this)">
+                  <span class="eb-code">{{ q.question_code|default:q.question_number }}</span>
+                  <button type="button"
+                          class="eb-add-btn {% if q.id in selected_ids %}eb-added{% endif %}"
+                          data-question-id="{{ q.id }}"
+                          onclick="event.stopPropagation(); toggleQuestion({{ q.id }}, this)"></button>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="eb-qlist-empty">No questions match these filters yet.<br />Try a different topic, year, or type.</div>
+            {% endif %}
+          </div>
+
+          {% if page_obj %}
+            {% include 'partials/question_pagination.html' %}
+          {% endif %}
+        </div>
+
+        <div class="eb-preview-pane">
+          <div class="eb-preview-toggle">
+            <button type="button" class="eb-ptoggle eb-active-toggle" data-mode="question" onclick="setPreviewMode('question', this)">📋 Question</button>
+            <button type="button" class="eb-ptoggle" data-mode="answer" onclick="setPreviewMode('answer', this)">🔗 Answer</button>
+          </div>
+          <div class="eb-preview-scroll" id="previewScroll">
+            <div class="eb-preview-empty">Select a question on the left to preview it here.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SELECTED QUESTIONS TAB ============ -->
+    <div id="eb-tab-selected" class="eb-tab-panel" style="display:none;">
+      <div class="eb-selected-list" id="selectedList">
+        {% for eq in exam_questions %}
+          <div class="eb-selected-row" draggable="true" data-question-id="{{ eq.question.id }}">
+            <span class="eb-drag-handle">⠿</span>
+            <span class="eb-order-num">{{ forloop.counter }}</span>
+            <div class="eb-meta">
+              <div class="eb-code">{{ eq.question.question_code }}</div>
+              <div class="eb-topic">{{ eq.question.topic }}</div>
+            </div>
+            <span class="eb-marks-tag">{{ eq.question.marks }} marks</span>
+            <button type="button" class="eb-remove-btn" onclick="toggleQuestion({{ eq.question.id }}, null, true)">Remove</button>
+          </div>
+        {% empty %}
+          <div class="eb-selected-empty">No questions selected yet. Go to <strong>Select Questions</strong> and click + next to a question to add it here.</div>
+        {% endfor %}
+      </div>
+      <div class="eb-summary-bar">
+        <div><strong id="summaryCount">{{ selected_count }}</strong> question(s)</div>
+        <div><strong id="summaryMarks">{{ total_marks }}</strong> total marks</div>
+        <div><strong>{{ exam.duration_minutes }}</strong> minute timer</div>
+      </div>
+    </div>
+
+    <!-- ============ PRACTICE TAB ============ -->
+    <div id="eb-tab-practice" class="eb-tab-panel" style="display:none;">
+      <div class="eb-practice-card">
+        <h3 style="margin: 0 0 6px; font-size: 1.05rem; color: #2b2b55;">Practice this exam</h3>
+        <p style="margin: 0 0 16px; font-size: 0.85rem; color: #666;">
+          Answer all {{ selected_count }} selected question(s) against a running timer, then submit for
+          an instant score. Multiple-choice, true/false, and numerical questions are auto-graded;
+          structured/matching answers are best-effort matched against the answer key.
+        </p>
+        {% if selected_count %}
+          <a href="{% url 'courses:student_practice_start' exam.id %}" class="eb-practice-start-btn">▶ Start Practice</a>
+        {% else %}
+          <div class="eb-selected-empty">Add some questions in <strong>Select Questions</strong> first.</div>
+        {% endif %}
+      </div>
+
+      <div class="eb-practice-history">
+        <h4 style="margin: 20px 0 10px; font-size: 0.92rem; color: #2b2b55;">Past attempts</h4>
+        {% if practice_attempts %}
+          <table class="eb-attempts-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Score</th>
+                <th>Correct</th>
+                <th>Wrong</th>
+                <th>Unanswered</th>
+                <th>Time taken</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for attempt in practice_attempts %}
+                <tr>
+                  <td>{{ attempt.submitted_at|date:"d M Y, H:i" }}</td>
+                  <td><strong>{{ attempt.marks_scored|floatformat:0 }}/{{ attempt.total_marks|floatformat:0 }}</strong> ({{ attempt.score_percent }}%)</td>
+                  <td>{{ attempt.correct_count }}</td>
+                  <td>{{ attempt.wrong_count }}</td>
+                  <td>{{ attempt.unanswered_count }}</td>
+                  <td>{{ attempt.time_taken_display }}</td>
+                  <td><a href="{% url 'courses:student_practice_result' exam.id attempt.id %}">Review →</a></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="eb-selected-empty">No attempts yet — start a practice run above.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ============ SETTINGS TAB ============ -->
+    <div id="eb-tab-settings" class="eb-tab-panel" style="display:none;">
+      <div class="eb-settings-card">
+        <form method="post" action="{% url 'courses:student_exam_settings' exam.id %}">
+          {% csrf_token %}
+          <div class="form-group">
+            {{ settings_form.name.label_tag }}
+            {{ settings_form.name }}
+          </div>
+          <div class="form-group">
+            {{ settings_form.category.label_tag }}
+            {{ settings_form.category }}
+          </div>
+          <div class="form-group">
+            {{ settings_form.duration_minutes.label_tag }}
+            {{ settings_form.duration_minutes }}
+          </div>
+          <div class="form-group">
+            {{ settings_form.questions_per_page.label_tag }}
+            {{ settings_form.questions_per_page }}
+          </div>
+          <div class="form-group eb-checkbox-row">
+            {{ settings_form.shuffle_questions }}
+            {{ settings_form.shuffle_questions.label_tag }}
+          </div>
+          <button type="submit" class="btn">💾 Save Settings</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {{ question_preview_data|json_script:"question-preview-data" }}
+  {% include 'partials/question_preview_render.js.html' %}
+  <script>
+    const TOGGLE_URL = "{% url 'courses:student_exam_toggle_question' exam.id %}";
+    const REORDER_URL = "{% url 'courses:student_exam_reorder_questions' exam.id %}";
+    const CSRF_TOKEN = "{{ csrf_token }}";
+
+    window.QUESTION_DATA = JSON.parse(
+      document.getElementById('question-preview-data').textContent || '{}'
+    );
+    const QUESTION_DATA = window.QUESTION_DATA;
+
+    let currentPreviewMode = 'question';
+    window.currentPreviewMode = currentPreviewMode;
+
+    const PREVIEW_UI = {
+      containerId: 'previewScroll',
+      topicClass: 'eb-preview-topic',
+      bodyClass: 'eb-preview-body',
+      qBlockClass: 'eb-question-block',
+      aBlockClass: 'eb-answer-block',
+      hiddenClass: 'eb-hidden-block',
+      shownClass: 'eb-shown',
+      marksClass: 'eb-preview-marks',
+      emptyHtml: '<div class="eb-preview-empty">Select a question on the left to preview it here.</div>'
+    };
+
+    function renderPreview(qid) {
+      window.currentPreviewMode = currentPreviewMode;
+      PREVIEW_UI.mode = currentPreviewMode;
+      window.renderQuestionPreview(qid, PREVIEW_UI);
+    }
+
+    function previewQuestion(qid, el) {
+      document.querySelectorAll('.eb-qrow').forEach(r => r.classList.remove('eb-active-row'));
+      if (el) el.classList.add('eb-active-row');
+      renderPreview(qid);
+    }
+
+    function setPreviewMode(mode, el) {
+      currentPreviewMode = mode;
+      window.currentPreviewMode = mode;
+      document.querySelectorAll('.eb-ptoggle').forEach(t => t.classList.remove('eb-active-toggle'));
+      el.classList.add('eb-active-toggle');
+      document.querySelectorAll('.eb-question-block').forEach(b => b.classList.toggle('eb-hidden-block', mode === 'answer'));
+      document.querySelectorAll('.eb-answer-block').forEach(b => b.classList.toggle('eb-shown', mode === 'answer'));
+    }
+
+    function toggleQuestion(qid, btnEl, fromSelectedTab) {
+      fetch(TOGGLE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF_TOKEN },
+        body: `question_id=${qid}`
+      })
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('summaryCount').textContent = data.selected_count;
+          document.getElementById('summaryMarks').textContent = data.total_marks;
+          document.querySelectorAll('.eb-badge')[0].textContent = data.selected_count;
+
+          if (fromSelectedTab) {
+            window.location.reload();
+            return;
+          }
+
+          const matchingBtn = document.querySelector(`.eb-add-btn[data-question-id="${qid}"]`);
+          const matchingRow = document.querySelector(`.eb-qrow[data-question-id="${qid}"]`);
+          if (matchingBtn) matchingBtn.classList.toggle('eb-added', data.added);
+          if (matchingRow) matchingRow.classList.toggle('eb-selected', data.added);
+        })
+        .catch(() => alert('Could not update the exam. Please try again.'));
+    }
+
+    function activateTab(tabName) {
+      document.querySelectorAll('.eb-tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('eb-tab-' + tabName).style.display = 'block';
+      document.querySelectorAll('.eb-tab').forEach(t => t.classList.remove('eb-active'));
+      const link = document.querySelector(`.eb-tab[data-tab="${tabName}"]`);
+      if (link) link.classList.add('eb-active');
+      window.location.hash = tabName;
+    }
+
+    document.querySelectorAll('.eb-tab').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        activateTab(link.dataset.tab);
+      });
+    });
+
+    (function initTab() {
+      const hash = window.location.hash.replace('#', '');
+      if (hash) {
+        activateTab(hash);
+      } else if ("{{ active_tab }}" === "settings") {
+        activateTab('settings');
+      }
+    })();
+
+    (function setupDragReorder() {
+      const list = document.getElementById('selectedList');
+      if (!list) return;
+      let draggedEl = null;
+
+      list.addEventListener('dragstart', (e) => {
+        draggedEl = e.target.closest('.eb-selected-row');
+        if (draggedEl) draggedEl.classList.add('eb-dragging');
+      });
+      list.addEventListener('dragend', () => {
+        if (draggedEl) draggedEl.classList.remove('eb-dragging');
+        draggedEl = null;
+        persistOrder();
+      });
+      list.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('.eb-selected-row');
+        if (!target || target === draggedEl) return;
+        const rect = target.getBoundingClientRect();
+        const before = (e.clientY - rect.top) < rect.height / 2;
+        list.insertBefore(draggedEl, before ? target : target.nextSibling);
+      });
+
+      function persistOrder() {
+        const ids = Array.from(list.querySelectorAll('.eb-selected-row')).map(r => r.dataset.questionId);
+        list.querySelectorAll('.eb-order-num').forEach((el, i) => el.textContent = i + 1);
+        fetch(REORDER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+          body: JSON.stringify({ question_ids: ids })
+        }).catch(() => {});
+      }
+    })();
+  </script>
+{% endblock %}

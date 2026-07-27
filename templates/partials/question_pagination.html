@@ -1,0 +1,46 @@
+
+{% with qs=pagination_qs|default:"" %}
+<div class="q-pagination-bar" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-top:1px solid #eee; background:#fafbff;">
+  <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#555;">
+    <label for="perPageSelect" style="font-weight:600; color:#444;">Per page</label>
+    <select id="perPageSelect" name="per_page"
+            onchange="(function(sel){ var p=new URLSearchParams(window.location.search); p.set('per_page', sel.value); p.delete('page'); window.location.search=p.toString(); })(this)"
+            style="padding:6px 10px; border:1px solid #d6dbf2; border-radius:6px; background:#fff; font-size:13px; color:#333; cursor:pointer;">
+      {% for n in per_page_choices %}
+        <option value="{{ n }}" {% if per_page|stringformat:'s' == n|stringformat:'s' %}selected{% endif %}>{{ n }}</option>
+      {% endfor %}
+      <option value="all" {% if per_page == 'all' %}selected{% endif %}>All</option>
+    </select>
+    <span style="color:#888;">
+      {% if page_obj.paginator.count %}
+        Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+      {% else %}
+        0 questions
+      {% endif %}
+    </span>
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+    {% if page_obj.has_previous %}
+      <a href="?{% if qs %}{{ qs }}&{% endif %}page={{ page_obj.previous_page_number }}"
+         style="min-width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border-radius:5px; font-size:13px; color:#555; text-decoration:none; background:#fff; border:1px solid #e0e3f0;">‹</a>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if num == page_obj.number %}
+        <span style="min-width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border-radius:5px; font-size:13px; background:#667eea; color:#fff; font-weight:700;">{{ num }}</span>
+      {% elif num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+        <a href="?{% if qs %}{{ qs }}&{% endif %}page={{ num }}"
+           style="min-width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border-radius:5px; font-size:13px; color:#555; text-decoration:none; background:#fff; border:1px solid #e0e3f0;">{{ num }}</a>
+      {% elif num == page_obj.number|add:'-3' or num == page_obj.number|add:'3' %}
+        <span style="color:#999; padding:0 2px;">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+      <a href="?{% if qs %}{{ qs }}&{% endif %}page={{ page_obj.next_page_number }}"
+         style="min-width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border-radius:5px; font-size:13px; color:#555; text-decoration:none; background:#fff; border:1px solid #e0e3f0;">›</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endwith %}

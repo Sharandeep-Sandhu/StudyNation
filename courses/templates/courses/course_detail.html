@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% load course_extras %}
+
+{% block title %}
+  {{ course.title }} - Study Nation
+{% endblock %}
+
+{% block content %}
+  <div style="margin-bottom: 2rem;">
+    <a href="/courses/" style="color: #667eea; text-decoration: none;">← Back to Courses</a>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
+    <div>
+      {% if course.thumbnail %}
+        <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" style="width: 100%; border-radius: 8px; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+      {% else %}
+        <div style="width: 100%; aspect-ratio: 4/3; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 5rem; margin-bottom: 1rem;">📚</div>
+      {% endif %}
+      <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h3 style="color: #667eea; margin-bottom: 1rem;">Course Details</h3>
+        <div style="margin-bottom: 1rem;">
+          <strong>Category:</strong> {{ course.category.name }}
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <strong>Level:</strong> {{ course.get_level_display }}
+        </div>
+        {% if course.instructor %}
+          <div style="margin-bottom: 1rem;">
+            <strong>Instructor:</strong> {{ course.instructor }}
+          </div>
+        {% endif %}
+        {% if course.duration %}
+          <div style="margin-bottom: 1rem;">
+            <strong>Duration:</strong> {{ course.duration }}
+          </div>
+        {% endif %}
+        <div style="margin-bottom: 1rem;">
+          <strong>Rating:</strong> ⭐ {{ course.rating }}/5
+        </div>
+        <div>
+          <strong>Students Enrolled:</strong> {{ course.students_enrolled }}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h1 style="color: #333; margin-bottom: 1rem;">{{ course.title }}</h1>
+      <p style="font-size: 1.1rem; line-height: 1.8; color: #666; margin-bottom: 2rem;">{{ course.description }}</p>
+
+      <button class="btn" style="font-size: 1.1rem; padding: 1rem 2rem; width: 100%; margin-bottom: 1rem;">Enroll Now</button>
+      <button class="btn btn-secondary" style="font-size: 1.1rem; padding: 1rem 2rem; width: 100%;">Add to Wishlist</button>
+    </div>
+  </div>
+
+  <!-- Tabs for content -->
+  <div style="margin-top: 3rem;">
+    <div style="display: flex; gap: 0; border-bottom: 2px solid #ddd; margin-bottom: 2rem;">
+      <button onclick="showTab('overview')" class="tab-button active" style="padding: 1rem 2rem; border: none; background: none; cursor: pointer; font-size: 1rem; color: #667eea; border-bottom: 3px solid #667eea; margin-bottom: -2px;">Overview</button>
+      <button onclick="showTab('materials')" class="tab-button" style="padding: 1rem 2rem; border: none; background: none; cursor: pointer; font-size: 1rem; color: #999;">Study Materials</button>
+      <button onclick="showTab('questions')" class="tab-button" style="padding: 1rem 2rem; border: none; background: none; cursor: pointer; font-size: 1rem; color: #999;">Question Banks</button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div id="overview" class="tab-content" style="display: block;">
+      <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2 style="color: #333; margin-bottom: 1.5rem;">Course Overview</h2>
+        <div style="line-height: 1.8; color: #666;">
+          <h3 style="color: #333; margin-top: 1.5rem;">What You'll Learn</h3>
+          <ul style="margin-left: 1.5rem; margin-top: 1rem;">
+            {% if course.what_youll_learn %}
+              {% for point in course.what_youll_learn.splitlines %}
+                {% if point %}
+                  <li>{{ point }}</li>
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              <li>Comprehensive understanding of {{ course.category.name }}</li>
+              <li>Practical skills and real-world applications</li>
+              <li>Hands-on projects and exercises</li>
+              <li>Industry best practices and standards</li>
+              <li>Career advancement opportunities</li>
+            {% endif %}
+          </ul>
+
+          <h3 style="color: #333; margin-top: 1.5rem;">Prerequisites</h3>
+          <ul style="margin-left: 1.5rem; margin-top: 1rem;">
+            {% if course.prerequisites %}
+              {% for point in course.prerequisites.splitlines %}
+                {% if point %}
+                  <li>{{ point }}</li>
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              <li>Basic understanding of {{ course.category.name }}</li>
+              <li>Willingness to learn and practice</li>
+              <li>Access to recommended software tools</li>
+            {% endif %}
+          </ul>
+
+          <h3 style="color: #333; margin-top: 1.5rem;">Course Curriculum</h3>
+          <div style="margin-top: 1rem;">
+            {% if course.curriculum %}
+              {% for line in course.curriculum.splitlines %}
+                {% if line %}
+                  <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+                    <strong>{{ line|module_title }}:</strong> {{ line|module_desc }}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+                <strong>Module 1:</strong> Introduction and Fundamentals
+              </div>
+              <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+                <strong>Module 2:</strong> Core Concepts and Techniques
+              </div>
+              <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+                <strong>Module 3:</strong> Advanced Topics
+              </div>
+              <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+                <strong>Module 4:</strong> Final Project and Assessment
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Materials Tab -->
+    <div id="materials" class="tab-content" style="display: none;">
+      <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2 style="color: #333; margin-bottom: 1.5rem;">Study Materials</h2>
+        {% if course.study_materials.all %}
+          <div class="grid" style="grid-template-columns: 1fr;">
+            {% for material in course.study_materials.all %}
+              <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                  <div style="flex: 1;">
+                    <h4 style="color: #667eea; margin-bottom: 0.5rem;">{{ material.title }}</h4>
+                    <p style="color: #999; font-size: 0.9rem; margin-bottom: 0.5rem;">Type: {{ material.get_material_type_display }}</p>
+                    {% if material.description %}
+                      <p style="color: #666;">{{ material.description }}</p>
+                    {% endif %}
+                    <div style="color: #999; font-size: 0.85rem; margin-top: 0.5rem;">📄 {{ material.file_size }} KB</div>
+                  </div>
+                  <span style="color: #999; font-style: italic;">(View only)</span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color: #999;">No study materials available yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Questions Tab -->
+    <div id="questions" class="tab-content" style="display: none;">
+      <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2 style="color: #333; margin-bottom: 1.5rem;">Question Banks</h2>
+        {% if course.question_banks.all %}
+          <div class="grid" style="grid-template-columns: 1fr;">
+            {% for bank in course.question_banks.all %}
+              <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" onclick="toggleBank(this)">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="flex: 1;">
+                    <h4 style="color: #667eea; margin-bottom: 0.5rem;">{{ bank.title }}</h4>
+                    <div style="color: #999; font-size: 0.9rem;">{{ bank.questions.count }} questions • {{ bank.get_difficulty_display }} level</div>
+                    {% if bank.description %}
+                      <p style="color: #666; margin-top: 0.5rem;">{{ bank.description }}</p>
+                    {% endif %}
+                  </div>
+                  <span style="font-size: 1.5rem; margin-left: 1rem;">▼</span>
+                </div>
+                <div class="bank-questions" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                  {% for question in bank.questions.all %}
+                    <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9f9f9; border-radius: 4px;">
+                      <div class="cd-question-text question-text" style="font-weight: 500; margin-bottom: 0.5rem; font-size: 1rem; line-height: 1.7;">{{ question.question_text|safe }}</div>
+                      {% if question.question_type in 'single_choice|multiple_choice' %}
+                        <div class="q-options" style="margin-left: 1rem; color: #666; font-size: 1rem; line-height: 1.6;">
+                          {% if question.option_a %}
+                            <p class="eb-opt-text">A) {{ question.option_a|safe }}</p>
+                          {% endif %}
+                          {% if question.option_b %}
+                            <p class="eb-opt-text">B) {{ question.option_b|safe }}</p>
+                          {% endif %}
+                          {% if question.option_c %}
+                            <p class="eb-opt-text">C) {{ question.option_c|safe }}</p>
+                          {% endif %}
+                          {% if question.option_d %}
+                            <p class="eb-opt-text">D) {{ question.option_d|safe }}</p>
+                          {% endif %}
+                        </div>
+                      {% endif %}
+                      {% if question.explanation %}
+                        <div style="margin-top: 0.5rem; color: #667eea; font-size: 0.95rem; line-height: 1.6;">💡 Explanation: {{ question.explanation|safe }}</div>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color: #999;">No question banks available yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tabName) {
+      const tabs = document.querySelectorAll('.tab-content')
+      const buttons = document.querySelectorAll('.tab-button')
+    
+      tabs.forEach((tab) => (tab.style.display = 'none'))
+      buttons.forEach((btn) => {
+        btn.style.color = '#999'
+        btn.style.borderBottom = 'none'
+        btn.style.marginBottom = '0'
+      })
+    
+      document.getElementById(tabName).style.display = 'block'
+      event.target.style.color = '#667eea'
+      event.target.style.borderBottom = '3px solid #667eea'
+      event.target.style.marginBottom = '-2px'
+    }
+    
+    function toggleBank(element) {
+      const questions = element.querySelector('.bank-questions')
+      const arrow = element.querySelector('span:last-child')
+    
+      if (questions.style.display === 'none') {
+        questions.style.display = 'block'
+        arrow.style.transform = 'rotate(180deg)'
+      } else {
+        questions.style.display = 'none'
+        arrow.style.transform = 'rotate(0deg)'
+      }
+    }
+  </script>
+
+  <style>
+    .tab-button.active {
+      color: #667eea;
+      border-bottom: 3px solid #667eea;
+      margin-bottom: -2px;
+    }
+  </style>
+{% endblock %}

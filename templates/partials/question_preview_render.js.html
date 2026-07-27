@@ -1,0 +1,175 @@
+
+<script>
+(function () {
+  if (window.__questionPreviewRenderLoaded) return;
+  window.__questionPreviewRenderLoaded = true;
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.innerText = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  function decodeHtmlEntities(str) {
+    if (!str || !/&(?:lt|gt|amp|quot|#\d+|#x[0-9a-f]+);/i.test(str)) return str;
+    const ta = document.createElement('textarea');
+    ta.innerHTML = str;
+    return ta.value;
+  }
+
+  function looksLikeHtml(str) {
+    return /<\/?[a-z][\s\S]*>/i.test(str || '') || /&lt;\/?[a-z]/i.test(str || '');
+  }
+
+  /** Keep <img class="eq-inline"> / MathJax HTML; escape plain text only. */
+  function formatRichText(str) {
+    if (str == null || str === '') return '';
+    str = decodeHtmlEntities(String(str));
+    if (looksLikeHtml(str) || /question_equations\//i.test(str)) return str;
+    return escapeHtml(str).replace(/\n/g, '<br>');
+  }
+
+  function hasInlineEquations(str) {
+    str = decodeHtmlEntities(str || '');
+    return /<img[\s>]/i.test(str) || /mjx-container/i.test(str) || /\$[^$]+\$/.test(str);
+  }
+
+  function correctLetters(q) {
+    return (q.answer || '')
+      .split(/[,;\s]+/)
+      .map(function (a) { return a.trim().toUpperCase(); })
+      .filter(function (a) { return /^[A-E]$/.test(a); });
+  }
+
+  function setRichHtml(el, str) {
+    el.innerHTML = formatRichText(str);
+  }
+
+  function renderOptionsHtml(q, revealAnswer) {
+    const letters = ['A', 'B', 'C', 'D', 'E'];
+    const opts = q.options || {};
+    const present = letters.filter(function (l) { return (opts[l] || '').trim(); });
+    if (!present.length) return '';
+    const correctSet = {};
+    correctLetters(q).forEach(function (l) { correctSet[l] = true; });
+    const rows = present.map(function (l) {
+      const isCorrect = revealAnswer && correctSet[l];
+      const style = isCorrect
+        ? 'background:#e3f7e9; border-color:#4caf7d; font-weight:700; color:#2f8a4e;'
+        : 'background:#fafbff; border-color:#e5e8f7; color:#333;';
+      const mark = isCorrect ? ' <span style="color:#1b7a3d;font-weight:800;">✓ Correct</span>' : '';
+      return '<div style="display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border:1.5px solid; border-radius:6px; margin-bottom:6px; font-size:0.95rem; ' + style + '">' +
+        '<span style="font-weight:700; flex-shrink:0;">' + l + ')</span>' +
+        '<span class="eb-opt-text">' + formatRichText(opts[l]) + mark + '</span></div>';
+    }).join('');
+    return '<div style="margin-top:12px;">' + rows + '</div>';
+  }
+
+  function renderEquationImages(images, alreadyInline) {
+    if (alreadyInline || !images || !images.length) return '';
+    let list = images;
+    if (typeof list === 'string') {
+      try { list = JSON.parse(list); } catch (e) { list = []; }
+    }
+    if (!Array.isArray(list) || !list.length) return '';
+    const thumbs = list.map(function (src) {
+      return '<img src="' + escapeHtml(src) + '" alt="equation" class="eq-inline" />';
+    }).join('');
+    return '<div style="margin-top:14px;">' +
+      '<div style="font-size:0.78rem; color:#667eea; margin-bottom:6px;">∑ Equation image(s)</div>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:8px;">' + thumbs + '</div></div>';
+  }
+
+  /**
+   * Render question preview into a container.
+   * ui: {
+   *   containerId, mode ('question'|'answer'),
+   *   topicClass, bodyClass, qBlockClass, aBlockClass,
+   *   hiddenClass, shownClass, emptyHtml
+   * }
+   */
+  function renderQuestionPreview(qid, ui) {
+    ui = ui || {};
+    const data = window.QUESTION_DATA || {};
+    const q = data[String(qid)];
+    const container = document.getElementById(ui.containerId || 'previewScroll');
+    if (!container) return;
+    if (!q) {
+      container.innerHTML = ui.emptyHtml ||
+        '<div class="preview-empty">Select a question on the left to preview it here.</div>';
+      return;
+    }
+
+    const mode = ui.mode || window.currentPreviewMode || 'question';
+    const topicClass = ui.topicClass || 'preview-topic';
+    const bodyClass = ui.bodyClass || 'preview-body';
+    const qBlockClass = ui.qBlockClass || 'question-block';
+    const aBlockClass = ui.aBlockClass || 'answer-block';
+    const hiddenClass = ui.hiddenClass || 'hidden-block';
+    const shownClass = ui.shownClass || 'shown';
+
+    const inline = hasInlineEquations(q.text);
+    const qBlock = document.createElement('div');
+    qBlock.className = bodyClass + ' ' + qBlockClass + (mode === 'answer' ? ' ' + hiddenClass : '');
+
+    const stem = document.createElement('div');
+    stem.className = 'eb-q-stem';
+    setRichHtml(stem, q.text);
+    qBlock.appendChild(stem);
+
+    const optsWrap = document.createElement('div');
+    optsWrap.innerHTML = renderOptionsHtml(q, false);
+    while (optsWrap.firstChild) qBlock.appendChild(optsWrap.firstChild);
+
+    const eqWrap = document.createElement('div');
+    eqWrap.innerHTML = renderEquationImages(q.equationImages, inline);
+    while (eqWrap.firstChild) qBlock.appendChild(eqWrap.firstChild);
+
+    const marks = document.createElement('div');
+    marks.className = ui.marksClass || 'preview-marks';
+    marks.textContent = '[Total: ' + (q.marks || 0) + ' marks]';
+    qBlock.appendChild(marks);
+
+    const letters = correctLetters(q);
+    const aBlock = document.createElement('div');
+    aBlock.className = bodyClass + ' ' + aBlockClass + (mode === 'answer' ? ' ' + shownClass : '');
+    let answerHtml = '';
+    if (letters.length) {
+      answerHtml += '<div style="margin-bottom:12px;padding:10px 12px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;color:#1b5e20;font-weight:700;">Correct answer: ' +
+        letters.join(', ') + '</div>';
+    } else {
+      answerHtml += '<div style="margin-bottom:12px;padding:10px 12px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;color:#6d4c00;"><em>No answer key imported for this question yet.</em></div>';
+    }
+    answerHtml += renderOptionsHtml(q, true);
+    if (q.explanation) {
+      answerHtml += '<div style="margin-top:10px;"><strong>Explanation:</strong> <span class="eb-explanation"></span></div>';
+    }
+    aBlock.innerHTML = answerHtml;
+    if (q.explanation) {
+      const exp = aBlock.querySelector('.eb-explanation');
+      if (exp) setRichHtml(exp, q.explanation);
+    }
+
+    const topic = document.createElement('div');
+    topic.className = topicClass;
+    topic.innerHTML = '<strong>Topic(s):</strong> <em></em>';
+    topic.querySelector('em').textContent = q.topic || '';
+
+    container.replaceChildren(topic, qBlock, aBlock);
+
+    if (window.eqTypeset) {
+      window.eqTypeset([container]);
+    } else if (window.MathJax && window.MathJax.typesetPromise) {
+      try { window.MathJax.typesetClear && window.MathJax.typesetClear([container]); } catch (e) {}
+      window.MathJax.typesetPromise([container]).catch(function () {});
+    }
+  }
+
+  window.escapeHtml = escapeHtml;
+  window.formatRichText = formatRichText;
+  window.hasInlineEquations = hasInlineEquations;
+  window.setRichHtml = setRichHtml;
+  window.renderQuestionPreview = renderQuestionPreview;
+  window.correctLetters = correctLetters;
+})();
+</script>

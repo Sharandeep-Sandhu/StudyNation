@@ -1,0 +1,69 @@
+<script>
+  // Idempotent MathJax v3 loader/config. Safe to include more than once.
+  window.MathJax = window.MathJax || {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true,
+      packages: {'[+]': ['ams', 'boldsymbol', 'cancel', 'color', 'mhchem']}
+    },
+    loader: {
+      load: ['[tex]/ams', '[tex]/boldsymbol', '[tex]/cancel', '[tex]/color', '[tex]/mhchem']
+    },
+    svg: { fontCache: 'global' },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+      enableMenu: false
+    }
+  };
+
+  if (!document.getElementById('MathJax-script')) {
+    var _mjs = document.createElement('script');
+    _mjs.id = 'MathJax-script';
+    _mjs.async = true;
+    // Full component build includes common TeX packages
+    _mjs.src = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js';
+    document.head.appendChild(_mjs);
+  }
+
+  /**
+   * (Re)typeset the whole page or a list of elements once MathJax is ready.
+   * Clears previous typeset on the same nodes so live previews update correctly.
+   */
+  window.eqTypeset = function (elements) {
+    function run() {
+      if (!(window.MathJax && window.MathJax.typesetPromise)) return;
+      try {
+        if (elements && window.MathJax.typesetClear) {
+          window.MathJax.typesetClear(elements);
+        }
+      } catch (e) { /* first paint */ }
+      return window.MathJax.typesetPromise(elements || undefined).catch(function () {});
+    }
+
+    if (window.MathJax && window.MathJax.startup && window.MathJax.startup.promise) {
+      return window.MathJax.startup.promise.then(run);
+    }
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      return run();
+    }
+
+    return new Promise(function (resolve) {
+      var tries = 0;
+      var t = setInterval(function () {
+        tries++;
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          clearInterval(t);
+          Promise.resolve(run()).then(resolve);
+        } else if (tries > 80) {
+          clearInterval(t);
+          resolve();
+        }
+      }, 100);
+    });
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    window.eqTypeset();
+  });
+</script>

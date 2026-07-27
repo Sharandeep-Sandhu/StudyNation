@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+{% block title %}{{ blog.title }} - Study Nation{% endblock %}
+
+{% block extra_css %}
+{% include 'partials/no_download_media.html' %}
+<style>
+  .bd-page { max-width: 1100px; margin: 0 auto; padding-bottom: 2rem; }
+  .bd-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: #667eea; font-weight: 700; font-size: 0.9rem;
+    text-decoration: none; margin-bottom: 1.1rem;
+  }
+  .bd-back:hover { opacity: 0.85; }
+
+  .bd-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 1.75rem;
+    align-items: start;
+  }
+
+  .bd-article {
+    background: #fff;
+    border: 1px solid #e8ebf5;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(30, 40, 90, 0.07);
+  }
+
+  .bd-cover {
+    width: 100%;
+    max-height: 420px;
+    object-fit: cover;
+    display: block;
+    background: linear-gradient(135deg, #eef1ff, #f3e8ff);
+  }
+  .bd-cover-ph {
+    height: 200px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.9); font-size: 2.8rem;
+  }
+
+  .bd-body { padding: 2rem 2.15rem 2.4rem; }
+  .bd-kicker {
+    display: inline-block;
+    background: #eef0fd; color: #5b6fd8;
+    font-size: 0.72rem; font-weight: 800; letter-spacing: .05em;
+    text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
+    margin-bottom: 0.85rem;
+  }
+  .bd-title {
+    font-size: clamp(1.55rem, 2.5vw, 2.1rem);
+    font-weight: 800; color: #1a1f36;
+    line-height: 1.25; letter-spacing: -0.4px;
+    margin: 0 0 1rem;
+  }
+  .bd-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px;
+    padding-bottom: 1.2rem; margin-bottom: 1.5rem;
+    border-bottom: 1px solid #eef0f6;
+  }
+  .bd-author { display: flex; align-items: center; gap: 10px; }
+  .bd-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff; font-weight: 800; font-size: 0.95rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bd-author-name { font-weight: 700; color: #333; font-size: 0.95rem; }
+  .bd-author-role { font-size: 0.78rem; color: #8a91a8; }
+  .bd-meta-item { font-size: 0.86rem; color: #6b7280; }
+
+  .bd-content {
+    font-size: 1.08rem;
+    line-height: 1.85;
+    color: #2d3348;
+  }
+  .bd-content p { margin: 0 0 1.15rem; }
+  .bd-content img {
+    max-width: 100%; height: auto; border-radius: 12px; margin: 1rem 0;
+  }
+
+  .bd-media {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eef0f6;
+  }
+  .bd-media h3 {
+    font-size: 1.05rem; font-weight: 800; color: #1f2544;
+    margin: 0 0 0.75rem;
+  }
+  .bd-view-note {
+    font-size: 0.84rem; color: #6b7280; margin: 0 0 1rem;
+    background: #f8f9fd; border: 1px solid #e8ebf5;
+    border-radius: 10px; padding: 10px 12px;
+  }
+
+  .bd-video-wrap {
+    border-radius: 14px; overflow: hidden;
+    background: #0f1220;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+    margin-bottom: 1.5rem;
+  }
+  .bd-video-wrap video {
+    width: 100%; display: block; max-height: 480px; background: #000;
+  }
+
+  .bd-embed {
+    width: 100%;
+    min-height: 560px;
+    border: 1px solid #e6e9f5;
+    border-radius: 14px;
+    background: #fafbff;
+    margin-bottom: 1.25rem;
+  }
+
+  .bd-side { position: sticky; top: 90px; }
+  .bd-side-card {
+    background: #fff;
+    border: 1px solid #e8ebf5;
+    border-radius: 16px;
+    padding: 1.2rem 1.25rem;
+    box-shadow: 0 6px 20px rgba(30, 40, 90, 0.06);
+    margin-bottom: 1rem;
+  }
+  .bd-side-card h4 {
+    font-size: 0.95rem; font-weight: 800; color: #1f2544;
+    margin: 0 0 0.75rem;
+  }
+  .bd-side-list { list-style: none; padding: 0; margin: 0; }
+  .bd-side-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f2f8;
+    font-size: 0.88rem; color: #4b5568;
+  }
+  .bd-side-list li:last-child { border-bottom: none; }
+  .bd-side-cta {
+    display: block; text-align: center;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff !important; text-decoration: none;
+    font-weight: 700; font-size: 0.9rem;
+    padding: 12px 14px; border-radius: 10px;
+  }
+  .bd-side-cta.secondary {
+    margin-top: 10px;
+    background: #fff;
+    color: #5b6fd8 !important;
+    border: 1.5px solid #c9d0f5;
+  }
+
+  .bd-share { display: flex; flex-wrap: wrap; gap: 8px; }
+  .bd-share button, .bd-share a {
+    border: 1px solid #e0e4f2;
+    background: #fff;
+    color: #444;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+  }
+
+  @media (max-width: 900px) {
+    .bd-layout { grid-template-columns: 1fr; }
+    .bd-side { position: static; }
+    .bd-body { padding: 1.35rem 1.2rem 1.7rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bd-page">
+  <a class="bd-back" href="{% url 'courses:blog_list' %}">← Back to all blogs</a>
+
+  <div class="bd-layout">
+    <article class="bd-article no-dl-zone">
+      <div class="no-dl-media">
+        {% if blog.image %}
+          <img class="bd-cover" src="{{ blog.image.url }}" alt="{{ blog.title }}" draggable="false" oncontextmenu="return false;" />
+        {% else %}
+          <div class="bd-cover-ph">📝</div>
+        {% endif %}
+      </div>
+
+      <div class="bd-body">
+        <div class="bd-kicker">Study Nation Blog</div>
+        <h1 class="bd-title">{{ blog.title }}</h1>
+
+        <div class="bd-meta">
+          <div class="bd-author">
+            <div class="bd-avatar">{{ blog.author|default:"S"|slice:":1"|upper }}</div>
+            <div>
+              <div class="bd-author-name">{{ blog.author|default:"Study Nation Team" }}</div>
+              <div class="bd-author-role">Author</div>
+            </div>
+          </div>
+          <span class="bd-meta-item">📅 {{ blog.created_at|date:"F d, Y" }}</span>
+          {% if blog.updated_at and blog.updated_at.date != blog.created_at.date %}
+            <span class="bd-meta-item">Updated {{ blog.updated_at|date:"M d, Y" }}</span>
+          {% endif %}
+        </div>
+
+        <div class="bd-content no-dl-media">
+          {{ blog.content|linebreaks }}
+        </div>
+
+        {% if blog.video or blog.pdf or blog.ppt %}
+          <div class="bd-media no-dl-media">
+            <p class="bd-view-note">
+              <strong>View only.</strong> Files on this page cannot be downloaded.
+              PowerPoint files are never linked directly (that would force a browser download).
+            </p>
+
+            {% if blog.video %}
+              <h3>Video</h3>
+              <div class="bd-video-wrap">
+                <video
+                  controls
+                  preload="metadata"
+                  controlsList="nodownload noremoteplayback noplaybackrate"
+                  disablePictureInPicture
+                  oncontextmenu="return false;"
+                >
+                  <source src="{{ blog.video.url }}" type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            {% endif %}
+
+            {% if blog.pdf %}
+              <h3>Document</h3>
+              {# PDF only — toolbar hidden; no <a href> download link #}
+              <iframe
+                class="bd-embed"
+                src="{{ blog.pdf.url }}#toolbar=0&navpanes=0&scrollbar=1&view=FitH"
+                title="Document viewer"
+                oncontextmenu="return false;"
+              ></iframe>
+            {% endif %}
+
+            {% if blog.ppt %}
+              <h3>Presentation</h3>
+              {#
+                Never use the raw .ppt/.pptx URL in an iframe or <a href>.
+                Browsers cannot display PowerPoint inline and will auto-download.
+                Office Online can render public URLs only (not localhost).
+              #}
+              {% if request.get_host == 'localhost' or request.get_host == '127.0.0.1' or 'localhost' in request.get_host %}
+                <div class="bd-view-note" style="background:#fff8e1;border-color:#ffe082;color:#6d4c00;">
+                  A presentation is attached to this post, but PowerPoint files cannot be shown
+                  safely in the browser without triggering a download.
+                  Preview is disabled so the file is not offered for download.
+                </div>
+              {% else %}
+                <iframe
+                  class="bd-embed"
+                  src="https://view.officeapps.live.com/op/embed.aspx?src={{ request.scheme }}%3A%2F%2F{{ request.get_host }}{{ blog.ppt.url|urlencode }}"
+                  title="Presentation viewer (view only)"
+                  oncontextmenu="return false;"
+                ></iframe>
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </article>
+
+    <aside class="bd-side">
+      <div class="bd-side-card">
+        <h4>About this post</h4>
+        <ul class="bd-side-list">
+          <li><strong>Author:</strong> {{ blog.author|default:"Study Nation Team" }}</li>
+          <li><strong>Published:</strong> {{ blog.created_at|date:"M d, Y" }}</li>
+          {% if blog.video %}<li>Includes video (view only)</li>{% endif %}
+          {% if blog.pdf %}<li>Includes document (view only)</li>{% endif %}
+          {% if blog.ppt %}<li>Includes presentation (view only)</li>{% endif %}
+        </ul>
+      </div>
+
+      <div class="bd-side-card">
+        <h4>Share</h4>
+        <div class="bd-share">
+          <button type="button" onclick="navigator.clipboard.writeText(window.location.href).then(function(){ this.textContent='Copied!'; }.bind(this))">Copy link</button>
+        </div>
+      </div>
+
+      <a class="bd-side-cta" href="{% url 'courses:blog_list' %}">Browse all blogs</a>
+      <a class="bd-side-cta secondary" href="{% url 'courses:courses_list' %}">Explore courses</a>
+    </aside>
+  </div>
+</div>
+{% endblock %}

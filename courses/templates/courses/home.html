@@ -1,0 +1,168 @@
+{% extends 'base.html' %} {% block title %}
+  Home - Study Nation
+{% endblock %}
+{% block content %}
+  <div class="hero" style="
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    position: relative;
+    overflow: hidden;
+  ">
+    <div style="
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 500px;
+      height: 500px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      filter: blur(40px);
+    "></div>
+    <div style="
+      position: absolute;
+      bottom: -30%;
+      left: 5%;
+      width: 300px;
+      height: 300px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      filter: blur(30px);
+    "></div>
+    <div style="position: relative; z-index: 1">
+      <h1 style="
+        font-size: 3.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        letter-spacing: -1px;
+      ">🚀 Welcome to Study Nation</h1>
+      <p style="
+        font-size: 1.3rem;
+        margin-bottom: 2rem;
+        opacity: 0.95;
+        line-height: 1.8;
+      ">Master new skills with our comprehensive courses, past papers, and resources. Learn at your own pace and achieve your goals.</p>
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap">
+        <a href="/courses/" class="btn" style="
+          display: inline-block;
+          padding: 1rem 2.5rem;
+          font-size: 1.1rem;
+          background: white;
+          color: #667eea;
+          font-weight: 600;
+          border-radius: 50px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+          transition: all 0.3s;
+        ">Explore Courses →</a>
+        <a href="/past-papers/" class="btn" style="
+          display: inline-block;
+          padding: 1rem 2.5rem;
+          font-size: 1.1rem;
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+          font-weight: 600;
+          border-radius: 50px;
+          border: 2px solid white;
+          transition: all 0.3s;
+        ">View Past Papers →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-item">
+      <div class="number">{{ categories.count }}</div>
+      <div class="label">Categories</div>
+    </div>
+    <div class="stat-item">
+      <div class="number">{{ featured_courses.count }}</div>
+      <div class="label">Courses</div>
+    </div>
+    <div class="stat-item">
+      <div class="number">10K+</div>
+      <div class="label">Students</div>
+    </div>
+    <div class="stat-item">
+      <div class="number">100%</div>
+      <div class="label">Success Rate</div>
+    </div>
+
+    <!-- BUILD & PRACTICE Section -->
+  </div>
+
+  <div style="margin: 3rem 0">
+    <h2 style="color: #333; margin-bottom: 1.5rem">Explore Our Course Categories</h2>
+    <div class="grid">
+      {% for category in categories %}
+        <div class="card">
+          <h3>{{ category.name }}</h3>
+          <p>{{ category.description }}</p>
+          <a href="/courses/?category={{ category.id }}" class="btn">View Courses</a>
+        </div>
+      {% empty %}
+        <p>No categories available yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div style="margin: 3rem 0">
+    <h2 style="color: #333; margin-bottom: 1.5rem">Featured Courses</h2>
+    <div class="grid">
+      {% for course in featured_courses %}
+        <div class="card">
+          {% if course.thumbnail %}
+            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" style="
+          width: 100%;
+          height: 150px;
+          object-fit: cover;
+          border-radius: 4px;
+          margin-bottom: 1rem;
+        " />
+          {% endif %}
+          <h3>{{ course.title }}</h3>
+          <p style="font-size: 0.9rem; color: #999">{{ course.category.name }}</p>
+          <p>{{ course.description|truncatewords:20 }}</p>
+          <div style="margin: 1rem 0; font-size: 0.9rem; color: #666">
+            <span>⭐ {{ course.rating }}</span>
+            <span style="margin-left: 1rem">👥 {{ course.students_enrolled }} students</span>
+          </div>
+          <a href="/courses/{{ course.id }}/" class="btn">View Course</a>
+        </div>
+      {% empty %}
+        <p>No courses available yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div style="background: #f5f5f5; padding: 2rem; border-radius: 8px; margin: 3rem 0">
+    <h2 style="color: #333; margin-bottom: 1.5rem">Why Choose Study Nation?</h2>
+    <div style="
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 2rem;
+    ">
+      <div>
+        <h4 style="color: #667eea; margin-bottom: 0.5rem">📚 Quality Content</h4>
+        <p>Curated by industry experts with years of experience</p>
+      </div>
+      <div>
+        <h4 style="color: #667eea; margin-bottom: 0.5rem">💪 Hands-On Learning</h4>
+        <p>Practical exercises and real-world projects</p>
+      </div>
+      <div>
+        <h4 style="color: #667eea; margin-bottom: 0.5rem">🎓 Certifications</h4>
+        <p>Earn recognized certificates upon completion</p>
+      </div>
+      <div>
+        <h4 style="color: #667eea; margin-bottom: 0.5rem">⏰ Learn at Your Pace</h4>
+        <p>Self-paced learning with lifetime access</p>
+      </div>
+      <div>
+        <h4 style="color: #667eea; margin-bottom: 0.5rem">💬 Community Support</h4>
+        <p>Connect with fellow learners and instructors</p>
+      </div>
+      <div>
+        <h4 style="color: #667eea; margin-bottom: 0.5rem">🚀 Career Growth</h4>
+        <p>Advance your career with in-demand skills</p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

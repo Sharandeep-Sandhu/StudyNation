@@ -1,0 +1,16 @@
+question_text,question_type,option_a,option_b,option_c,option_d,correct_answer,marks,explanation
+What is the capital of France?,single_choice,London,Paris,Berlin,Madrid,B,1,Paris is the capital city of France and is located in the north-central part of the country.
+Which of the following are programming languages? (Select all that apply),multiple_choice,Python,JavaScript,HTML,Java,A;B;D,2,Python and JavaScript are programming languages. HTML is a markup language. Java is also a programming language.
+Is Python a compiled language?,true_false,True,False,,,,1,Python is an interpreted language not a compiled language.
+What is 15 + 27?,numerical,,,,,42,1,Simple arithmetic addition: 15 + 27 = 42
+What is the chemical symbol for Gold?,single_choice,Au,Gd,Go,Gl,A,1,The chemical symbol for Gold is Au which comes from its Latin name 'Aurum'.
+Which continent is the largest by area?,single_choice,Africa,Asia,Europe,Antarctica,B,1,Asia is the largest continent by total area covering about 44.6 million square kilometers.
+What are the primary colors?,multiple_choice,Red,Blue,Green,Yellow,A;B;D,2,The primary colors in the RYB color model are Red Blue and Yellow. In RGB it would be Red Green and Blue.
+Is machine learning a subset of artificial intelligence?,true_false,True,False,,,,1,Yes machine learning is indeed a subset of artificial intelligence that focuses on systems learning from data.
+What is 7 × 8?,numerical,,,,,56,1,Multiplication: 7 × 8 = 56
+Who wrote Romeo and Juliet?,single_choice,William Shakespeare,Jane Austen,Mark Twain,Charles Dickens,A,1,William Shakespeare wrote the tragic play Romeo and Juliet during the Elizabethan era.
+Which elements are nonmetals? (Select all that apply),multiple_choice,Carbon,Copper,Oxygen,Nitrogen,A;C;D,2,Carbon Oxygen and Nitrogen are nonmetals. Copper is a metal.
+What is the square root of 144?,numerical,,,,,12,1,The square root of 144 is 12 because 12 × 12 = 144.
+Is React.js a programming language?,true_false,False,True,,,,1,React is a JavaScript library not a programming language. JavaScript is the programming language.
+What is the smallest prime number?,single_choice,0,1,2,3,C,1,2 is the smallest prime number as it is only divisible by 1 and itself.
+Which countries are in South America? (Select all that apply),multiple_choice,Brazil,Canada,Argentina,Chile,A;C;D,2,Brazil Argentina and Chile are South American countries. Canada is in North America.

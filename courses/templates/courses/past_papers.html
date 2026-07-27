@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  MCQ Past Papers - Learn Hub
+{% endblock %}
+
+{% block content %}
+  <main class="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-slate-50">
+    <!-- Hero Section -->
+    {% comment %} <section class="pt-20 pb-16 px-4 sm:px-6 lg:px-8">
+      <div class="max-w-6xl mx-auto text-center">
+        <h1 class="text-5xl sm:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-purple-900 mb-6">MCQ Past Papers</h1>
+        <p class="text-xl text-slate-600 max-w-2xl mx-auto mb-8">Access comprehensive collections of past exam papers and MCQs from leading exam boards including Cambridge IGCSE, A-Levels, IB, and more.</p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <input type="text" id="search-papers" placeholder="Search papers, topics, or subjects..." class="px-6 py-3 rounded-lg border-2 border-purple-200 focus:border-purple-600 focus:outline-none w-full sm:w-96 transition-colors" />
+          <button class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all duration-300 hover:shadow-lg">Search</button>
+        </div>
+      </div>
+    </section> {% endcomment %}
+
+    <div style="
+      margin: 0rem 0;
+      margin-bottom: 6rem;
+      background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+      padding: 0rem;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
+      ">
+      <div style="text-align: center; margin-bottom: 2.5rem">
+        <h2 style="color: #333; font-size: 2.2rem; margin-bottom: 0.5rem">🛠️ BUILD & PRACTICE</h2>
+        <p style="color: #666; font-size: 1.1rem">Create, practice, and master with our powerful tools</p>
+      </div>
+
+      <div style="
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+      ">
+        <!-- Feature 1 -->
+        <div class="card" style="text-align: center; padding: 2rem 1.5rem">
+          <div style="font-size: 3rem; margin-bottom: 1rem">📝</div>
+          <h3 style="color: #667eea; margin-bottom: 1rem">Build Exam or Worksheet</h3>
+          <p style="color: #666; line-height: 1.6; margin-bottom: 1.5rem">Create custom exams, worksheets, and practice tests tailored to your needs.</p>
+          {% if user.is_authenticated and user.student_profile %}
+            <a href="{% url 'courses:student_exams' %}" class="btn">Start Building →</a>
+          {% else %}
+            <a href="{% url 'courses:student_signup' %}" class="btn">Start Building →</a>
+          {% endif %}
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="card" style="text-align: center; padding: 2rem 1.5rem">
+          <div style="font-size: 3rem; margin-bottom: 1rem">📋</div>
+          <h3 style="color: #667eea; margin-bottom: 1rem">Build Question List</h3>
+          <p style="color: #666; line-height: 1.6; margin-bottom: 1.5rem">Generate targeted question lists by topic, paper, year, and season for focused practice.</p>
+          {% if user.is_authenticated and user.student_profile %}
+            <a href="{% url 'courses:student_question_lists' %}" class="btn">Create List →</a>
+          {% else %}
+            <a href="{% url 'courses:student_signup' %}" class="btn">Create List →</a>
+          {% endif %}
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="card" style="text-align: center; padding: 2rem 1.5rem">
+          <div style="font-size: 3rem; margin-bottom: 1rem">📚</div>
+          <h3 style="color: #667eea; margin-bottom: 1rem">Golden Notes & Free Worksheets</h3>
+          <p style="color: #666; line-height: 1.6; margin-bottom: 1.5rem">Access premium study notes and free topical practice sheets.</p>
+          <a href="/resources/" class="btn">Explore Resources →</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features Section -->
+    <section class="py-16 px-4 sm:px-6 lg:px-8">
+      <div class="max-w-6xl mx-auto">
+        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-12 text-center">Why Choose Our Past Papers?</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
+            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
+              <i class="fi fi-sr-document text-purple-600 text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-3">Comprehensive Coverage</h3>
+            <p class="text-slate-600">Access hundreds of past papers from multiple exam boards covering all major subjects and topics.</p>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
+            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
+              <i class="fi fi-sr-check-circle text-purple-600 text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-3">Mark Schemes Included</h3>
+            <p class="text-slate-600">Every paper includes detailed mark schemes to help you understand model answers and grading criteria.</p>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
+            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
+              <i class="fi fi-sr-lightbulb text-purple-600 text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-3">Topical Organization</h3>
+            <p class="text-slate-600">Papers organized by topic making it easy to focus on specific subjects and prepare systematically.</p>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
+            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
+              <i class="fi fi-sr-calendar text-purple-600 text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-3">Yearly Collections</h3>
+            <p class="text-slate-600">Complete yearly past papers from 2000 onwards, allowing you to track your progress over time.</p>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
+            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
+              <i class="fi fi-sr-computer text-purple-600 text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-3">Online Exam Builder</h3>
+            <p class="text-slate-600">Pick questions by topic, paper, year, and season to build your own custom exam, organised and saved to your Study Nation account.</p>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
+            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
+              <i class="fi fi-sr-chart-line text-purple-600 text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-3">Progress Tracking</h3>
+            <p class="text-slate-600">Monitor your performance with detailed analytics and insights to identify areas needing improvement.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Question Types Section -->
+    <section class="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-purple-600 to-purple-800">
+      <div class="max-w-6xl mx-auto text-center">
+        <h2 class="text-3xl sm:text-4xl font-bold text-white mb-12">Multiple Question Types</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          {% for qtype in question_types %}
+            <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 hover:bg-opacity-20 transition-all duration-300">
+              <div class="text-4xl mb-3">
+                {% if qtype == 'SINGLE' %}
+                  📝
+                {% elif qtype == 'MULTIPLE' %}
+                  ✓
+                {% elif qtype == 'NUMERICAL' %}
+                  🔢
+                {% elif qtype == 'TRUE_FALSE' %}
+                  ⚖️
+                {% else %}
+                  🔗
+                {% endif %}
+              </div>
+              <h3 class="text-lg font-semibold text-white">
+                {% if qtype == 'SINGLE' %}
+                  Single Choice
+                {% elif qtype == 'MULTIPLE' %}
+                  Multiple Choice
+                {% elif qtype == 'NUMERICAL' %}
+                  Numerical
+                {% elif qtype == 'TRUE_FALSE' %}
+                  True/False
+                {% else %}
+                  Matching
+                {% endif %}
+              </h3>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-16 px-4 sm:px-6 lg:px-8">
+      <div class="max-w-4xl mx-auto">
+        <div class="bg-gradient-to-r from-purple-600 to-purple-800 rounded-2xl p-12 text-center">
+          <h2 class="text-3xl sm:text-4xl font-bold text-white mb-6">Start Your Exam Preparation Today</h2>
+          <p class="text-lg text-purple-100 mb-8">Join thousands of students using our platform to ace their exams with comprehensive past papers and targeted practice.</p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            {% if user.is_authenticated and user.student_profile %}
+              <a href="{% url 'courses:student_exams' %}" class="px-8 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-purple-50 transition-all duration-300">Open Exam Builder</a>
+            {% else %}
+              <a href="{% url 'courses:student_signup' %}" class="px-8 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-purple-50 transition-all duration-300">Try the Exam Builder</a>
+            {% endif %}
+            <a href="{% url 'courses:contact' %}" class="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-lg transition-all duration-300">Get in Touch</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Simple search functionality
+    document.getElementById('search-papers').addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        const query = this.value
+        console.log('[v0] Searching for:', query)
+        // Can be extended to filter papers
+      }
+    })
+  </script>
+{% endblock %}

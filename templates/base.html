@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    {% load static %}
+    <title>
+      {% block title %}
+        Study Nation
+      {% endblock %}
+    </title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        background-color: #fafafa;
+        color: #333;
+      }
+      
+      header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 2rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      
+      nav {
+        max-width: 100%;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      nav a {
+        color: white;
+        text-decoration: none;
+        margin: 0 1.5rem;
+        font-weight: 500;
+        transition: opacity 0.3s;
+      }
+      
+      nav a:hover {
+        opacity: 0.8;
+      }
+      
+      .nav-left {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .logo {
+        font-size: 1.5rem;
+        font-weight: bold;
+      }
+      
+      .nav-links {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      
+      .nav-dropdown {
+        position: relative;
+        display: inline-block;
+      }
+      
+      .nav-dropdown-toggle {
+        background: none;
+        border: none;
+        color: white;
+        font-family: inherit;
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0 1.5rem;
+        padding: 0;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: opacity 0.3s;
+      }
+      
+      .nav-dropdown-toggle:hover {
+        opacity: 0.8;
+      }
+      
+      .nav-caret {
+        font-size: 12px;
+        transition: transform 0.3s ease;
+      }
+      
+      .nav-dropdown.open .nav-caret {
+        transform: rotate(180deg);
+      }
+      .nav-dropdown-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+        padding: 8px;
+        min-width: 190px;
+        margin-top: 14px;
+        z-index: 200;
+      }
+      
+      .nav-dropdown.open .nav-dropdown-menu {
+        display: block;
+      }
+      
+      .nav-dropdown-menu a {
+        display: block;
+        color: #333;
+        margin: 0;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-weight: 500;
+        white-space: nowrap;
+        opacity: 1;
+      }
+      
+      .nav-dropdown-menu a:hover {
+        background: #f1eefa;
+        opacity: 1;
+      }
+      
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+      }
+      
+      main {
+        min-height: calc(100vh - 200px);
+        padding: 2rem 0;
+      }
+      
+      footer {
+        background: #2c3e50;
+        color: white;
+        padding: 3rem 2rem;
+        margin-top: 4rem;
+      }
+      
+      footer .container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+      }
+      
+      footer h4 {
+        margin-bottom: 1rem;
+        color: #667eea;
+      }
+      
+      footer p,
+      footer a {
+        color: #bbb;
+        text-decoration: none;
+        margin-bottom: 0.5rem;
+        display: block;
+      }
+      
+      footer a:hover {
+        color: #667eea;
+      }
+      
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 2rem;
+        margin: 2rem 0;
+      }
+      
+      .card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+        cursor: pointer;
+      }
+      
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      .card h3 {
+        color: #667eea;
+        margin-bottom: 0.5rem;
+      }
+      
+      .card p {
+        color: #666;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+      }
+      
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background 0.3s;
+      }
+      
+      .btn:hover {
+        background: #764ba2;
+      }
+      
+      .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+      }
+      
+      .btn-secondary:hover {
+        background: #d0d0d0;
+      }
+      
+      .hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 4rem 2rem;
+        text-align: center;
+        border-radius: 8px;
+        margin-bottom: 3rem;
+      }
+      
+      .hero h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+      }
+      
+      .hero p {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+      }
+      
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 2rem;
+        margin: 2rem 0;
+      }
+      
+      .stat-item {
+        text-align: center;
+      }
+      
+      .stat-item .number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+      }
+      
+      .stat-item .label {
+        color: #666;
+        margin-top: 0.5rem;
+      }
+      
+      .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      .filter-group {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+      }
+      
+      .filter-group label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+      }
+      
+      .filter-group input {
+        cursor: pointer;
+      }
+      
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+      
+      .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #333;
+      }
+      
+      .form-group input,
+      .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 1rem;
+      }
+      
+      .form-group textarea {
+        resize: vertical;
+        min-height: 120px;
+      }
+      
+      .loading {
+        text-align: center;
+        padding: 2rem;
+        color: #667eea;
+      }
+      
+      .error {
+        background: #fee;
+        color: #c00;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+      }
+      
+      .success {
+        background: #efe;
+        color: #060;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+      }
+      
+      @media (max-width: 768px) {
+        header nav {
+          flex-direction: column;
+          gap: 1rem;
+        }
+      
+        .hero h1 {
+          font-size: 2rem;
+        }
+      
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      
+        .nav-links {
+          flex-direction: column;
+          gap: 1rem;
+        }
+      }
+    </style>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+    {% include 'partials/equation_inline_css.html' %}
+    <style>
+      .eb-q-stem,
+      .eb-opt-text,
+      .eb-preview-body,
+      .pq-question-text,
+      .pq-option-text,
+      .question-text,
+      .pr-review-text,
+      .pc-comment-text,
+      .pc-post-content {
+        line-height: 1.75;
+        font-size: 1rem;
+      }
+    </style>
+    {% block extra_css %}
+
+    {% endblock %}
+  </head>
+  <body>
+    <header>
+      <nav style="justify-content: center;">
+        <div class="nav-left">
+          <div class="logo">
+            <img src="/media/study_nation_logo.jpeg" style="height: 62px; width: auto; vertical-align: middle; margin-right: 10px; border-radius: 6px;" />
+          </div>
+          <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/courses/">Courses</a>
+            <div class="nav-dropdown" id="pastPapersDropdown">
+              <button type="button" class="nav-dropdown-toggle" onclick="toggleNavDropdown(event, 'pastPapersDropdown')">Past Papers <i class="fas fa-chevron-down nav-caret"></i></button>
+              <div class="nav-dropdown-menu">
+                <a href="/past-papers/">📄 Past Papers</a>
+                {% if user.is_authenticated and user.student_profile %}
+                  <a href="/my-exams/">🧾 My Exams</a>
+                {% endif %}
+                <a href="/public-chat/">💬 Public Chat</a>
+              </div>
+            </div>
+            <a href="/resources/">Resources</a>
+            <a href="/blogs/">Blogs</a>
+            <a href="/contact/">Contact</a>
+            {% if user.is_authenticated and user.student_profile %}
+              <a href="/my-lists/">📋 My Lists</a>
+              <a href="/logout/">Log Out</a>
+            {% else %}
+              <a href="/login/">Log In</a>
+              <a href="/signup/" style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 4px; transition: 0.3s;">Sign Up</a>
+            {% endif %}
+            <a href="/admin-panel/login/" style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 4px; transition: 0.3s;">🔐 Admin</a>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="container">
+        {% block content %}
+
+        {% endblock %}
+      </div>
+    </main>
+
+    <footer>
+      <div class="container">
+        <div>
+          <h4>About Us</h4>
+          <p>We provide high-quality educational content to help learners achieve their goals.</p>
+        </div>
+        <div>
+          <h4>Quick Links</h4>
+          <a href="/courses/">Browse Courses</a>
+          <a href="/resources/">Free Resources</a>
+          <a href="/public-chat/">Public Chat</a>
+          <a href="/contact/">Contact Us</a>
+        </div>
+        <div>
+          <h4>Support</h4>
+          <p>Email: support@studynation.com</p>
+          <p>Phone: +1 (555) 123-4567</p>
+        </div>
+        <div>
+          <h4>Follow Us</h4>
+          <p>Connect with us on social media for updates and announcements.</p>
+        </div>
+      </div>
+      <div style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #444;">
+        <p>&copy; 2024 Study Nation. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script>
+      // ==================== NAV DROPDOWN (Past Papers menu) ====================
+      function toggleNavDropdown(event, id) {
+        event.stopPropagation()
+        var dropdown = document.getElementById(id)
+        if (!dropdown) return
+        var wasOpen = dropdown.classList.contains('open')
+        document.querySelectorAll('.nav-dropdown.open').forEach(function (el) {
+          el.classList.remove('open')
+        })
+        if (!wasOpen) dropdown.classList.add('open')
+      }
+      
+      document.addEventListener('click', function () {
+        document.querySelectorAll('.nav-dropdown.open').forEach(function (el) {
+          el.classList.remove('open')
+        })
+      })
+      
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.nav-dropdown.open').forEach(function (el) {
+            el.classList.remove('open')
+          })
+        }
+      })
+    </script>
+
+    {% block extra_js %}
+
+    {% endblock %}
+  </body>
+</html>

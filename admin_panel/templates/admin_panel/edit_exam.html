@@ -1,0 +1,674 @@
+{% load course_extras %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ exam.name }} - Exam Builder</title>
+    {% include 'partials/mathjax.html' %}
+    {% include 'partials/equation_inline_css.html' %}
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f7fa;
+        color: #333;
+      }
+
+      .dashboard-wrapper {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        min-height: 100vh;
+      }
+
+      /* Sidebar (shared with rest of admin panel) */
+      .sidebar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px 0;
+        position: fixed;
+        height: 100vh;
+        width: 250px;
+        overflow-y: auto;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .sidebar-header { padding: 0 20px 30px; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 20px; }
+      .sidebar-header h2 { font-size: 20px; margin-bottom: 5px; }
+      .sidebar-header p { font-size: 12px; opacity: 0.8; }
+      .sidebar-nav { list-style: none; }
+      .sidebar-nav a { display: block; padding: 14px 20px; color: white; text-decoration: none; transition: all .3s ease; border-left: 3px solid transparent; }
+      .sidebar-nav a:hover, .sidebar-nav a.active { background: rgba(255,255,255,0.1); border-left-color: white; }
+      .sidebar-footer { position: absolute; bottom: 20px; left: 0; right: 0; padding: 0 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px; }
+      .logout-btn { width: 100%; padding: 10px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; cursor: pointer; text-decoration: none; display: block; text-align: center; font-size: 14px; }
+      .logout-btn:hover { background: rgba(255,255,255,0.3); }
+
+      /* Main content */
+      .main-content { margin-left: 250px; padding: 30px 30px 50px; width: max-content; min-width: 1100px; max-width: calc(100vw - 250px); }
+
+      .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
+      .alert-success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid #4caf50; }
+      .alert-error { background: #ffebee; color: #c62828; border-left: 4px solid #f44336; }
+
+      /* ---- Top header ---- */
+      .builder-header { background: white; border-radius: 8px; padding: 20px 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
+      .builder-header h1 { font-size: 22px; color: #3b3b78; display: flex; align-items: center; gap: 8px; letter-spacing: .3px; }
+      .builder-header .desc { color: #777; font-size: 13.5px; margin-top: 8px; line-height: 1.55; max-width: 1000px; }
+
+      .not-subscribed {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: #fdecea; color: #c0392b; padding: 6px 14px;
+        border-radius: 20px; font-size: 12.5px; font-weight: 600; margin-top: 14px;
+      }
+
+      .exam-name-row { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+      .exam-name-row .icon { font-size: 22px; }
+      .exam-name-row form { display: flex; align-items: center; gap: 10px; }
+      .exam-name-row label { font-size: 13px; color: #888; }
+      .exam-name-row input[type="text"] {
+        font-size: 16px; font-weight: 700; color: #222; border: none; border-bottom: 2px solid transparent;
+        padding: 2px 4px; background: transparent; min-width: 220px;
+      }
+      .exam-name-row input[type="text"]:focus { outline: none; border-bottom-color: #667eea; background: #f5f7fa; }
+      .exam-name-row button { font-size: 12px; padding: 6px 12px; border-radius: 5px; border: 1px solid #667eea; background: #fff; color: #667eea; cursor: pointer; }
+      .exam-name-row button:hover { background: #667eea; color: #fff; }
+
+      /* ---- Tabs ---- */
+      .tabs-bar { display: flex; gap: 28px; border-bottom: 1px solid #e3e3ee; margin-top: 22px; flex-wrap: wrap; }
+      .tab-link {
+        padding: 14px 2px; font-size: 13.5px; font-weight: 700; letter-spacing: .3px; color: #888;
+        text-decoration: none; border-bottom: 3px solid transparent; text-transform: uppercase; cursor: pointer;
+      }
+      .tab-link.current-source { color: #667eea; }
+      .tab-link.active-tab { color: #3b3b78; border-bottom-color: #667eea; }
+      .tab-link .count-badge { background: #eef0fb; color: #667eea; border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: 4px; }
+
+      /* ---- Filter bar ---- */
+      .filter-card { background: #eef1fc; border: 1px solid #dde2f7; border-radius: 10px; padding: 18px 22px; margin-top: 18px; }
+      .filter-top { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; margin-bottom: 14px; }
+      .filter-top .item { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #444; }
+      .filter-top .item strong { color: #2b2b55; }
+      .filter-top select { border: none; background: transparent; font-weight: 600; color: #2b2b55; font-size: 13.5px; cursor: pointer; }
+      .chip { background: #5b6fd8; color: white; font-size: 11.5px; padding: 4px 10px; border-radius: 14px; font-weight: 600; }
+
+      .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr) 140px; gap: 14px; align-items: end; }
+      .filter-grid .field label { display: block; font-size: 12px; color: #777; margin-bottom: 4px; }
+      .filter-grid .field select {
+        width: 100%; padding: 9px 10px; border-radius: 6px; border: 1px solid #d6dbf2; background: white;
+        font-size: 13px; color: #333;
+      }
+      .search-btn {
+        background: #5b6fd8; border: none; border-radius: 6px; color: white; height: 38px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 700;
+        letter-spacing: .3px; padding: 0 18px; gap: 6px;
+      }
+      .search-btn:hover { background: #4a5bc4; }
+
+      /* ---- Two-pane workspace ---- */
+      .workspace { display: grid; grid-template-columns: 320px 1fr; gap: 0; margin-top: 18px; border: 1px solid #dde2f7; border-radius: 10px; overflow: hidden; background: white; }
+
+      .qlist-pane { border-right: 1px solid #eee; display: flex; flex-direction: column; max-height: 720px; }
+      .qlist-toolbar { display: flex; justify-content: space-around; padding: 12px 8px; border-bottom: 1px solid #eee; background: #fafbff; }
+      .qlist-toolbar .tbtn { text-align: center; font-size: 10.5px; color: #667eea; cursor: pointer; }
+      .qlist-toolbar .tbtn .ic { font-size: 16px; display: block; }
+      .qlist-toolbar .tbtn .badge { background: #eef0fb; border-radius: 10px; padding: 0 6px; font-size: 10px; }
+
+      .qlist-scroll { flex: 1; overflow-y: auto; }
+      .qlist-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 11px 14px; border-bottom: 1px solid #f1f1f8; cursor: pointer; font-size: 12.8px; color: #333;
+      }
+      .qlist-row:hover { background: #f5f7ff; }
+      .qlist-row.selected-row { background: #eef3ff; }
+      .qlist-row.active-row { background: #e4eaff; font-weight: 600; }
+      .qlist-row .code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .add-btn {
+        width: 22px; height: 22px; border-radius: 50%; border: none; background: #e9f7ef; color: #2e7d32;
+        font-weight: 700; cursor: pointer; flex-shrink: 0; font-size: 14px; line-height: 1;
+      }
+      .add-btn.added { background: #fdecea; color: #c0392b; }
+      .add-btn.added::before { content: "−"; }
+      .add-btn:not(.added)::before { content: "+"; }
+
+      .qlist-empty { padding: 40px 20px; text-align: center; color: #999; font-size: 13px; }
+
+      .pagination-bar { display: flex; justify-content: center; align-items: center; gap: 4px; padding: 10px; border-top: 1px solid #eee; background: #fafbff; flex-wrap: wrap; }
+      .pagination-bar a, .pagination-bar span {
+        min-width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 4px; font-size: 12px; color: #555; text-decoration: none;
+      }
+      .pagination-bar a:hover { background: #eef0fb; }
+      .pagination-bar .current-page { background: #667eea; color: white; }
+
+      /* ---- Preview pane ---- */
+      .preview-pane { display: flex; flex-direction: column; max-height: 720px; }
+      .preview-toggle { display: flex; justify-content: center; gap: 36px; padding: 14px; border-bottom: 1px solid #eee; }
+      .preview-toggle .ptoggle { font-size: 12px; font-weight: 700; color: #888; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; text-transform: uppercase; }
+      .preview-toggle .ptoggle .ic { font-size: 18px; }
+      .preview-toggle .ptoggle.active-toggle { color: #667eea; }
+
+      .preview-scroll { flex: 1; overflow-y: auto; padding: 24px 30px; }
+      .preview-topic { color: #b5474d; font-size: 13px; margin-bottom: 14px; }
+      .preview-body { font-size: 1rem; line-height: 1.75; color: #222; }
+      .preview-empty { color: #999; text-align: center; padding: 80px 20px; font-size: 14px; }
+      .preview-marks { text-align: right; color: #555; font-size: 13.5px; margin-top: 6px; }
+      .answer-block { display: none; }
+      .answer-block.shown { display: block; }
+      .question-block.hidden-block { display: none; }
+
+      /* ---- Selected questions tab ---- */
+      .selected-list { background: white; border: 1px solid #dde2f7; border-radius: 10px; margin-top: 18px; overflow: hidden; }
+      .selected-row {
+        display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid #f1f1f8;
+        cursor: grab; background: white;
+      }
+      .selected-row:last-child { border-bottom: none; }
+      .selected-row .drag-handle { color: #ccc; font-size: 16px; }
+      .selected-row .order-num { width: 26px; height: 26px; border-radius: 50%; background: #eef0fb; color: #667eea; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+      .selected-row .meta { flex: 1; }
+      .selected-row .meta .code { font-weight: 600; font-size: 13.5px; color: #333; }
+      .selected-row .meta .topic { font-size: 12px; color: #888; margin-top: 2px; }
+      .selected-row .marks-tag { font-size: 12px; color: #667eea; font-weight: 600; }
+      .selected-row .remove-btn { background: none; border: none; color: #c0392b; font-size: 13px; cursor: pointer; padding: 6px 10px; }
+      .selected-row.dragging { opacity: .4; }
+      .selected-empty { text-align: center; padding: 60px 20px; color: #999; }
+
+      .summary-bar { display: flex; gap: 28px; padding: 16px 20px; background: #fafbff; border-top: 1px solid #eee; font-size: 13.5px; color: #444; }
+      .summary-bar strong { color: #2b2b55; }
+
+      /* ---- Settings tab ---- */
+      .settings-card { background: white; border: 1px solid #dde2f7; border-radius: 10px; padding: 26px; margin-top: 18px; max-width: 640px; }
+      .settings-card .form-group { margin-bottom: 18px; }
+      .settings-card label { display: block; font-weight: 600; font-size: 13.5px; color: #555; margin-bottom: 6px; }
+      .settings-card input, .settings-card select {
+        width: 100%; padding: 10px 12px; border: 1px solid #dde2f7; border-radius: 6px; font-size: 13.5px;
+      }
+      .settings-card .checkbox-row { display: flex; align-items: center; gap: 8px; }
+      .settings-card .checkbox-row input { width: auto; }
+      .btn-save { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 11px 26px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13.5px; }
+
+      .feature-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 36px; }
+      .feature-strip div h4 { font-size: 14px; color: #333; margin-bottom: 8px; }
+      .feature-strip div p { font-size: 12.5px; color: #888; line-height: 1.6; }
+
+      @media (max-width: 1100px) {
+        .workspace { grid-template-columns: 1fr; }
+        .filter-grid { grid-template-columns: 1fr 1fr; }
+        .filter-grid .search-btn { grid-column: 1 / -1; }
+        .feature-strip { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 900px) {
+        .main-content { margin-left: 0; padding: 20px; width: auto; min-width: auto; max-width: 100%; }
+        .sidebar { position: relative; width: 100%; height: auto; }
+        .dashboard-wrapper { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    {% include 'admin_panel/_partials/sidebar_slider.html' %}
+    <div class="dashboard-wrapper">
+{% include 'admin_panel/_partials/admin_sidebar.html' with active='manage_exams' %}
+<main class="main-content">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'success' %}success{% else %}error{% endif %}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+
+        <div class="builder-header">
+          <h1>EDIT EXAM ▶</h1>
+          <p class="desc">
+            The most significant benefit of using the online exam builder is the time-saving factor — build a
+            personalised exam from real questions in your question bank in minutes, filtered by topic, year,
+            and type (category).
+          </p>
+          <span class="not-subscribed">🔒 Not Subscribed</span>
+
+          <div class="exam-name-row">
+            <span class="icon">📝</span>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="rename_exam" value="1" />
+              <label for="examNameInput">exam name:</label>
+              <input id="examNameInput" type="text" name="name" value="{{ exam.name }}" />
+              <button type="submit">Save name</button>
+            </form>
+          </div>
+
+          <div class="tabs-bar">
+            <a class="tab-link {% if active_tab != 'settings' %}active-tab{% endif %}" data-tab="select">SELECT QUESTIONS FROM: <span class="current-source">Topical Past Papers ▾</span></a>
+            <a class="tab-link" data-tab="selected">SELECTED QUESTIONS <span class="count-badge">{{ selected_count }} / {{ exam_questions|length|default:selected_count }}</span></a>
+            <a class="tab-link {% if active_tab == 'settings' %}active-tab{% endif %}" data-tab="settings">SETTINGS</a>
+          </div>
+        </div>
+
+        <!-- ============ SELECT QUESTIONS TAB ============ -->
+        <div id="tab-select" class="tab-panel">
+          <div class="filter-card">
+            <div class="filter-top">
+              <div class="item">🌐 Curriculum: <strong>CIE IGCSE</strong></div>
+              <span class="chip">Chapterized Till : {{ years|first|default:"—" }}</span>
+            </div>
+
+            <form method="get" id="filterForm">
+              <div class="filter-grid">
+                <div class="field">
+                  <label>Topic(s)</label>
+                  <select name="topic">
+                    <option value="">Select Topic</option>
+                    {% for t in topics %}
+                      <option value="{{ t }}" {% if filters.topic == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Year(s)</label>
+                  <select name="year">
+                    <option value="">Select Year</option>
+                    {% for y in years %}
+                      <option value="{{ y }}" {% if filters.year == y|stringformat:'s' %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Type (Category)</label>
+                  <select name="category">
+                    <option value="">All Types</option>
+                    {% for cat in categories %}
+                      <option value="{{ cat.id }}" {% if filters.category == cat.id|stringformat:'s' %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <button type="submit" class="search-btn">🔍 Submit</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="workspace">
+            <div class="qlist-pane">
+              <div class="qlist-toolbar">
+                <div class="tbtn" id="sortToggle" data-sort="{{ filters.sort }}">
+                  <span class="ic">{% if filters.sort == 'desc' %}↓A{% else %}↑A{% endif %}</span>
+                  {% if filters.sort == 'desc' %}Desc{% else %}Asc{% endif %}
+                </div>
+                <div class="tbtn">
+                  <span class="ic">🔽</span>
+                  <span class="badge">{{ page_obj.paginator.count }}</span>
+                </div>
+                <div class="tbtn">
+                  <span class="ic">👁️</span>
+                  {% if page_obj.start_index %}{{ page_obj.start_index }} - {{ page_obj.end_index }}{% else %}0{% endif %}
+                </div>
+                <div class="tbtn"><span class="ic">🔀</span>Random</div>
+              </div>
+
+              <div class="qlist-scroll" id="qlistScroll">
+                {% if questions %}
+                  {% for q in questions %}
+                    <div class="qlist-row {% if q.id in selected_ids %}selected-row{% endif %}"
+                         data-question-id="{{ q.id }}"
+                         onclick="previewQuestion({{ q.id }}, this)">
+                      <span class="code">{{ q.question_code|default:q.question_number }}</span>
+                      <button type="button"
+                              class="add-btn {% if q.id in selected_ids %}added{% endif %}"
+                              data-question-id="{{ q.id }}"
+                              onclick="event.stopPropagation(); toggleQuestion({{ q.id }}, this)"></button>
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <div class="qlist-empty">No questions match these filters yet.<br />Try a different topic, year, or type.</div>
+                {% endif %}
+              </div>
+
+              {% if page_obj %}
+                {% include 'partials/question_pagination.html' %}
+              {% endif %}
+            </div>
+
+            <div class="preview-pane">
+              <div class="preview-toggle">
+                <div class="ptoggle active-toggle" data-mode="question" onclick="setPreviewMode('question', this)"><span class="ic">📋</span>Question</div>
+                <div class="ptoggle" data-mode="answer" onclick="setPreviewMode('answer', this)"><span class="ic">🔗</span>Answer</div>
+              </div>
+              <div class="preview-scroll" id="previewScroll">
+                <div class="preview-empty">Select a question on the left to preview it here.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ SELECTED QUESTIONS TAB ============ -->
+        <div id="tab-selected" class="tab-panel" style="display:none;">
+          <div class="selected-list" id="selectedList">
+            {% for eq in exam_questions %}
+              <div class="selected-row" draggable="true" data-question-id="{{ eq.question.id }}">
+                <span class="drag-handle">⠿</span>
+                <span class="order-num">{{ forloop.counter }}</span>
+                <div class="meta">
+                  <div class="code">{{ eq.question.question_code }}</div>
+                  <div class="topic">{{ eq.question.topic }}</div>
+                </div>
+                <span class="marks-tag">{{ eq.question.marks }} marks</span>
+                <button type="button" class="remove-btn" onclick="toggleQuestion({{ eq.question.id }}, null, true)">Remove</button>
+              </div>
+            {% empty %}
+              <div class="selected-empty">No questions selected yet. Go to <strong>Select Questions</strong> and click + next to a question to add it here.</div>
+            {% endfor %}
+          </div>
+          <div class="summary-bar">
+            <div><strong id="summaryCount">{{ selected_count }}</strong> question(s)</div>
+            <div><strong id="summaryMarks">{{ total_marks }}</strong> total marks</div>
+            <div><strong>{{ exam.duration_minutes }}</strong> minute timer</div>
+          </div>
+        </div>
+
+        <!-- ============ SETTINGS TAB ============ -->
+        <div id="tab-settings" class="tab-panel" style="display:none;">
+          <div class="settings-card">
+            <form method="post" action="{% url 'admin_panel:exam_settings' exam.id %}">
+              {% csrf_token %}
+              <div class="form-group">
+                {{ settings_form.name.label_tag }}
+                {{ settings_form.name }}
+              </div>
+              <div class="form-group">
+                {{ settings_form.category.label_tag }}
+                {{ settings_form.category }}
+              </div>
+              <div class="form-group">
+                {{ settings_form.duration_minutes.label_tag }}
+                {{ settings_form.duration_minutes }}
+              </div>
+              <div class="form-group">
+                {{ settings_form.questions_per_page.label_tag }}
+                {{ settings_form.questions_per_page }}
+              </div>
+              <div class="form-group checkbox-row">
+                {{ settings_form.shuffle_questions }}
+                {{ settings_form.shuffle_questions.label_tag }}
+              </div>
+              <button type="submit" class="btn-save">💾 Save Settings</button>
+            </form>
+          </div>
+
+          <div class="feature-strip">
+            <div>
+              <h4>Organise by Topic, Year, and Type</h4>
+              <p>Filter the question bank by topic, year, and type (category) to build a precisely targeted exam.</p>
+            </div>
+            <div>
+              <h4>Drag-and-Drop Ordering</h4>
+              <p>Reorder selected questions on the Selected Questions tab to control exactly how the exam flows.</p>
+            </div>
+            <div>
+              <h4>Built-In Timer for Time Management</h4>
+              <p>Set a duration here to help students pace themselves like a real exam — a key skill for high performance.</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    {{ question_preview_data|json_script:"question-preview-data" }}
+    <script>
+      const EXAM_ID = {{ exam.id }};
+      const TOGGLE_URL = "{% url 'admin_panel:exam_toggle_question' exam.id %}";
+      const REORDER_URL = "{% url 'admin_panel:exam_reorder_questions' exam.id %}";
+      const CSRF_TOKEN = "{{ csrf_token }}";
+
+      // Safe JSON embed — preserves raw <img class="eq-inline"> equation HTML
+      const QUESTION_DATA = JSON.parse(
+        document.getElementById('question-preview-data').textContent || '{}'
+      );
+
+      let currentPreviewMode = 'question';
+
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.innerText = str == null ? '' : String(str);
+        return div.innerHTML;
+      }
+
+      /** Decode &lt;img&gt; etc. if text was stored/escaped as entities. */
+      function decodeHtmlEntities(str) {
+        if (!str || !/&(?:lt|gt|amp|quot|#\d+|#x[0-9a-f]+);/i.test(str)) return str;
+        const ta = document.createElement('textarea');
+        ta.innerHTML = str;
+        return ta.value;
+      }
+
+      function looksLikeHtml(str) {
+        return /<\/?[a-z][\s\S]*>/i.test(str || '') || /&lt;\/?[a-z]/i.test(str || '');
+      }
+
+      /** Allow <img class="eq-inline"> / MathJax HTML; escape plain text only. */
+      function formatRichText(str) {
+        if (str == null || str === '') return '';
+        str = decodeHtmlEntities(String(str));
+        if (looksLikeHtml(str) || /question_equations\//i.test(str)) return str;
+        return escapeHtml(str).replace(/\n/g, '<br>');
+      }
+
+      function hasInlineEquations(str) {
+        str = decodeHtmlEntities(str || '');
+        return /<img[\s>]/i.test(str) || /mjx-container/i.test(str) || /\$[^$]+\$/.test(str);
+      }
+
+      function correctLetters(q) {
+        return (q.answer || '')
+          .split(/[,;\s]+/)
+          .map(a => a.trim().toUpperCase())
+          .filter(a => /^[A-E]$/.test(a));
+      }
+
+      function setRichHtml(el, str) {
+        el.innerHTML = formatRichText(str);
+      }
+
+      function renderOptionsHtml(q, revealAnswer) {
+        const letters = ['A', 'B', 'C', 'D', 'E'];
+        const opts = q.options || {};
+        const present = letters.filter(l => (opts[l] || '').trim());
+        if (!present.length) return '';
+        const correctSet = new Set(correctLetters(q));
+        const rows = present.map(l => {
+          const isCorrect = revealAnswer && correctSet.has(l);
+          const style = isCorrect
+            ? 'background:#e3f7e9; border-color:#4caf7d; font-weight:700; color:#2f8a4e;'
+            : 'background:#fafbff; border-color:#e5e8f7; color:#333;';
+          const mark = isCorrect ? ' <span style="color:#1b7a3d;font-weight:800;">✓ Correct</span>' : '';
+          return `<div style="display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border:1.5px solid; border-radius:6px; margin-bottom:6px; font-size:0.95rem; ${style}">
+            <span style="font-weight:700; flex-shrink:0;">${l})</span><span class="eb-opt-text">${formatRichText(opts[l])}${mark}</span>
+          </div>`;
+        }).join('');
+        return `<div style="margin-top:12px;">${rows}</div>`;
+      }
+
+      function renderEquationImages(images, alreadyInline) {
+        if (alreadyInline || !images || !images.length) return '';
+        let list = images;
+        if (typeof list === 'string') {
+          try { list = JSON.parse(list); } catch (e) { list = []; }
+        }
+        if (!Array.isArray(list) || !list.length) return '';
+        const thumbs = list.map(src =>
+          `<img src="${escapeHtml(src)}" alt="equation" class="eq-inline" />`
+        ).join('');
+        return `<div style="margin-top:14px;">
+          <div style="font-size:0.78rem; color:#667eea; margin-bottom:6px;">∑ Equation image(s)</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">${thumbs}</div>
+        </div>`;
+      }
+
+      function renderPreview(qid) {
+        const q = QUESTION_DATA[String(qid)];
+        const container = document.getElementById('previewScroll');
+        if (!q) {
+          container.innerHTML = '<div class="preview-empty">Select a question on the left to preview it here.</div>';
+          return;
+        }
+        const inline = hasInlineEquations(q.text);
+        const qBlock = document.createElement('div');
+        qBlock.className = 'preview-body question-block' + (currentPreviewMode === 'answer' ? ' hidden-block' : '');
+
+        const stem = document.createElement('div');
+        stem.className = 'eb-q-stem';
+        setRichHtml(stem, q.text);
+        qBlock.appendChild(stem);
+
+        const optsWrap = document.createElement('div');
+        optsWrap.innerHTML = renderOptionsHtml(q, false);
+        while (optsWrap.firstChild) qBlock.appendChild(optsWrap.firstChild);
+
+        const eqWrap = document.createElement('div');
+        eqWrap.innerHTML = renderEquationImages(q.equationImages, inline);
+        while (eqWrap.firstChild) qBlock.appendChild(eqWrap.firstChild);
+
+        const marks = document.createElement('div');
+        marks.className = 'preview-marks';
+        marks.textContent = '[Total: ' + (q.marks || 0) + ' marks]';
+        qBlock.appendChild(marks);
+
+        const letters = correctLetters(q);
+        const aBlock = document.createElement('div');
+        aBlock.className = 'preview-body answer-block' + (currentPreviewMode === 'answer' ? ' shown' : '');
+        let answerHtml = '';
+        if (letters.length) {
+          answerHtml += `<div style="margin-bottom:12px;padding:10px 12px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;color:#1b5e20;font-weight:700;">Correct answer: ${letters.join(', ')}</div>`;
+        } else {
+          answerHtml += `<div style="margin-bottom:12px;padding:10px 12px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;color:#6d4c00;"><em>No answer key imported for this question yet.</em></div>`;
+        }
+        answerHtml += renderOptionsHtml(q, true);
+        if (q.explanation) {
+          answerHtml += `<div style="margin-top:10px;"><strong>Explanation:</strong> <span class="eb-explanation"></span></div>`;
+        }
+        aBlock.innerHTML = answerHtml;
+        if (q.explanation) {
+          const exp = aBlock.querySelector('.eb-explanation');
+          if (exp) setRichHtml(exp, q.explanation);
+        }
+
+        const topic = document.createElement('div');
+        topic.className = 'preview-topic';
+        topic.innerHTML = '<strong>Topic(s):</strong> <em></em>';
+        topic.querySelector('em').textContent = q.topic || '';
+
+        container.replaceChildren(topic, qBlock, aBlock);
+
+        if (window.eqTypeset) {
+          window.eqTypeset([container]);
+        } else if (window.MathJax && window.MathJax.typesetPromise) {
+          try { window.MathJax.typesetClear && window.MathJax.typesetClear([container]); } catch (e) {}
+          window.MathJax.typesetPromise([container]).catch(function () {});
+        }
+      }
+
+      function previewQuestion(qid, el) {
+        document.querySelectorAll('.qlist-row').forEach(r => r.classList.remove('active-row'));
+        if (el) el.classList.add('active-row');
+        renderPreview(qid);
+      }
+
+      function setPreviewMode(mode, el) {
+        currentPreviewMode = mode;
+        document.querySelectorAll('.ptoggle').forEach(t => t.classList.remove('active-toggle'));
+        el.classList.add('active-toggle');
+        document.querySelectorAll('.question-block').forEach(b => b.classList.toggle('hidden-block', mode === 'answer'));
+        document.querySelectorAll('.answer-block').forEach(b => b.classList.toggle('shown', mode === 'answer'));
+      }
+
+      function toggleQuestion(qid, btnEl, fromSelectedTab) {
+        fetch(TOGGLE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF_TOKEN },
+          body: `question_id=${qid}`
+        })
+          .then(r => r.json())
+          .then(data => {
+            document.getElementById('summaryCount').textContent = data.selected_count;
+            document.getElementById('summaryMarks').textContent = data.total_marks;
+            document.querySelectorAll('.count-badge')[0].textContent = `${data.selected_count} / ${data.selected_count}`;
+
+            if (fromSelectedTab) {
+              // Removing from the Selected Questions tab: just reload to keep ordering simple & correct
+              window.location.reload();
+              return;
+            }
+
+            const matchingBtn = document.querySelector(`.add-btn[data-question-id="${qid}"]`);
+            const matchingRow = document.querySelector(`.qlist-row[data-question-id="${qid}"]`);
+            if (matchingBtn) matchingBtn.classList.toggle('added', data.added);
+            if (matchingRow) matchingRow.classList.toggle('selected-row', data.added);
+          })
+          .catch(() => alert('Could not update the exam. Please try again.'));
+      }
+
+      // ---- Tabs ----
+      function activateTab(tabName) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('tab-' + tabName).style.display = 'block';
+        document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active-tab'));
+        const link = document.querySelector(`.tab-link[data-tab="${tabName}"]`);
+        if (link) link.classList.add('active-tab');
+        window.location.hash = tabName;
+      }
+
+      document.querySelectorAll('.tab-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          activateTab(link.dataset.tab);
+        });
+      });
+
+      // Restore tab from URL hash, or default to settings tab if server rendered it that way
+      (function initTab() {
+        const hash = window.location.hash.replace('#', '');
+        if (hash) {
+          activateTab(hash);
+        } else if ("{{ active_tab }}" === "settings") {
+          activateTab('settings');
+        }
+      })();
+
+      // ---- Drag-and-drop reordering on Selected Questions tab ----
+      (function setupDragReorder() {
+        const list = document.getElementById('selectedList');
+        if (!list) return;
+        let draggedEl = null;
+
+        list.addEventListener('dragstart', (e) => {
+          draggedEl = e.target.closest('.selected-row');
+          if (draggedEl) draggedEl.classList.add('dragging');
+        });
+        list.addEventListener('dragend', () => {
+          if (draggedEl) draggedEl.classList.remove('dragging');
+          draggedEl = null;
+          persistOrder();
+        });
+        list.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          const target = e.target.closest('.selected-row');
+          if (!target || target === draggedEl) return;
+          const rect = target.getBoundingClientRect();
+          const before = (e.clientY - rect.top) < rect.height / 2;
+          list.insertBefore(draggedEl, before ? target : target.nextSibling);
+        });
+
+        function persistOrder() {
+          const ids = Array.from(list.querySelectorAll('.selected-row')).map(r => r.dataset.questionId);
+          list.querySelectorAll('.order-num').forEach((el, i) => el.textContent = i + 1);
+          fetch(REORDER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+            body: JSON.stringify({ question_ids: ids })
+          }).catch(() => {});
+        }
+      })();
+    </script>
+  </body>
+</html>
