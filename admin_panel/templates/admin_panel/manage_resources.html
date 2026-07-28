@@ -330,7 +330,7 @@
                     <td>
                       <div style="display:flex; gap:8px; flex-wrap:wrap;">
                         <a href="{% url 'admin_panel:edit_resource' res.id %}" class="btn btn-primary btn-sm">✏️ Edit</a>
-                        <a href="{% url 'admin_panel:delete_resource' res.id %}" class="btn btn-danger" onclick="return confirm('Delete this resource?');">🗑️ Delete</a>
+                        <form method="post" action="{% url 'admin_panel:delete_resource' res.id %}" style="display:inline;" onsubmit="return confirm('Delete this resource?');">{% csrf_token %}<button type="submit" class="btn btn-danger">🗑️ Delete</button></form>
                       </div>
                     </td>
                   </tr>

@@ -15,6 +15,8 @@ class InlineMediaMiddleware:
         "/media/blog_media/",
         "/media/resources/",
         "/media/course_thumbnails/",
+        "/media/discussion_images/",
+        "/media/question_equations/",
     )
 
     # Opening these as a top-level document forces a download in browsers.
@@ -30,9 +32,16 @@ class InlineMediaMiddleware:
             # Block top-level navigation to Office files (prevents auto-download UI)
             if path.endswith(self.OFFICE_EXTS):
                 fetch_dest = (request.headers.get("Sec-Fetch-Dest") or "").lower()
-                # "document" = user opened URL in tab / iframe navigation that triggers download
-                # Allow server-side fetchers (Office Online, empty dest from some tools)
-                if fetch_dest in ("document",):
+                fetch_mode = (request.headers.get("Sec-Fetch-Mode") or "").lower()
+                # "document" / navigate = user opened URL in a tab
+                # Empty Sec-Fetch-* on older browsers: treat GET without range as navigate
+                is_navigation = fetch_dest in ("document",) or fetch_mode == "navigate"
+                if not fetch_dest and not fetch_mode and request.method == "GET":
+                    # Heuristic: Accept prefers HTML → likely address-bar navigation
+                    accept = (request.headers.get("Accept") or "").lower()
+                    if "text/html" in accept:
+                        is_navigation = True
+                if is_navigation:
                     return HttpResponse(
                         "Downloading this file is not allowed. "
                         "Open the blog or resources page to view content online.",
@@ -46,5 +55,8 @@ class InlineMediaMiddleware:
             response["Content-Disposition"] = "inline"
             response["X-Content-Type-Options"] = "nosniff"
             response["X-Frame-Options"] = "SAMEORIGIN"
+            # Discourage caching of sensitive media by shared proxies
+            if "Cache-Control" not in response:
+                response["Cache-Control"] = "private, max-age=3600"
 
         return response

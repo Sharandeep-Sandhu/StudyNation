@@ -103,7 +103,7 @@
                     <td>
                       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <a href="{% url 'admin_panel:edit_question_list' qlist.id %}" class="btn btn-primary btn-sm" style="padding: 6px 12px; font-size: 12px;">✏️ Edit</a>
-                        <a href="{% url 'admin_panel:delete_question_list' qlist.id %}" class="btn btn-danger" onclick="return confirm('Delete this question list? This cannot be undone.');">🗑️ Delete</a>
+                        <form method="post" action="{% url 'admin_panel:delete_question_list' qlist.id %}" style="display:inline;" onsubmit="return confirm('Delete this question list? This cannot be undone.');">{% csrf_token %}<button type="submit" class="btn btn-danger">🗑️ Delete</button></form>
                       </div>
                     </td>
                   </tr>

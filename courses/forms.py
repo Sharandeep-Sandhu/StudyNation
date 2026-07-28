@@ -389,7 +389,8 @@ class StudentSignupForm(forms.Form):
         widget=forms.PasswordInput(
             attrs={"class": "form-control", "placeholder": "Create a password"}
         ),
-        min_length=6,
+        min_length=8,
+        help_text="At least 8 characters. Avoid common or overly simple passwords.",
     )
 
     def clean_username(self):
@@ -403,6 +404,19 @@ class StudentSignupForm(forms.Form):
         if User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("An account with this email already exists.")
         return email
+
+    def clean_password(self):
+        password = self.cleaned_data.get("password") or ""
+        # Run Django's AUTH_PASSWORD_VALIDATORS (similarity, common, numeric, etc.)
+        from django.contrib.auth.password_validation import validate_password
+
+        user = User(
+            username=self.cleaned_data.get("username") or "",
+            email=self.cleaned_data.get("email") or "",
+            first_name=(self.cleaned_data.get("full_name") or "").split(" ")[0],
+        )
+        validate_password(password, user=user)
+        return password
 
     def save(self):
         full_name = self.cleaned_data["full_name"].strip()

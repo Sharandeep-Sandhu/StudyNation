@@ -10,17 +10,45 @@ from courses.models import (
 
 
 class CourseCategorySerializer(serializers.ModelSerializer):
-    courses_count = serializers.SerializerMethodField()
+    courses_count = serializers.IntegerField(read_only=True, required=False)
 
     class Meta:
         model = CourseCategory
         fields = ["id", "name", "description", "icon", "courses_count", "created_at"]
 
-    def get_courses_count(self, obj):
-        return obj.courses.count()
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Prefer annotated value; fall back to a single count when missing
+        if data.get("courses_count") is None:
+            data["courses_count"] = getattr(
+                instance, "courses_count", None
+            )
+            if data["courses_count"] is None:
+                data["courses_count"] = instance.courses.count()
+        return data
 
 
 class QuestionSerializer(serializers.ModelSerializer):
+    """Public question payload — never exposes answer keys or solutions."""
+
+    class Meta:
+        model = Question
+        fields = [
+            "id",
+            "question_type",
+            "question_text",
+            "option_a",
+            "option_b",
+            "option_c",
+            "option_d",
+            "marks",
+            "order",
+        ]
+
+
+class QuestionStaffSerializer(serializers.ModelSerializer):
+    """Staff-only serializer including correct answers (not used by public API)."""
+
     class Meta:
         model = Question
         fields = [
@@ -40,7 +68,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 class QuestionBankSerializer(serializers.ModelSerializer):
     questions = QuestionSerializer(many=True, read_only=True)
-    question_count = serializers.SerializerMethodField()
+    question_count = serializers.IntegerField(read_only=True, required=False)
 
     class Meta:
         model = QuestionBank
@@ -54,8 +82,13 @@ class QuestionBankSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
-    def get_question_count(self, obj):
-        return obj.questions.count()
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get("question_count") is None:
+            data["question_count"] = getattr(instance, "question_count", None)
+            if data["question_count"] is None:
+                data["question_count"] = instance.questions.count()
+        return data
 
 
 class StudyMaterialSerializer(serializers.ModelSerializer):

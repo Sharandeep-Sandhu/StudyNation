@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load course_extras %}
 
 {% block title %}
   Practice: {{ exam.name }}
@@ -114,7 +115,7 @@
             {% with q=eq.question %}
               <div class="pq-question" data-index="{{ forloop.counter0 }}" style="{% if not forloop.first %}display:none;{% endif %}">
                 {% if q.topic %}<div class="pq-topic"><strong>Topic(s):</strong> {{ q.topic }}</div>{% endif %}
-                <div class="pq-question-text">{{ q.question_text|safe }}</div>
+                <div class="pq-question-text">{{ q.question_text|safe_html }}</div>
                 {% if q.equation_image_list and '<img' not in q.question_text %}
                   <div class="pq-equation-images">
                     <div class="pq-hint" style="margin-bottom:6px;">Embedded formulas from the original document:</div>
@@ -129,17 +130,17 @@
 
                 {% if q.question_type == 'single_choice' or q.question_type == 'true_false' %}
                   <div class="pq-options" data-qid="{{ q.id }}" data-mode="single">
-                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="selectOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe }}</span></div>{% endif %}
-                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="selectOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe }}</span></div>{% endif %}
-                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="selectOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe }}</span></div>{% endif %}
-                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="selectOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe }}</span></div>{% endif %}
+                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="selectOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html }}</span></div>{% endif %}
+                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="selectOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html }}</span></div>{% endif %}
+                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="selectOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html }}</span></div>{% endif %}
+                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="selectOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html }}</span></div>{% endif %}
                   </div>
                 {% elif q.question_type == 'multiple_choice' %}
                   <div class="pq-options" data-qid="{{ q.id }}" data-mode="multi">
-                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="toggleMultiOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe }}</span></div>{% endif %}
-                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="toggleMultiOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe }}</span></div>{% endif %}
-                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="toggleMultiOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe }}</span></div>{% endif %}
-                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="toggleMultiOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe }}</span></div>{% endif %}
+                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="toggleMultiOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html }}</span></div>{% endif %}
+                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="toggleMultiOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html }}</span></div>{% endif %}
+                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="toggleMultiOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html }}</span></div>{% endif %}
+                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="toggleMultiOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html }}</span></div>{% endif %}
                   </div>
                   <div class="pq-hint">Select all that apply.</div>
                 {% else %}

@@ -33,7 +33,7 @@
             {% if exam.question_count %}
               <a href="{% url 'courses:student_practice_start' exam.id %}" class="btn" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; background: #4caf7d;">▶ Practice</a>
             {% endif %}
-            <a href="{% url 'courses:student_delete_exam' exam.id %}" class="btn btn-secondary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;" onclick="return confirm('Delete this exam? This cannot be undone.');">🗑️ Delete</a>
+            <form method="post" action="{% url 'courses:student_delete_exam' exam.id %}" style="display:inline;" onsubmit="return confirm('Delete this exam? This cannot be undone.');">{% csrf_token %}<button type="submit" class="btn btn-secondary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;">🗑️ Delete</button></form>
           </div>
         </div>
       {% endfor %}

@@ -11,6 +11,7 @@ from .models import (
     DiscussionBoard,
     DiscussionPost,
     DiscussionReply,
+    ContactMessage,
 )
 
 
@@ -235,6 +236,15 @@ class DiscussionPostAdmin(admin.ModelAdmin):
         return obj.replies.count()
 
     reply_count.short_description = "Replies"
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ["subject", "name", "email", "category", "is_read", "created_at"]
+    list_filter = ["category", "is_read", "created_at"]
+    search_fields = ["subject", "name", "email", "message"]
+    ordering = ["-created_at"]
+    readonly_fields = ["created_at"]
 
 
 @admin.register(DiscussionReply)

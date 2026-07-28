@@ -1,3 +1,4 @@
+from functools import wraps
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -99,8 +100,10 @@ def admin_logout(request):
 
 
 def admin_required(view_func):
-    """Decorator to ensure user has admin profile"""
+    """Require login + admin_profile for all admin-panel views."""
 
+    @login_required(login_url="admin_panel:login")
+    @wraps(view_func)
     def wrapped_view(request, *args, **kwargs):
         if not hasattr(request.user, "admin_profile"):
             messages.error(request, "You do not have admin access")
@@ -111,11 +114,8 @@ def admin_required(view_func):
 
 
 # ==================== DASHBOARD ====================
-@login_required(login_url="admin_panel:login")
+@admin_required
 def dashboard(request):
-    if not hasattr(request.user, "admin_profile"):
-        return redirect("admin_panel:login")
-
     admin_user = request.user.admin_profile
     context = {
         "total_questions": Question.objects.count(),
@@ -141,7 +141,7 @@ def _serve_sample_file(filename: str, download_name: str | None = None):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def download_sample_template(request):
     """
     Serves the ready-to-use sample_questions.xlsx (project root) so admins
@@ -153,7 +153,7 @@ def download_sample_template(request):
     return _serve_sample_file("sample_questions.xlsx")
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def download_sample_docx(request):
     """
     Sample Word question paper (.docx) matching the importer format:
@@ -162,35 +162,32 @@ def download_sample_docx(request):
     return _serve_sample_file("sample_questions.docx")
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def download_sample_resource_docx(request):
     """Sample Word document for the Resources upload form (.doc/.docx)."""
     return _serve_sample_file("sample_resource.docx")
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def download_sample_blog_pdf(request):
     """Sample PDF for the Blog form PDF upload field."""
     return _serve_sample_file("sample_blog.pdf")
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def download_sample_blog_pptx(request):
     """Sample PowerPoint for the Blog form PPT/PPTX upload field."""
     return _serve_sample_file("sample_blog.pptx")
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def download_sample_blog_docx(request):
     """Sample Word doc for blog-related attachments (optional reference)."""
     return _serve_sample_file("sample_blog.docx")
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def csv_upload(request):
-    if not hasattr(request.user, "admin_profile"):
-        return redirect("admin_panel:login")
-
     admin_user = request.user.admin_profile
 
     if request.method == "POST":
@@ -257,9 +254,13 @@ def csv_upload(request):
                                 order=idx,
                             )
                             successful += 1
-                        except Exception as e:
+                        except (ValueError, TypeError, KeyError, OSError) as e:
                             failed += 1
-                            errors.append(f"Row {idx}: {str(e)}")
+                            errors.append(f"Row {idx}: {e}")
+                        except Exception as e:
+                            # Unexpected DB/import errors — still record, but log type
+                            failed += 1
+                            errors.append(f"Row {idx}: {type(e).__name__}: {e}")
 
                 csv_upload.successful_imports = successful
                 csv_upload.failed_imports = failed
@@ -301,8 +302,13 @@ def csv_upload(request):
                     + f"?question_bank={question_bank.id}"
                 )
 
+            except (OSError, ValueError, TypeError, UnicodeDecodeError) as e:
+                messages.error(request, f"Error processing file: {e}")
             except Exception as e:
-                messages.error(request, f"Error processing file: {str(e)}")
+                messages.error(
+                    request,
+                    f"Unexpected error processing file ({type(e).__name__}): {e}",
+                )
     else:
         form = CSVUploadForm()
 
@@ -314,7 +320,7 @@ def csv_upload(request):
 
 
 # ==================== MANUAL QUESTION (Question Wizard) ====================
-@login_required(login_url="admin_panel:login")
+@admin_required
 def manual_question(request):
     """Renders the Exam Builder 'Create Questions' wizard shell.
 
@@ -324,9 +330,6 @@ def manual_question(request):
     mirrors a 'select type -> set count & marks -> edit each question'
     flow instead of one static form for a single question.
     """
-    if not hasattr(request.user, "admin_profile"):
-        return redirect("admin_panel:login")
-
     selected_bank_id = request.GET.get("question_bank")
     question_banks = QuestionBank.objects.select_related("course").all()
     selected_bank = None
@@ -355,7 +358,7 @@ def manual_question(request):
     return render(request, "admin_panel/manual_question.html", context)
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 @require_POST
 def create_question_bank(request):
     """Create a new Question Bank (AJAX JSON or form POST).
@@ -489,16 +492,13 @@ def _serialize_question(question):
     }
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 @require_POST
 def question_wizard_bulk_create(request):
     """Step 2 of the wizard ('No. of Questions' / 'Marks per question' /
     negative & partial marking dialog): creates N blank placeholder
     Question rows of the chosen type ready for the editor modal to fill
     in one-by-one, and returns their ids in order."""
-    if not hasattr(request.user, "admin_profile"):
-        return JsonResponse({"error": "Unauthorized"}, status=403)
-
     try:
         payload = json.loads(request.body)
     except (ValueError, TypeError):
@@ -555,28 +555,22 @@ def question_wizard_bulk_create(request):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def question_wizard_data(request, question_id):
     """Fetches a single question's current data — used when the editor
     modal moves to Previous/Next or re-opens a question for editing."""
-    if not hasattr(request.user, "admin_profile"):
-        return JsonResponse({"error": "Unauthorized"}, status=403)
-
     question = get_object_or_404(
         Question.objects.prefetch_related("options"), id=question_id
     )
     return JsonResponse({"success": True, "question": _serialize_question(question)})
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 @require_POST
 def question_wizard_save(request, question_id):
     """Saves the question currently open in the editor modal, including
     its full set of dynamic answer options and tags. Called on 'Save' as
     well as before navigating via 'Previous' / 'Next'."""
-    if not hasattr(request.user, "admin_profile"):
-        return JsonResponse({"error": "Unauthorized"}, status=403)
-
     question = get_object_or_404(Question, id=question_id)
     try:
         payload = json.loads(request.body)
@@ -707,14 +701,11 @@ def question_wizard_save(request, question_id):
     return JsonResponse({"success": True, "question": _serialize_question(question)})
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 @require_POST
 def question_wizard_delete(request, question_id):
     """Deletes a question created in the wizard (e.g. an empty leftover
     placeholder, or via the 'Delete' action in the bank question list)."""
-    if not hasattr(request.user, "admin_profile"):
-        return JsonResponse({"error": "Unauthorized"}, status=403)
-
     question = get_object_or_404(Question, id=question_id)
     bank = question.question_bank
     question.delete()
@@ -724,11 +715,8 @@ def question_wizard_delete(request, question_id):
 
 
 # ==================== MANAGE QUESTIONS ====================
-@login_required(login_url="admin_panel:login")
+@admin_required
 def manage_questions(request):
-    if not hasattr(request.user, "admin_profile"):
-        return redirect("admin_panel:login")
-
     questions = (
         Question.objects.select_related("question_bank")
         .prefetch_related("options")
@@ -751,13 +739,13 @@ def manage_questions(request):
 
 
 # ==================== BLOG MANAGEMENT ====================
-@login_required(login_url="admin_panel:login")
+@admin_required
 def manage_blogs(request):
     blogs = Blog.objects.all().order_by("-created_at")
     return render(request, "admin_panel/manage_blogs.html", {"blogs": blogs})
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def create_blog(request):
     if request.method == "POST":
         form = BlogForm(request.POST, request.FILES)
@@ -772,7 +760,7 @@ def create_blog(request):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def edit_blog(request, blog_id):
     blog = get_object_or_404(Blog, id=blog_id)
     if request.method == "POST":
@@ -790,7 +778,8 @@ def edit_blog(request, blog_id):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
+@require_POST
 def delete_blog(request, blog_id):
     blog = get_object_or_404(Blog, id=blog_id)
     blog.delete()
@@ -799,7 +788,7 @@ def delete_blog(request, blog_id):
 
 
 # ==================== COURSE MANAGEMENT ====================
-@login_required(login_url="admin_panel:login")
+@admin_required
 def manage_courses(request):
     courses = Course.objects.all().order_by("-created_at")
     categories = CourseCategory.objects.all()
@@ -810,7 +799,7 @@ def manage_courses(request):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def create_course(request):
     if request.method == "POST":
         form = CourseForm(request.POST, request.FILES)
@@ -825,7 +814,7 @@ def create_course(request):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def edit_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     if request.method == "POST":
@@ -843,7 +832,8 @@ def edit_course(request, course_id):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
+@require_POST
 def delete_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     course.delete()
@@ -852,7 +842,7 @@ def delete_course(request, course_id):
 
 
 # ==================== CATEGORY MANAGEMENT ====================
-@login_required(login_url="admin_panel:login")
+@admin_required
 def manage_categories(request):
     categories = CourseCategory.objects.all().order_by("name")
     return render(
@@ -860,7 +850,7 @@ def manage_categories(request):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def create_category(request):
     if request.method == "POST":
         form = CategoryForm(request.POST)
@@ -877,7 +867,7 @@ def create_category(request):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def edit_category(request, category_id):
     category = get_object_or_404(CourseCategory, id=category_id)
     if request.method == "POST":
@@ -895,7 +885,8 @@ def edit_category(request, category_id):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
+@require_POST
 def delete_category(request, category_id):
     category = get_object_or_404(CourseCategory, id=category_id)
     category.delete()
@@ -904,7 +895,7 @@ def delete_category(request, category_id):
 
 
 # ==================== RESOURCE MANAGEMENT ====================
-@login_required(login_url="admin_panel:login")
+@admin_required
 def manage_resources(request):
     resources = Resource.objects.all().order_by("-created_at")
     return render(
@@ -912,7 +903,7 @@ def manage_resources(request):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def create_resource(request):
     if request.method == "POST":
         form = ResourceForm(request.POST, request.FILES)
@@ -927,7 +918,7 @@ def create_resource(request):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def edit_resource(request, resource_id):
     resource = get_object_or_404(Resource, id=resource_id)
     if request.method == "POST":
@@ -945,7 +936,8 @@ def edit_resource(request, resource_id):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
+@require_POST
 def delete_resource(request, resource_id):
     resource = get_object_or_404(Resource, id=resource_id)
     resource.delete()
@@ -954,14 +946,14 @@ def delete_resource(request, resource_id):
 
 
 # ==================== EXAM BUILDER ====================
-@login_required(login_url="admin_panel:login")
+@admin_required
 def manage_exams(request):
     """List of all exams the admin has built, with a 'New Exam' entry point."""
     exams = Exam.objects.select_related("category", "created_by").all()
     return render(request, "admin_panel/manage_exams.html", {"exams": exams})
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def create_exam(request):
     """Creates a blank draft exam and redirects straight into the builder."""
     default_category = CourseCategory.objects.first()
@@ -974,7 +966,7 @@ def create_exam(request):
     return redirect("admin_panel:edit_exam", exam_id=exam.id)
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def edit_exam(request, exam_id):
     """
     The main Exam Builder screen (mirrors the 'Edit Exam' UI):
@@ -1081,7 +1073,7 @@ def edit_exam(request, exam_id):
     return render(request, "admin_panel/edit_exam.html", context)
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 @require_POST
 def exam_toggle_question(request, exam_id):
     """AJAX endpoint: add/remove a single question from an exam (the '+' button)."""
@@ -1107,7 +1099,7 @@ def exam_toggle_question(request, exam_id):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 @require_POST
 def exam_reorder_questions(request, exam_id):
     """AJAX endpoint: persist drag-and-drop reordering from the Selected Questions tab."""
@@ -1124,7 +1116,7 @@ def exam_reorder_questions(request, exam_id):
     return JsonResponse({"ok": True})
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def exam_settings(request, exam_id):
     """Settings tab: duration, layout, shuffle, subject/category."""
     exam = get_object_or_404(Exam, id=exam_id)
@@ -1153,7 +1145,8 @@ def exam_settings(request, exam_id):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
+@require_POST
 def delete_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     exam.delete()
@@ -1162,7 +1155,7 @@ def delete_exam(request, exam_id):
 
 
 # ==================== BUILD QUESTION LIST (ADMIN) ====================
-@login_required(login_url="admin_panel:login")
+@admin_required
 def manage_question_lists(request):
     """List of all admin-curated question lists, with a 'New List' entry point."""
     lists = QuestionList.objects.filter(is_admin_curated=True).select_related(
@@ -1171,7 +1164,7 @@ def manage_question_lists(request):
     return render(request, "admin_panel/manage_question_lists.html", {"lists": lists})
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def create_question_list(request):
     """Creates a blank admin-curated question list and opens the builder."""
     default_category = CourseCategory.objects.first()
@@ -1184,7 +1177,7 @@ def create_question_list(request):
     return redirect("admin_panel:edit_question_list", list_id=qlist.id)
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 def edit_question_list(request, list_id):
     """
     Admin-curated Build Question List screen — same filter/select/reorder
@@ -1281,7 +1274,7 @@ def edit_question_list(request, list_id):
     return render(request, "admin_panel/edit_question_list.html", context)
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 @require_POST
 def question_list_toggle_question(request, list_id):
     """AJAX endpoint: add/remove a single question from a question list."""
@@ -1313,7 +1306,7 @@ def question_list_toggle_question(request, list_id):
     )
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
 @require_POST
 def question_list_reorder(request, list_id):
     """AJAX endpoint: persist drag-and-drop reordering."""
@@ -1332,7 +1325,8 @@ def question_list_reorder(request, list_id):
     return JsonResponse({"ok": True})
 
 
-@login_required(login_url="admin_panel:login")
+@admin_required
+@require_POST
 def delete_question_list(request, list_id):
     qlist = get_object_or_404(QuestionList, id=list_id, is_admin_curated=True)
     qlist.delete()

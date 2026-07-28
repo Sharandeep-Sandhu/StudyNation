@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
-from django.views.generic import TemplateView, ListView, DetailView
+from django.views.generic import TemplateView, ListView, DetailView, View
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -10,9 +10,12 @@ from django.db.models import Q, Count
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.core.paginator import Paginator
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST, require_http_methods
 from datetime import datetime
 import json
+import re
+import logging
 
 from .models import (
     Course,
@@ -30,7 +33,10 @@ from .models import (
     DiscussionBoard,
     DiscussionPost,
     DiscussionReply,
+    ContactMessage,
 )
+
+logger = logging.getLogger(__name__)
 from .forms import StudentSignupForm, StudentLoginForm, StudentExamForm, StudentQuestionListForm
 from .math_content import sanitize_math_content
 from .question_preview import question_preview_map
@@ -135,8 +141,74 @@ class BlogDetailView(DetailView):
 
 
 # ==================== OTHER PAGES ====================
-class ContactView(TemplateView):
+class ContactView(View):
+    """Public contact form — stores messages in the database."""
+
     template_name = "courses/contact.html"
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        name = (request.POST.get("name") or "").strip()
+        email = (request.POST.get("email") or "").strip()
+        phone = (request.POST.get("phone") or "").strip()
+        subject = (request.POST.get("subject") or "").strip()
+        category = (request.POST.get("category") or "general").strip()
+        message = (request.POST.get("message") or "").strip()
+
+        valid_categories = {c[0] for c in ContactMessage.CATEGORY_CHOICES}
+        if category not in valid_categories:
+            category = "general"
+
+        errors = []
+        if not name:
+            errors.append("Name is required.")
+        if not email:
+            errors.append("Email is required.")
+        if not subject:
+            errors.append("Subject is required.")
+        if not message:
+            errors.append("Message is required.")
+        if len(name) > 150:
+            errors.append("Name is too long.")
+        if len(subject) > 200:
+            errors.append("Subject is too long.")
+        if len(message) > 10000:
+            errors.append("Message is too long.")
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+            return render(
+                request,
+                self.template_name,
+                {
+                    "form_data": {
+                        "name": name,
+                        "email": email,
+                        "phone": phone,
+                        "subject": subject,
+                        "category": category,
+                        "message": message,
+                    }
+                },
+                status=400,
+            )
+
+        ContactMessage.objects.create(
+            name=name,
+            email=email,
+            phone=phone[:40],
+            subject=subject,
+            category=category,
+            message=message,
+        )
+        messages.success(
+            request,
+            "Thank you for your message! We will get back to you soon.",
+        )
+        return redirect("courses:contact")
 
 
 class PastPapersView(TemplateView):
@@ -216,8 +288,14 @@ def student_login(request):
             if user is not None and hasattr(user, "student_profile"):
                 login(request, user)
                 messages.success(request, f"Welcome back, {user.first_name or user.username}!")
-                next_url = request.GET.get("next") or "courses:student_exams"
-                return redirect(next_url)
+                next_url = request.GET.get("next") or request.POST.get("next") or ""
+                if next_url and url_has_allowed_host_and_scheme(
+                    next_url,
+                    allowed_hosts={request.get_host()},
+                    require_https=request.is_secure(),
+                ):
+                    return redirect(next_url)
+                return redirect("courses:student_exams")
             else:
                 messages.error(request, "Invalid username/email or password.")
     else:
@@ -316,11 +394,21 @@ def student_edit_exam(request, exam_id):
     if category_id:
         option_scope = option_scope.filter(question_bank__course__category_id=category_id)
 
+    # Single values_list query then split in Python (avoids N+1 ORM hits)
+    raw_topics = option_scope.exclude(topic="").values_list("topic", flat=True)
     topics = sorted(
-        {t.strip() for q in option_scope.values_list("topic", flat=True) for t in q.split(",") if t.strip()}
+        {
+            part.strip()
+            for blob in raw_topics
+            for part in (blob or "").split(",")
+            if part.strip()
+        }
     )
     years = sorted(
-        option_scope.exclude(year__isnull=True).values_list("year", flat=True).distinct(), reverse=True
+        option_scope.exclude(year__isnull=True)
+        .values_list("year", flat=True)
+        .distinct(),
+        reverse=True,
     )
 
     page_obj, per_page_label, per_page_choices = paginate(request, questions)
@@ -433,6 +521,7 @@ def student_exam_settings(request, exam_id):
 
 
 @student_required
+@require_POST
 def student_delete_exam(request, exam_id):
     exam = _get_owned_exam_or_404(request, exam_id)
     exam.delete()
@@ -441,6 +530,25 @@ def student_delete_exam(request, exam_id):
 
 
 # ==================== STUDENT: PRACTICE THIS EXAM ====================
+def _normalize_free_text(value: str) -> str:
+    """Normalize free-text answers for more reliable auto-grading."""
+    text = (value or "").strip().lower()
+    # Unify unicode dashes/quotes common in pasted answers
+    text = (
+        text.replace("\u2013", "-")
+        .replace("\u2014", "-")
+        .replace("\u2018", "'")
+        .replace("\u2019", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+    )
+    # Collapse whitespace
+    text = re.sub(r"\s+", " ", text)
+    # Drop trailing punctuation that rarely changes meaning
+    text = text.rstrip(" .;,:")
+    return text
+
+
 def _grade_answer(question, given):
     """
     Best-effort auto-grading for a single question's submitted answer.
@@ -452,10 +560,8 @@ def _grade_answer(question, given):
     multiple_choice            : exact set-of-letters match, comma-separated
     numerical                  : numeric match with small tolerance, falls
                                   back to exact text if not parseable as a number
-    structured / matching      : best-effort exact text match (trimmed,
-                                  case-insensitive) — free-text questions
-                                  can't be reliably auto-graded, so treat
-                                  this as a rough approximation only
+    structured / matching      : normalized free-text match (case/whitespace/
+                                  light punctuation tolerant)
     """
     given = (given or "").strip()
     correct = (question.correct_answer or "").strip()
@@ -479,11 +585,19 @@ def _grade_answer(question, given):
         is_correct = bool(given_set) and given_set == correct_set
     elif qtype == "numerical":
         try:
-            is_correct = abs(float(given) - float(correct)) < 1e-6
+            # Prefer question numeric_tolerance when set
+            tol = float(getattr(question, "numeric_tolerance", None) or 1e-6)
+            is_correct = abs(float(given) - float(correct)) <= max(tol, 1e-9)
         except (TypeError, ValueError):
-            is_correct = given.lower() == correct.lower()
-    else:  # structured, matching
-        is_correct = given.lower() == correct.lower()
+            is_correct = _normalize_free_text(given) == _normalize_free_text(correct)
+    else:  # structured, matching, fill_blank, etc.
+        given_n = _normalize_free_text(given)
+        correct_n = _normalize_free_text(correct)
+        is_correct = given_n == correct_n
+        # Accept any of several correct alternatives separated by "||"
+        if not is_correct and "||" in correct:
+            alts = {_normalize_free_text(a) for a in correct.split("||") if a.strip()}
+            is_correct = given_n in alts
 
     return is_correct, (marks if is_correct else 0)
 
@@ -505,13 +619,18 @@ def student_practice_start(request, exam_id):
         messages.error(request, "Add some questions to this exam before practicing.")
         return redirect("courses:student_edit_exam", exam_id=exam.id)
 
+    # Server-authoritative start time (not trustable from the client alone)
+    started_at = timezone.now()
+    request.session[f"practice_start_{exam.id}"] = started_at.isoformat()
+    request.session.modified = True
+
     return render(
         request,
         "courses/student_practice_quiz.html",
         {
             "exam": exam,
             "exam_questions": exam_questions,
-            "started_at_iso": timezone.now().isoformat(),
+            "started_at_iso": started_at.isoformat(),
         },
     )
 
@@ -528,15 +647,32 @@ def student_practice_submit(request, exam_id):
         messages.error(request, "This exam has no questions to grade.")
         return redirect("courses:student_edit_exam", exam_id=exam.id)
 
-    started_at_raw = request.POST.get("started_at")
-    try:
-        started_at = datetime.fromisoformat(started_at_raw)
-        if timezone.is_naive(started_at):
-            started_at = timezone.make_aware(started_at)
-    except (TypeError, ValueError):
-        started_at = timezone.now()
+    session_key = f"practice_start_{exam.id}"
+    started_at = None
+    started_at_session = request.session.pop(session_key, None)
+    if started_at_session:
+        try:
+            started_at = datetime.fromisoformat(started_at_session)
+            if timezone.is_naive(started_at):
+                started_at = timezone.make_aware(started_at)
+        except (TypeError, ValueError):
+            started_at = None
+
+    # Fall back to POST value only if session missing (tab restore); still clamp
+    if started_at is None:
+        started_at_raw = request.POST.get("started_at")
+        try:
+            started_at = datetime.fromisoformat(started_at_raw)
+            if timezone.is_naive(started_at):
+                started_at = timezone.make_aware(started_at)
+        except (TypeError, ValueError):
+            started_at = timezone.now()
+
     submitted_at = timezone.now()
-    time_taken = max(0, int((submitted_at - started_at).total_seconds()))
+    # Never allow a client clock in the future or absurdly long sessions (> 12h)
+    if started_at > submitted_at:
+        started_at = submitted_at
+    time_taken = max(0, min(int((submitted_at - started_at).total_seconds()), 12 * 3600))
 
     with transaction.atomic():
         attempt = ExamAttempt.objects.create(
@@ -674,11 +810,21 @@ def student_edit_question_list(request, list_id):
     if category_id:
         option_scope = option_scope.filter(question_bank__course__category_id=category_id)
 
+    # Single values_list query then split in Python (avoids N+1 ORM hits)
+    raw_topics = option_scope.exclude(topic="").values_list("topic", flat=True)
     topics = sorted(
-        {t.strip() for q in option_scope.values_list("topic", flat=True) for t in q.split(",") if t.strip()}
+        {
+            part.strip()
+            for blob in raw_topics
+            for part in (blob or "").split(",")
+            if part.strip()
+        }
     )
     years = sorted(
-        option_scope.exclude(year__isnull=True).values_list("year", flat=True).distinct(), reverse=True
+        option_scope.exclude(year__isnull=True)
+        .values_list("year", flat=True)
+        .distinct(),
+        reverse=True,
     )
 
     page_obj, per_page_label, per_page_choices = paginate(request, questions)
@@ -759,6 +905,7 @@ def student_question_list_reorder(request, list_id):
 
 
 @student_required
+@require_POST
 def student_delete_question_list(request, list_id):
     qlist = _get_owned_question_list_or_404(request, list_id)
     qlist.delete()
@@ -926,6 +1073,7 @@ def discussion_edit_reply(request, reply_id):
 
 
 @login_required
+@require_POST
 def discussion_delete_reply(request, reply_id):
     """Author can permanently delete their own reply."""
     reply = get_object_or_404(DiscussionReply, pk=reply_id)
@@ -935,12 +1083,8 @@ def discussion_delete_reply(request, reply_id):
         messages.error(request, "You can only delete your own replies.")
         return _public_chat_redirect(post)
 
-    if request.method == "POST":
-        reply_id_saved = reply.id
-        if reply.image:
-            reply.image.delete(save=False)
-        reply.delete()
-        messages.success(request, "🗑️ Your reply has been deleted.")
-        return _public_chat_redirect(post)
-
-    return _public_chat_redirect(post, f"reply-{reply.id}")
+    if reply.image:
+        reply.image.delete(save=False)
+    reply.delete()
+    messages.success(request, "🗑️ Your reply has been deleted.")
+    return _public_chat_redirect(post)

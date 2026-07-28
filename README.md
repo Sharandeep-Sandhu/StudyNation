@@ -244,25 +244,27 @@ The application uses custom CSS with a modern design featuring:
 
 ## Deployment
 
-### Vercel Deployment
+### Render (recommended)
 
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Configure environment variables in Vercel dashboard
-4. Set build command: `pip install -r requirements.txt && python manage.py collectstatic`
-5. Set start command: `gunicorn config.wsgi`
+Full guide: **[RENDER_DEPLOY.md](RENDER_DEPLOY.md)**
+
+Quick path:
+
+1. Push this repo to GitHub
+2. On [Render](https://dashboard.render.com) → **New** → **Blueprint** → select the repo (`render.yaml`)
+3. Or create a **Web Service** + **PostgreSQL** manually:
+   - Build: `chmod +x build.sh && ./build.sh`
+   - Start: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120`
+   - Env: `DEBUG=False`, `SECRET_KEY=...`, `DATABASE_URL` from Postgres
+4. Create a superuser via Render Shell: `python manage.py createsuperuser`
 
 ### Docker Deployment
 
-Create a `Dockerfile`:
-
-```dockerfile
-FROM python:3.11
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["gunicorn", "config.wsgi"]
+```bash
+docker compose up --build
+# or
+docker build -t studynation .
+docker run -p 8000:8000 -e SECRET_KEY=... -e DATABASE_URL=... studynation
 ```
 
 ## Contributing

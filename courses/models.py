@@ -193,14 +193,14 @@ class Question(models.Model):
     order = models.IntegerField(default=0)
 
     # Single/Multiple choice options
-    option_a = models.CharField(max_length=500, blank=True)
-    option_b = models.CharField(max_length=500, blank=True)
-    option_c = models.CharField(max_length=500, blank=True)
-    option_d = models.CharField(max_length=500, blank=True)
+    option_a = models.CharField(max_length=5000, blank=True)
+    option_b = models.CharField(max_length=5000, blank=True)
+    option_c = models.CharField(max_length=5000, blank=True)
+    option_d = models.CharField(max_length=5000, blank=True)
 
     # Correct answer(s)
     correct_answer = models.CharField(
-        max_length=500, blank=True, help_text="For choice: A/B/C/D or A,B for multiple"
+        max_length=5000, blank=True, help_text="For choice: A/B/C/D or A,B for multiple"
     )
     marks = models.IntegerField(default=1)
     explanation = models.TextField(
@@ -724,3 +724,34 @@ class DiscussionReply(models.Model):
         if not self.updated_at or not self.created_at:
             return False
         return (self.updated_at - self.created_at).total_seconds() > 2
+
+
+class ContactMessage(models.Model):
+    """Messages submitted via the public Contact Us form."""
+
+    CATEGORY_CHOICES = [
+        ("general", "General Inquiry"),
+        ("technical", "Technical Support"),
+        ("course", "Course Related"),
+        ("partnership", "Partnership"),
+        ("feedback", "Feedback"),
+    ]
+
+    name = models.CharField(max_length=150)
+    email = models.EmailField()
+    phone = models.CharField(max_length=40, blank=True)
+    subject = models.CharField(max_length=200)
+    category = models.CharField(
+        max_length=20, choices=CATEGORY_CHOICES, default="general"
+    )
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Contact Message"
+        verbose_name_plural = "Contact Messages"
+
+    def __str__(self):
+        return f"{self.subject} from {self.name}"

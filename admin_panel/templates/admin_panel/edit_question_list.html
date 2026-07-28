@@ -375,11 +375,43 @@
         return /<\/?[a-z][\s\S]*>/i.test(str || '') || /&lt;\/?[a-z]/i.test(str || '');
       }
 
-      /** Allow <img class="eq-inline"> / MathJax HTML; escape plain text only. */
+      function sanitizeRichHtml(html) {
+        const allowed = {P:1,BR:1,B:1,STRONG:1,I:1,EM:1,U:1,SUB:1,SUP:1,SPAN:1,DIV:1,UL:1,OL:1,LI:1,IMG:1,TABLE:1,THEAD:1,TBODY:1,TR:1,TH:1,TD:1,HR:1,CODE:1,PRE:1,BLOCKQUOTE:1,H1:1,H2:1,H3:1,H4:1};
+        const allowedAttrs = {IMG:{SRC:1,ALT:1,CLASS:1,WIDTH:1,HEIGHT:1,STYLE:1},SPAN:{CLASS:1,STYLE:1},DIV:{CLASS:1,STYLE:1},P:{CLASS:1,STYLE:1},TD:{COLSPAN:1,ROWSPAN:1,CLASS:1,STYLE:1},TH:{COLSPAN:1,ROWSPAN:1,CLASS:1,STYLE:1},TABLE:{CLASS:1,STYLE:1}};
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        (function clean(node) {
+          Array.from(node.childNodes).forEach(function (child) {
+            if (child.nodeType !== 1) return;
+            const tag = child.tagName;
+            if (!allowed[tag]) {
+              while (child.firstChild) node.insertBefore(child.firstChild, child);
+              node.removeChild(child);
+              return;
+            }
+            Array.from(child.attributes || []).forEach(function (attr) {
+              const name = attr.name.toUpperCase();
+              if (name.indexOf('ON') === 0 || !((allowedAttrs[tag] || {})[name] || name === 'CLASS')) {
+                child.removeAttribute(attr.name);
+                return;
+              }
+              if (name === 'SRC') {
+                const v = (attr.value || '').trim().toLowerCase();
+                if (v.indexOf('javascript:') === 0 || v.indexOf('data:') === 0 || v.indexOf('vbscript:') === 0) child.removeAttribute(attr.name);
+              }
+              if (name === 'STYLE' && /expression|url\s*\(/i.test(attr.value || '')) child.removeAttribute(attr.name);
+            });
+            clean(child);
+          });
+        })(wrap);
+        return wrap.innerHTML;
+      }
+
+      /** Allow safe <img class="eq-inline"> / MathJax HTML; escape plain text only. */
       function formatRichText(str) {
         if (str == null || str === '') return '';
         str = decodeHtmlEntities(String(str));
-        if (looksLikeHtml(str) || /question_equations\//i.test(str)) return str;
+        if (looksLikeHtml(str) || /question_equations\//i.test(str)) return sanitizeRichHtml(str);
         return escapeHtml(str).replace(/\n/g, '<br>');
       }
 

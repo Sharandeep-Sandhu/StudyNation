@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load course_extras %}
 
 {% block title %}
   Results: {{ exam.name }}
@@ -102,7 +103,7 @@
           {% if ans.is_correct is None %}Unanswered{% elif ans.is_correct %}Correct{% else %}Wrong{% endif %}
         </span>
       </div>
-      <div class="pr-review-text">{{ ans.question.question_text|safe }}</div>
+      <div class="pr-review-text">{{ ans.question.question_text|safe_html }}</div>
       {% if ans.question.equation_image_list and '<img' not in ans.question.question_text %}
         <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
           {% for img in ans.question.equation_image_list %}
@@ -111,11 +112,11 @@
         </div>
       {% endif %}
       <div class="pr-review-answers">
-        <div><strong>Your answer:</strong> {{ ans.given_answer|default:"—"|safe }}</div>
-        <div><strong>Correct answer:</strong> {{ ans.question.correct_answer|default:"—"|safe }}</div>
+        <div><strong>Your answer:</strong> {{ ans.given_answer|default:"—"|safe_html }}</div>
+        <div><strong>Correct answer:</strong> {{ ans.question.correct_answer|default:"—"|safe_html }}</div>
       </div>
       {% if ans.question.explanation %}
-        <div class="pr-review-answers" style="margin-top: 6px;"><div><strong>Explanation:</strong> {{ ans.question.explanation|safe }}</div></div>
+        <div class="pr-review-answers" style="margin-top: 6px;"><div><strong>Explanation:</strong> {{ ans.question.explanation|safe_html }}</div></div>
       {% endif %}
     </div>
   {% endfor %}

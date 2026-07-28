@@ -1,6 +1,7 @@
 from django import template
 
 from courses.math_content import render_chat_math, sanitize_math_content
+from courses.html_sanitize import safe_html
 
 register = template.Library()
 
@@ -15,6 +16,12 @@ def chat_math(value):
 def sanitize_math(value):
     """Return cleaned plain text (for edit forms / previews)."""
     return sanitize_math_content(value)
+
+
+@register.filter(name="safe_html")
+def safe_html_filter(value):
+    """Render user/admin HTML with XSS allowlist (equation images, basic formatting)."""
+    return safe_html(value)
 
 
 @register.filter

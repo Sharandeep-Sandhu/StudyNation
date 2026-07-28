@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Create Questions - Exam Builder</title>
+    {% load course_extras %}
     {% include 'partials/mathjax.html' %}
     {% include 'partials/equation_inline_css.html' %}
     <style>
@@ -297,7 +298,7 @@
                   <div class="q-list-item" id="q-item-{{ q.id }}">
                     <div class="q-top">
                       <div class="q-stem question-text">
-                        <span class="q-index">{% if page_obj %}{{ page_obj.start_index|add:forloop.counter0 }}{% else %}{{ forloop.counter }}{% endif %}.</span>{% if q.question_text %}{{ q.question_text|safe }}{% else %}(untitled question){% endif %}
+                        <span class="q-index">{% if page_obj %}{{ page_obj.start_index|add:forloop.counter0 }}{% else %}{{ forloop.counter }}{% endif %}.</span>{% if q.question_text %}{{ q.question_text|safe_html }}{% else %}(untitled question){% endif %}
                       </div>
                       <div class="q-badges">
                         <span>{{ q.get_question_type_display }}</span>
@@ -309,15 +310,15 @@
                       {% if opts %}
                         <div class="q-options">
                           {% for opt in opts %}
-                            <div class="opt eb-opt-text {% if opt.is_correct %}correct{% endif %}">{% if opt.is_correct %}✓{% else %}○{% endif %} {{ opt.text|safe }}</div>
+                            <div class="opt eb-opt-text {% if opt.is_correct %}correct{% endif %}">{% if opt.is_correct %}✓{% else %}○{% endif %} {{ opt.text|safe_html }}</div>
                           {% endfor %}
                         </div>
                       {% elif q.option_a or q.option_b %}
                         <div class="q-options">
-                          {% if q.option_a %}<div class="opt eb-opt-text">A. {{ q.option_a|safe }}</div>{% endif %}
-                          {% if q.option_b %}<div class="opt eb-opt-text">B. {{ q.option_b|safe }}</div>{% endif %}
-                          {% if q.option_c %}<div class="opt eb-opt-text">C. {{ q.option_c|safe }}</div>{% endif %}
-                          {% if q.option_d %}<div class="opt eb-opt-text">D. {{ q.option_d|safe }}</div>{% endif %}
+                          {% if q.option_a %}<div class="opt eb-opt-text">A. {{ q.option_a|safe_html }}</div>{% endif %}
+                          {% if q.option_b %}<div class="opt eb-opt-text">B. {{ q.option_b|safe_html }}</div>{% endif %}
+                          {% if q.option_c %}<div class="opt eb-opt-text">C. {{ q.option_c|safe_html }}</div>{% endif %}
+                          {% if q.option_d %}<div class="opt eb-opt-text">D. {{ q.option_d|safe_html }}</div>{% endif %}
                         </div>
                       {% endif %}
                     {% endwith %}

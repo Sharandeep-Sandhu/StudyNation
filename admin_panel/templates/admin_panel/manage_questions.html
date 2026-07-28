@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Questions - Admin Panel</title>
+    {% load course_extras %}
     {% include 'partials/mathjax.html' %}
     {% include 'partials/equation_inline_css.html' %}
     <style>
@@ -211,7 +212,7 @@
             {% if questions %}
                 {% for question in questions %}
                 <div class="question-item" id="q-row-{{ question.id }}">
-                    <div class="question-text"><span style="color:#667eea;font-weight:700;margin-right:6px;">{{ page_obj.start_index|add:forloop.counter0 }}.</span>{{ question.question_text|safe }}</div>
+                    <div class="question-text"><span style="color:#667eea;font-weight:700;margin-right:6px;">{{ page_obj.start_index|add:forloop.counter0 }}.</span>{{ question.question_text|safe_html }}</div>
                     <div class="question-meta">
                         <span class="type-badge">{{ question.get_question_type_display }}</span>
                         <span>📚 {{ question.question_bank.title }}</span>
@@ -224,22 +225,22 @@
                         <div class="q-options">
                           {% for opt in opts %}
                             <div class="opt {% if opt.is_correct %}correct{% endif %}">
-                              {% if opt.is_correct %}✓{% else %}○{% endif %} {{ opt.text|safe }}
+                              {% if opt.is_correct %}✓{% else %}○{% endif %} {{ opt.text|safe_html }}
                             </div>
                           {% endfor %}
                         </div>
                       {% elif question.option_a or question.option_b %}
                         <div class="q-options">
-                          {% if question.option_a %}<div class="opt">A. {{ question.option_a|safe }}</div>{% endif %}
-                          {% if question.option_b %}<div class="opt">B. {{ question.option_b|safe }}</div>{% endif %}
-                          {% if question.option_c %}<div class="opt">C. {{ question.option_c|safe }}</div>{% endif %}
-                          {% if question.option_d %}<div class="opt">D. {{ question.option_d|safe }}</div>{% endif %}
+                          {% if question.option_a %}<div class="opt">A. {{ question.option_a|safe_html }}</div>{% endif %}
+                          {% if question.option_b %}<div class="opt">B. {{ question.option_b|safe_html }}</div>{% endif %}
+                          {% if question.option_c %}<div class="opt">C. {{ question.option_c|safe_html }}</div>{% endif %}
+                          {% if question.option_d %}<div class="opt">D. {{ question.option_d|safe_html }}</div>{% endif %}
                         </div>
                       {% endif %}
                     {% endwith %}
                     {% if question.correct_answer %}
                     <div style="font-size: 12px; color: #667eea; margin-bottom: 6px;">
-                        <strong>Answer:</strong> {{ question.correct_answer|safe }}
+                        <strong>Answer:</strong> {{ question.correct_answer|safe_html }}
                     </div>
                     {% endif %}
                     {# Only show reference strip when equations are NOT already inlined (avoids huge duplicate images) #}

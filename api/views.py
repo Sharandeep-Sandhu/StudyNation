@@ -25,7 +25,9 @@ from .serializers import (
 class CourseCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     """API endpoint for course categories"""
 
-    queryset = CourseCategory.objects.all()
+    queryset = CourseCategory.objects.annotate(
+        courses_count=models.Count("courses")
+    ).all()
     serializer_class = CourseCategorySerializer
 
 
@@ -119,9 +121,11 @@ class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class QuestionBankViewSet(viewsets.ReadOnlyModelViewSet):
-    """API endpoint for question banks"""
+    """API endpoint for question banks (questions without answer keys)."""
 
-    queryset = QuestionBank.objects.prefetch_related("questions").all()
+    queryset = QuestionBank.objects.prefetch_related("questions").annotate(
+        question_count=models.Count("questions")
+    ).all()
     serializer_class = QuestionBankSerializer
 
     def get_queryset(self):
@@ -132,9 +136,9 @@ class QuestionBankViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class QuestionViewSet(viewsets.ReadOnlyModelViewSet):
-    """API endpoint for questions"""
+    """Public questions API — does not expose correct answers or explanations."""
 
-    queryset = Question.objects.all()
+    queryset = Question.objects.select_related("question_bank").all()
     serializer_class = QuestionSerializer
 
     def get_queryset(self):

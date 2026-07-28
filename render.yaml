@@ -1,0 +1,36 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy: Dashboard → New → Blueprint → connect this repo
+services:
+  - type: web
+    name: studynation
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.11"
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: studynation-db
+          property: connectionString
+      # ALLOWED_HOSTS / CSRF are auto-handled via RENDER + RENDER_EXTERNAL_HOSTNAME
+      # Optional custom domain example:
+      # - key: ALLOWED_HOSTS
+      #   value: studynation.com,www.studynation.com,.onrender.com
+      # - key: CSRF_TRUSTED_ORIGINS
+      #   value: https://studynation.com,https://www.studynation.com
+
+databases:
+  - name: studynation-db
+    plan: free
+    databaseName: studynation
+    user: studynation

@@ -3,6 +3,7 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=1
+ENV DEBUG=False
 
 # Set work directory
 WORKDIR /app
@@ -22,11 +23,13 @@ COPY . .
 # Create media and static directories
 RUN mkdir -p /app/media /app/staticfiles
 
-# Run migrations and collect static files
-RUN python manage.py collectstatic --noinput
+# Entrypoint runs migrate + collectstatic at container start (needs live DB)
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-# Expose port
+# Render sets PORT at runtime; document default for local runs
 EXPOSE 8000
 
-# Run gunicorn
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
+# Default: gunicorn on $PORT (see docker-entrypoint.sh). Override CMD if needed.
+CMD []
