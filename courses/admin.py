@@ -203,7 +203,7 @@ class ResourceAdmin(admin.ModelAdmin):
     )
 
 
-# ==================== PUBLIC CHAT / DISCUSSION BOARDS ====================
+# ==================== QUESTION FORM (TOPIC BOARDS) ====================
 @admin.register(DiscussionBoard)
 class DiscussionBoardAdmin(admin.ModelAdmin):
     list_display = ["name", "slug", "order", "post_count"]
@@ -214,7 +214,7 @@ class DiscussionBoardAdmin(admin.ModelAdmin):
     def post_count(self, obj):
         return obj.posts.count()
 
-    post_count.short_description = "Posts"
+    post_count.short_description = "Questions"
 
 
 class DiscussionReplyInline(admin.TabularInline):

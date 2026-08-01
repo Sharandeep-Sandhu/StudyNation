@@ -617,12 +617,12 @@ class QuestionListItem(models.Model):
         return f"{self.question_list.name} - {self.question}"
 
 
-# ==================== PUBLIC DISCUSSION / CHAT BOARD ====================
+# ==================== QUESTION FORM (TOPIC BOARDS) ====================
 class DiscussionBoard(models.Model):
-    """A category/board on the Public Chat page, e.g. 'First Year Families'.
+    """A topic/category board on the Question Form page.
 
-    Shown in the left-hand 'My Discussion Boards' sidebar. Posts belong to
-    one board so families can browse by topic instead of one giant feed.
+    Shown in the left-hand sidebar. Questions belong to one board so users
+    can browse by topic instead of one giant feed.
     """
 
     name = models.CharField(max_length=100)
@@ -634,8 +634,8 @@ class DiscussionBoard(models.Model):
 
     class Meta:
         ordering = ["order", "name"]
-        verbose_name = "Discussion Board"
-        verbose_name_plural = "Discussion Boards"
+        verbose_name = "Question Form Board"
+        verbose_name_plural = "Question Form Boards"
 
     def __str__(self):
         return self.name
@@ -653,7 +653,7 @@ class DiscussionBoard(models.Model):
 
 
 class DiscussionPost(models.Model):
-    """Public Q&A / Chat board posts (questions) by logged-in users on the Public Chat page"""
+    """A question submitted via the Question Form by a logged-in user."""
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="discussion_posts"
@@ -664,17 +664,17 @@ class DiscussionPost(models.Model):
         null=True,
         blank=True,
         related_name="posts",
-        help_text="Which discussion board this post belongs to",
+        help_text="Which topic board this question belongs to",
     )
     title = models.CharField(
-        max_length=200, help_text="Short title for the question or topic"
+        max_length=200, help_text="Short title for the question"
     )
     content = models.TextField(help_text="Detailed question or problem description")
     image = models.ImageField(
         upload_to="discussion_images/posts/",
         blank=True,
         null=True,
-        help_text="Optional image attached to the post",
+        help_text="Optional image attached to the question",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -684,15 +684,15 @@ class DiscussionPost(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Discussion Post"
-        verbose_name_plural = "Discussion Posts"
+        verbose_name = "Question Form Question"
+        verbose_name_plural = "Question Form Questions"
 
     def __str__(self):
         return f"{self.title} by {self.user.username}"
 
 
 class DiscussionReply(models.Model):
-    """Replies, opinions, or solutions to discussion posts"""
+    """Replies or solutions to a Question Form question."""
 
     post = models.ForeignKey(
         DiscussionPost, on_delete=models.CASCADE, related_name="replies"
@@ -712,8 +712,8 @@ class DiscussionReply(models.Model):
 
     class Meta:
         ordering = ["created_at"]
-        verbose_name = "Discussion Reply"
-        verbose_name_plural = "Discussion Replies"
+        verbose_name = "Question Form Reply"
+        verbose_name_plural = "Question Form Replies"
 
     def __str__(self):
         return f"Reply by {self.user.username} to '{self.post.title[:40]}'"

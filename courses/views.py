@@ -913,14 +913,13 @@ def student_delete_question_list(request, list_id):
     return redirect("courses:student_question_lists")
 
 
-# ==================== PUBLIC CHAT (DISCUSSION BOARDS) ====================
-class PublicChatView(TemplateView):
-    """Dedicated Public Chat page: sidebar of discussion boards + a feed of
-    posts (each with its own visible comment thread and reply box) for the
-    currently selected board.
+# ==================== QUESTION FORM (DISCUSSION BOARDS) ====================
+class QuestionFormView(TemplateView):
+    """Dedicated Question Form page: sidebar of topic boards + a feed of
+    questions (each with its own reply thread) for the selected board.
     """
 
-    template_name = "courses/public_chat.html"
+    template_name = "courses/question_form.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -957,14 +956,17 @@ class PublicChatView(TemplateView):
         return context
 
 
+# Backward-compatible alias
+PublicChatView = QuestionFormView
+
+
 @login_required
 def discussion_create_post(request):
-    """Logged-in users can post a new question/topic to a Public Chat board.
+    """Logged-in users submit a new question via the Question Form.
 
-    Each question becomes its own separate thread with its own comments.
-    An optional image can be attached. After posting, we send the user
-    back to the Public Chat page, on the right board, with the new post
-    visible.
+    Each question becomes its own thread with replies. An optional image
+    can be attached. After posting, the user returns to the Question Form
+    page on the correct board with the new question visible.
     """
     if request.method == "POST":
         title = request.POST.get("title", "").strip()
@@ -983,27 +985,27 @@ def discussion_create_post(request):
                 image=image,
             )
             messages.success(
-                request, "✅ Your post has been added to the Public Chat!"
+                request, "✅ Your question has been submitted!"
             )
-            redirect_url = reverse("courses:public_chat")
+            redirect_url = reverse("courses:question_form")
             params = f"open={post.id}"
             if board:
                 params += f"&board={board.slug}"
             return redirect(f"{redirect_url}?{params}#post-{post.id}")
         else:
-            messages.error(request, "Title and details are required.")
+            messages.error(request, "Title and question details are required.")
 
-        redirect_url = reverse("courses:public_chat")
+        redirect_url = reverse("courses:question_form")
         if board:
             return redirect(f"{redirect_url}?board={board.slug}")
         return redirect(redirect_url)
 
-    return redirect("courses:public_chat")
+    return redirect("courses:question_form")
 
 
-def _public_chat_redirect(post, fragment=""):
-    """Return to the public chat, focused on the given post."""
-    redirect_url = reverse("courses:public_chat")
+def _question_form_redirect(post, fragment=""):
+    """Return to the Question Form page, focused on the given question."""
+    redirect_url = reverse("courses:question_form")
     params = f"open={post.id}"
     if post.board:
         params += f"&board={post.board.slug}"
@@ -1011,14 +1013,17 @@ def _public_chat_redirect(post, fragment=""):
     return redirect(f"{redirect_url}?{params}#{anchor}")
 
 
+# Backward-compatible alias
+_public_chat_redirect = _question_form_redirect
+
+
 @login_required
 def discussion_add_reply(request, post_id):
-    """Logged-in users comment on one specific Public Chat post.
+    """Logged-in users reply to a specific question on the Question Form.
 
-    `post_id` identifies exactly which post is being replied to, so a
-    reply always lands on the post the user actually opened/selected —
-    never on the newest post on the board. An optional image can be
-    attached to the comment too.
+    `post_id` identifies exactly which question is being replied to, so a
+    reply always lands on the question the user selected. An optional image
+    can be attached.
     """
     post = get_object_or_404(DiscussionPost, pk=post_id)
     if request.method == "POST":
@@ -1028,11 +1033,11 @@ def discussion_add_reply(request, post_id):
             DiscussionReply.objects.create(
                 post=post, user=request.user, content=content, image=image
             )
-            messages.success(request, "💬 Your comment has been added!")
+            messages.success(request, "✅ Your reply has been added!")
         else:
-            messages.error(request, "Write something or attach an image to comment.")
+            messages.error(request, "Write something or attach an image to reply.")
 
-    return _public_chat_redirect(post)
+    return _question_form_redirect(post)
 
 
 @login_required
@@ -1043,10 +1048,10 @@ def discussion_edit_reply(request, reply_id):
 
     if reply.user_id != request.user.id:
         messages.error(request, "You can only edit your own replies.")
-        return _public_chat_redirect(post, f"reply-{reply.id}")
+        return _question_form_redirect(post, f"reply-{reply.id}")
 
     if request.method != "POST":
-        return _public_chat_redirect(post, f"reply-{reply.id}")
+        return _question_form_redirect(post, f"reply-{reply.id}")
 
     content = sanitize_math_content(request.POST.get("content", ""))
     image = request.FILES.get("image")
@@ -1054,12 +1059,12 @@ def discussion_edit_reply(request, reply_id):
 
     if not content and not image and not reply.image:
         messages.error(request, "Reply cannot be empty.")
-        return _public_chat_redirect(post, f"reply-{reply.id}")
+        return _question_form_redirect(post, f"reply-{reply.id}")
 
     # Allow empty text only if an image remains or is newly uploaded
     if not content and not image and (clear_image or not reply.image):
         messages.error(request, "Write something or keep/attach an image.")
-        return _public_chat_redirect(post, f"reply-{reply.id}")
+        return _question_form_redirect(post, f"reply-{reply.id}")
 
     reply.content = content
     if clear_image and reply.image:
@@ -1069,7 +1074,7 @@ def discussion_edit_reply(request, reply_id):
         reply.image = image
     reply.save()
     messages.success(request, "✅ Your reply has been updated.")
-    return _public_chat_redirect(post, f"reply-{reply.id}")
+    return _question_form_redirect(post, f"reply-{reply.id}")
 
 
 @login_required
@@ -1081,10 +1086,10 @@ def discussion_delete_reply(request, reply_id):
 
     if reply.user_id != request.user.id:
         messages.error(request, "You can only delete your own replies.")
-        return _public_chat_redirect(post)
+        return _question_form_redirect(post)
 
     if reply.image:
         reply.image.delete(save=False)
     reply.delete()
     messages.success(request, "🗑️ Your reply has been deleted.")
-    return _public_chat_redirect(post)
+    return _question_form_redirect(post)

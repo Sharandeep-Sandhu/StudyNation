@@ -2,7 +2,7 @@
 {% load course_extras %}
 
 {% block title %}
-  Public Chat - Study Nation
+  Question Form - Study Nation
 {% endblock %}
 
 {% block extra_css %}
@@ -545,9 +545,9 @@
 {% block content %}
   <div class="pc-wrap">
 
-    <!-- ==================== SIDEBAR: MY DISCUSSION BOARDS ==================== -->
+    <!-- ==================== SIDEBAR: TOPIC BOARDS ==================== -->
     <aside class="pc-sidebar">
-      <div class="pc-sidebar-header">My Discussion Boards</div>
+      <div class="pc-sidebar-header">Question Topics</div>
       {% for board in boards %}
         <a
           href="?board={{ board.slug }}"
@@ -557,7 +557,7 @@
           <span class="pc-board-chevron">›</span>
         </a>
       {% empty %}
-        <div style="padding: 18px 20px; color: #9ca3af; font-size: 0.9rem;">No boards yet.</div>
+        <div style="padding: 18px 20px; color: #9ca3af; font-size: 0.9rem;">No topics yet.</div>
       {% endfor %}
     </aside>
 
@@ -575,10 +575,10 @@
 
         {% if user.is_authenticated %}
           <button type="button" class="pc-create-btn" onclick="pcOpenModal()">
-            <span style="font-size: 1.1rem;">⊕</span> Create Post
+            <span style="font-size: 1.1rem;">⊕</span> Ask a Question
           </button>
         {% else %}
-          <a href="{% url 'courses:student_login' %}" class="pc-create-btn">Log in to post</a>
+          <a href="{% url 'courses:student_login' %}" class="pc-create-btn">Log in to ask a question</a>
         {% endif %}
       </div>
 
@@ -589,7 +589,7 @@
             <div class="pc-avatar">{{ post.user.username|slice:':1'|upper }}</div>
             <div>
               <div class="pc-post-author">{{ post.user.username }}</div>
-              <div class="pc-post-meta">Posted {{ post.created_at|timesince }} ago</div>
+              <div class="pc-post-meta">Asked {{ post.created_at|timesince }} ago</div>
             </div>
           </div>
 
@@ -665,7 +665,7 @@
                 </div>
               </div>
             {% empty %}
-              <div class="pc-no-comments">No comments yet — be the first to reply.</div>
+              <div class="pc-no-comments">No replies yet — be the first to answer.</div>
             {% endfor %}
 
             {% if user.is_authenticated %}
@@ -687,7 +687,7 @@
                     rows="1"
                     data-eq-field
                     data-eq-preview="0"
-                    placeholder="Write a comment... (∑ for equations)"
+                    placeholder="Write your answer... (∑ for equations)"
                     onfocus="this.rows=2"
                   ></textarea>
                   <div class="pc-composer-actions">
@@ -703,7 +703,7 @@
                     </label>
                     <button type="button" class="pc-eq-btn eqed-btn" data-eq-target="#pcReplyInput{{ post.id }}" onmousedown="event.preventDefault()">∑ Math Type</button>
                     <span class="pc-attach-filename"></span>
-                    <button type="submit" class="pc-composer-submit">Reply</button>
+                    <button type="submit" class="pc-composer-submit">Submit Answer</button>
                   </div>
                 </div>
               </form>
@@ -713,54 +713,54 @@
       {% empty %}
         <div class="pc-empty-state">
           {% if active_board %}
-            No posts in {{ active_board.name }} yet.
+            No questions in {{ active_board.name }} yet.
           {% else %}
-            No posts yet.
+            No questions yet.
           {% endif %}
-          {% if user.is_authenticated %}Be the first to start a conversation!{% endif %}
+          {% if user.is_authenticated %}Be the first to ask a question!{% endif %}
         </div>
       {% endfor %}
 
       {% if not user.is_authenticated %}
         <div class="pc-login-note">
-          <a href="{% url 'courses:student_login' %}">Log in</a> to post questions, comment, and share images.
+          <a href="{% url 'courses:student_login' %}">Log in</a> to submit questions, answer others, and share images.
         </div>
       {% endif %}
     </div>
   </div>
 
-  <!-- ==================== CREATE POST MODAL ==================== -->
+  <!-- ==================== ASK QUESTION MODAL ==================== -->
   {% if user.is_authenticated %}
     <div class="pc-modal-overlay" id="pcModalOverlay">
       <div class="pc-modal">
         <div class="pc-modal-head">
-          <span class="pc-modal-title">Create Post</span>
+          <span class="pc-modal-title">Ask a Question</span>
           <button type="button" class="pc-modal-close" onclick="pcCloseModal()">&times;</button>
         </div>
 
         <form method="post" enctype="multipart/form-data" action="{% url 'courses:discussion_create' %}">
           {% csrf_token %}
 
-          <label class="pc-field-label">Board</label>
+          <label class="pc-field-label">Topic</label>
           <select name="board" class="pc-field">
             {% for board in boards %}
               <option value="{{ board.id }}" {% if active_board and board.id == active_board.id %}selected{% endif %}>{{ board.name }}</option>
             {% endfor %}
           </select>
 
-          <label class="pc-field-label">Title</label>
+          <label class="pc-field-label">Question title</label>
           <input type="text" id="pcModalTitle" name="title" class="pc-field" data-eq-field data-eq-preview="0" placeholder="e.g. How do I solve $x^2-4=0$?" required />
           <button type="button" class="pc-eq-btn eqed-btn" style="margin-top: -8px; margin-bottom: 12px;" data-eq-target="#pcModalTitle" onmousedown="event.preventDefault()">∑ Math Type in title</button>
 
-          <label class="pc-field-label">Details</label>
-          <textarea id="pcModalContent" name="content" rows="4" class="pc-field" data-eq-field data-eq-preview="1" placeholder="Share something with the community... (use ∑ for equations)" required></textarea>
+          <label class="pc-field-label">Question details</label>
+          <textarea id="pcModalContent" name="content" rows="4" class="pc-field" data-eq-field data-eq-preview="1" placeholder="Describe your question clearly... (use ∑ for equations)" required></textarea>
           <button type="button" class="pc-eq-btn eqed-btn" style="margin-top: -12px; margin-bottom: 14px;" data-eq-target="#pcModalContent" onmousedown="event.preventDefault()">∑ Math Type</button>
 
           <label class="pc-field-label">Image (optional)</label>
           <img id="pcModalImagePreview" class="pc-modal-image-preview" alt="Preview" />
           <input type="file" name="image" accept="image/*" class="pc-field" onchange="pcPreviewModalImage(this)" />
 
-          <button type="submit" class="pc-modal-submit">Post <span style="font-size: 1.1rem;">→</span></button>
+          <button type="submit" class="pc-modal-submit">Submit Question <span style="font-size: 1.1rem;">→</span></button>
         </form>
       </div>
     </div>
