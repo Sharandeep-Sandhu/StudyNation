@@ -1,92 +1,114 @@
 {% comment %}
-Shared admin sidebar — ordered by dependency:
-
-  1. Dashboard (overview)
-  2. Foundation: Categories → Courses → Resources
-  3. Questions: Upload → Add → Manage
-  4. Assessments: Exam Builder → Question Lists
-  5. Content: Blogs
-  6. Back to Site
+Shared admin sidebar — cool glass-style nav matching brand purple.
 
 Pass active: dashboard, manage_categories, manage_courses, manage_resources,
 csv_upload, manual_question, manage_questions, manage_exams,
-manage_question_lists, manage_blogs
+manage_question_lists, manage_past_papers, manage_blogs
 {% endcomment %}
 <aside class="sidebar" id="adminSidebar" aria-label="Admin navigation">
   <div class="sidebar-header">
-    <img
-      src="/media/study_nation_logo.jpeg"
-      alt="Study Nation"
-      class="sidebar-logo"
-    />
-    <h2>Study Nation</h2>
-    <p>Admin Panel v1.0</p>
+    <a class="sidebar-brand" href="{% url 'admin_panel:dashboard' %}">
+      <img
+        src="/media/study_nation_logo.jpeg"
+        alt="Study Nation"
+        class="sidebar-logo"
+      />
+      <div class="sidebar-brand-text">
+        <strong>Study Nation</strong>
+        <span>Admin live</span>
+      </div>
+    </a>
   </div>
 
   <nav class="sidebar-nav-wrap" aria-label="Main">
     <ul class="sidebar-nav">
-      {# ---- 1. Overview ---- #}
       <li class="sidebar-section-label">Overview</li>
       <li>
-        <a href="{% url 'admin_panel:dashboard' %}" class="{% if active == 'dashboard' %}active{% endif %}">📊 Dashboard</a>
+        <a href="{% url 'admin_panel:dashboard' %}" class="{% if active == 'dashboard' %}active{% endif %}">
+          <span class="nav-ico">◈</span> Dashboard
+        </a>
       </li>
 
-      {# ---- 2. Foundation (create these first) ---- #}
       <li class="sidebar-section-label">Setup</li>
       <li>
-        <a href="{% url 'admin_panel:manage_categories' %}" class="{% if active == 'manage_categories' %}active{% endif %}">📁 Manage Categories</a>
+        <a href="{% url 'admin_panel:manage_categories' %}" class="{% if active == 'manage_categories' %}active{% endif %}">
+          <span class="nav-ico">▦</span> Categories
+        </a>
       </li>
       <li>
-        <a href="{% url 'admin_panel:manage_courses' %}" class="{% if active == 'manage_courses' %}active{% endif %}">📚 Manage Courses</a>
+        <a href="{% url 'admin_panel:manage_courses' %}" class="{% if active == 'manage_courses' %}active{% endif %}">
+          <span class="nav-ico">▣</span> Courses
+        </a>
       </li>
       <li>
-        <a href="{% url 'admin_panel:manage_resources' %}" class="{% if active == 'manage_resources' %}active{% endif %}">📦 Manage Resources</a>
+        <a href="{% url 'admin_panel:manage_resources' %}" class="{% if active == 'manage_resources' %}active{% endif %}">
+          <span class="nav-ico">◫</span> Resources
+        </a>
       </li>
 
-      {# ---- 3. Questions (need courses / banks) ---- #}
       <li class="sidebar-section-label">Questions</li>
       <li>
-        <a href="{% url 'admin_panel:csv_upload' %}" class="{% if active == 'csv_upload' %}active{% endif %}">📤 Upload Questions</a>
+        <a href="{% url 'admin_panel:csv_upload' %}" class="{% if active == 'csv_upload' %}active{% endif %}">
+          <span class="nav-ico">↑</span> Upload Questions
+        </a>
       </li>
       <li>
-        <a href="{% url 'admin_panel:manual_question' %}" class="{% if active == 'manual_question' %}active{% endif %}">➕ Add Question</a>
+        <a href="{% url 'admin_panel:manual_question' %}" class="{% if active == 'manual_question' %}active{% endif %}">
+          <span class="nav-ico">＋</span> Add Question
+        </a>
       </li>
       <li>
-        <a href="{% url 'admin_panel:manage_questions' %}" class="{% if active == 'manage_questions' %}active{% endif %}">❓ Manage Questions</a>
+        <a href="{% url 'admin_panel:manage_questions' %}" class="{% if active == 'manage_questions' %}active{% endif %}">
+          <span class="nav-ico">◉</span> Manage Questions
+        </a>
       </li>
 
-      {# ---- 4. Assessments (need questions) ---- #}
       <li class="sidebar-section-label">Assessments</li>
       <li>
-        <a href="{% url 'admin_panel:manage_exams' %}" class="{% if active == 'manage_exams' %}active{% endif %}">🧾 Exam Builder</a>
+        <a href="{% url 'admin_panel:manage_exams' %}" class="{% if active == 'manage_exams' %}active{% endif %}">
+          <span class="nav-ico">☰</span> Exam Builder
+        </a>
       </li>
       <li>
-        <a href="{% url 'admin_panel:manage_question_lists' %}" class="{% if active == 'manage_question_lists' %}active{% endif %}">📋 Build Question List</a>
+        <a href="{% url 'admin_panel:manage_question_lists' %}" class="{% if active == 'manage_question_lists' %}active{% endif %}">
+          <span class="nav-ico">▤</span> Question Lists
+        </a>
       </li>
 
-      {# ---- 5. Site content ---- #}
       <li class="sidebar-section-label">Content</li>
       <li>
-        <a href="{% url 'admin_panel:manage_past_papers' %}" class="{% if active == 'manage_past_papers' %}active{% endif %}">📄 Past Papers</a>
+        <a href="{% url 'admin_panel:manage_past_papers' %}" class="{% if active == 'manage_past_papers' %}active{% endif %}">
+          <span class="nav-ico">▥</span> Past Papers
+        </a>
       </li>
       <li>
-        <a href="{% url 'admin_panel:manage_blogs' %}" class="{% if active == 'manage_blogs' %}active{% endif %}">📝 Manage Blogs</a>
+        <a href="{% url 'admin_panel:manage_blogs' %}" class="{% if active == 'manage_blogs' %}active{% endif %}">
+          <span class="nav-ico">✎</span> Blogs
+        </a>
       </li>
 
-      {# ---- 6. Exit ---- #}
       <li class="sidebar-section-label">Site</li>
       <li>
-        <a href="/">🏠 Back to Site</a>
+        <a href="/">
+          <span class="nav-ico">↗</span> Back to Site
+        </a>
       </li>
     </ul>
   </nav>
 
   <div class="sidebar-footer">
-    {% if admin_user %}
-      <p class="sidebar-user">{{ admin_user.user.username }}</p>
-    {% elif user.is_authenticated %}
-      <p class="sidebar-user">{{ user.username }}</p>
-    {% endif %}
-    <a href="{% url 'admin_panel:logout' %}" class="logout-btn">Logout</a>
+    <div class="sidebar-user">
+      <strong>
+        {% if admin_user %}
+          {{ admin_user.user.username }}
+        {% elif user.is_authenticated %}
+          {{ user.username }}
+        {% else %}
+          Admin
+        {% endif %}
+      </strong>
+      <span>Administrator</span>
+    </div>
+    <a href="{% url 'admin_panel:logout' %}" class="logout-btn">Log Out →</a>
   </div>
 </aside>
