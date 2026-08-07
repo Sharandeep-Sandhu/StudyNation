@@ -124,6 +124,13 @@ class QuestionBank(models.Model):
         related_name="question_banks",
     )
     title = models.CharField(max_length=200)
+    subject_title = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Subject title for this bank, e.g. Mathematics, Physics",
+    )
     description = models.TextField(blank=True)
     total_questions = models.IntegerField(default=0)
     difficulty = models.CharField(
@@ -137,7 +144,19 @@ class QuestionBank(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
+        if self.subject_title:
+            return f"{self.course.title} - {self.subject_title} - {self.title}"
         return f"{self.course.title} - {self.title}"
+
+    @property
+    def display_label(self):
+        """Label used in admin dropdowns and lists."""
+        parts = [self.title]
+        if self.subject_title:
+            parts.append(self.subject_title)
+        if self.course_id:
+            parts.append(self.course.title)
+        return " · ".join(parts)
 
 
 class Question(models.Model):
@@ -419,6 +438,77 @@ class Resource(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
+        return self.title
+
+
+class PastPaper(models.Model):
+    """Full previous-year exam paper (PDF) for the public Past Papers browser.
+
+    Users filter by category, subject, and year, pick a paper on the left,
+    and view the full PDF on the right — not individual Q&A items.
+    """
+
+    SEASON_CHOICES = [
+        ("", "—"),
+        ("summer", "Summer"),
+        ("winter", "Winter"),
+        ("specimen", "Specimen"),
+        ("march", "March"),
+        ("june", "June"),
+        ("november", "November"),
+    ]
+
+    title = models.CharField(
+        max_length=255,
+        help_text="Display name, e.g. 'Mathematics 0606/23 Summer 2024'",
+    )
+    category = models.ForeignKey(
+        CourseCategory,
+        on_delete=models.PROTECT,
+        related_name="past_papers",
+        help_text="Category / curriculum (e.g. JEE, CIE IGCSE)",
+    )
+    subject = models.CharField(
+        max_length=150,
+        help_text="Subject name, e.g. Mathematics, Physics",
+        db_index=True,
+    )
+    year = models.PositiveIntegerField(db_index=True, help_text="Exam year, e.g. 2024")
+    season = models.CharField(
+        max_length=20, choices=SEASON_CHOICES, blank=True, default=""
+    )
+    paper_code = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Optional code, e.g. 0606/23",
+    )
+    pdf = models.FileField(
+        upload_to="past_papers/",
+        validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
+        help_text="Full exam paper PDF",
+    )
+    description = models.TextField(blank=True)
+    is_published = models.BooleanField(
+        default=True,
+        help_text="Unpublished papers are hidden from the public Past Papers page",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-year", "subject", "title"]
+        verbose_name = "Past Paper"
+        verbose_name_plural = "Past Papers"
+
+    def __str__(self):
+        return f"{self.title} ({self.year})"
+
+    @property
+    def list_label(self):
+        """Compact label for the left-hand paper list."""
+        parts = [p for p in [self.paper_code, self.title] if p]
+        if self.season:
+            return f"{self.title}"
         return self.title
 
 

@@ -1,185 +1,417 @@
 {% extends 'base.html' %}
 
 {% block title %}
-  MCQ Past Papers - Learn Hub
+  Past Papers - Study Nation
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .pp-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 0 2rem;
+  }
+
+  .pp-header {
+    background: #fff;
+    border: 1px solid #e8ecf4;
+    border-radius: 14px;
+    padding: 1.35rem 1.5rem 1.15rem;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    margin-bottom: 1rem;
+  }
+
+  .pp-header h1 {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: 0.02em;
+    margin: 0 0 0.35rem;
+  }
+
+  .pp-header p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    max-width: 720px;
+  }
+
+  .pp-filters {
+    background: #f5f7ff;
+    border: 1px solid #e4e9f8;
+    border-radius: 12px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1rem;
+    display: grid;
+    grid-template-columns: 1.2fr 1.2fr 1fr auto;
+    gap: 0.85rem;
+    align-items: end;
+  }
+
+  .pp-field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.35rem;
+  }
+
+  .pp-field select {
+    width: 100%;
+    border: 1px solid #d0d7e8;
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.92rem;
+    background: #fff;
+    color: #1e293b;
+    font-family: inherit;
+  }
+
+  .pp-field select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  }
+
+  .pp-submit {
+    border: none;
+    border-radius: 8px;
+    background: #4f46e5;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.92rem;
+    padding: 0.7rem 1.25rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+
+  .pp-submit:hover {
+    background: #4338ca;
+  }
+
+  .pp-workspace {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 0;
+    min-height: 620px;
+    background: #fff;
+    border: 1px solid #e8ecf4;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  }
+
+  .pp-list-pane {
+    border-right: 1px solid #e8ecf4;
+    background: #fafbff;
+    display: flex;
+    flex-direction: column;
+    min-height: 620px;
+    max-height: 78vh;
+  }
+
+  .pp-list-head {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #e8ecf4;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: #fff;
+  }
+
+  .pp-list {
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .pp-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    border-bottom: 1px solid #eef1f7;
+    background: transparent;
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.12s ease;
+  }
+
+  .pp-item:hover {
+    background: #f0f3ff;
+  }
+
+  .pp-item.is-active {
+    background: #eef2ff;
+    border-left: 3px solid #4f46e5;
+    padding-left: calc(1rem - 3px);
+  }
+
+  .pp-item-title {
+    font-size: 0.9rem;
+    font-weight: 650;
+    color: #1e293b;
+    line-height: 1.35;
+    margin-bottom: 0.25rem;
+  }
+
+  .pp-item-meta {
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+
+  .pp-empty-list {
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .pp-viewer {
+    display: flex;
+    flex-direction: column;
+    min-height: 620px;
+    max-height: 78vh;
+    background: #fff;
+  }
+
+  .pp-viewer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1.15rem;
+    border-bottom: 1px solid #e8ecf4;
+    flex-wrap: wrap;
+  }
+
+  .pp-viewer-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  .pp-viewer-sub {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+  }
+
+  .pp-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #4f46e5;
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    border-radius: 8px;
+    padding: 0.45rem 0.8rem;
+  }
+
+  .pp-download:hover {
+    background: #e0e7ff;
+  }
+
+  .pp-frame-wrap {
+    flex: 1;
+    min-height: 0;
+    background: #f1f5f9;
+  }
+
+  .pp-frame-wrap iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 560px;
+    border: 0;
+    display: block;
+    background: #fff;
+  }
+
+  .pp-placeholder {
+    height: 100%;
+    min-height: 560px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    text-align: center;
+    padding: 2rem;
+    gap: 0.5rem;
+  }
+
+  .pp-placeholder i {
+    font-size: 2.2rem;
+    color: #cbd5e1;
+    margin-bottom: 0.4rem;
+  }
+
+  .pp-placeholder strong {
+    color: #64748b;
+    font-size: 1rem;
+  }
+
+  .pp-placeholder span {
+    font-size: 0.9rem;
+    max-width: 360px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 900px) {
+    .pp-filters {
+      grid-template-columns: 1fr 1fr;
+    }
+    .pp-workspace {
+      grid-template-columns: 1fr;
+    }
+    .pp-list-pane {
+      max-height: 280px;
+      min-height: 220px;
+      border-right: none;
+      border-bottom: 1px solid #e8ecf4;
+    }
+    .pp-viewer,
+    .pp-frame-wrap iframe,
+    .pp-placeholder {
+      min-height: 480px;
+      max-height: none;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .pp-filters {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-  <main class="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-slate-50">
-    <!-- Hero Section -->
-    {% comment %} <section class="pt-20 pb-16 px-4 sm:px-6 lg:px-8">
-      <div class="max-w-6xl mx-auto text-center">
-        <h1 class="text-5xl sm:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-purple-900 mb-6">MCQ Past Papers</h1>
-        <p class="text-xl text-slate-600 max-w-2xl mx-auto mb-8">Access comprehensive collections of past exam papers and MCQs from leading exam boards including Cambridge IGCSE, A-Levels, IB, and more.</p>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <input type="text" id="search-papers" placeholder="Search papers, topics, or subjects..." class="px-6 py-3 rounded-lg border-2 border-purple-200 focus:border-purple-600 focus:outline-none w-full sm:w-96 transition-colors" />
-          <button class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all duration-300 hover:shadow-lg">Search</button>
-        </div>
-      </div>
-    </section> {% endcomment %}
+<div class="pp-page">
+  <div class="pp-header">
+    <h1>PAST PAPERS</h1>
+    <p>
+      Filter by category, subject, and year, then open a previous-year question paper from the list.
+      The full exam PDF appears on the right.
+    </p>
+  </div>
 
-    <div style="
-      margin: 0rem 0;
-      margin-bottom: 6rem;
-      background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
-      padding: 0rem;
-      border-radius: 20px;
-      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
-      ">
-      <div style="text-align: center; margin-bottom: 2.5rem">
-        <h2 style="color: #333; font-size: 2.2rem; margin-bottom: 0.5rem">🛠️ BUILD & PRACTICE</h2>
-        <p style="color: #666; font-size: 1.1rem">Create, practice, and master with our powerful tools</p>
-      </div>
-
-      <div style="
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 2rem;
-      ">
-        <!-- Feature 1 -->
-        <div class="card" style="text-align: center; padding: 2rem 1.5rem">
-          <div style="font-size: 3rem; margin-bottom: 1rem">📝</div>
-          <h3 style="color: #667eea; margin-bottom: 1rem">Build Question Paper</h3>
-          <p style="color: #666; line-height: 1.6; margin-bottom: 1.5rem">Create a paper by category, question type, and difficulty — then practice. Answers unlock after you submit.</p>
-          {% if can_use_exam_builder %}
-            <a href="{% url 'courses:student_exams' %}" class="btn">Start Building →</a>
-          {% else %}
-            <a href="{% url 'courses:student_signup' %}" class="btn">Start Building →</a>
-          {% endif %}
-        </div>
-
-        <!-- Feature 2 -->
-        <div class="card" style="text-align: center; padding: 2rem 1.5rem">
-          <div style="font-size: 3rem; margin-bottom: 1rem">📚</div>
-          <h3 style="color: #667eea; margin-bottom: 1rem">Golden Notes & Free Worksheets</h3>
-          <p style="color: #666; line-height: 1.6; margin-bottom: 1.5rem">Access premium study notes and free topical practice sheets.</p>
-          <a href="/resources/" class="btn">Explore Resources →</a>
-        </div>
-      </div>
+  <form class="pp-filters" method="get" action="{% url 'courses:past_papers' %}">
+    <div class="pp-field">
+      <label for="ppCategory">Category</label>
+      <select id="ppCategory" name="category">
+        <option value="">All categories</option>
+        {% for cat in categories %}
+          <option value="{{ cat.id }}" {% if filter_category == cat.id|stringformat:"s" %}selected{% endif %}>
+            {{ cat.name }}
+          </option>
+        {% endfor %}
+      </select>
     </div>
 
-    <!-- Features Section -->
-    <section class="py-16 px-4 sm:px-6 lg:px-8">
-      <div class="max-w-6xl mx-auto">
-        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-12 text-center">Why Choose Our Past Papers?</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
-            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
-              <i class="fi fi-sr-document text-purple-600 text-xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-3">Comprehensive Coverage</h3>
-            <p class="text-slate-600">Access hundreds of past papers from multiple exam boards covering all major subjects and topics.</p>
-          </div>
+    <div class="pp-field">
+      <label for="ppSubject">Subject</label>
+      <select id="ppSubject" name="subject">
+        <option value="">All subjects</option>
+        {% for s in subjects %}
+          <option value="{{ s }}" {% if filter_subject == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
-            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
-              <i class="fi fi-sr-check-circle text-purple-600 text-xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-3">Mark Schemes Included</h3>
-            <p class="text-slate-600">Every paper includes detailed mark schemes to help you understand model answers and grading criteria.</p>
-          </div>
+    <div class="pp-field">
+      <label for="ppYear">Year of exam</label>
+      <select id="ppYear" name="year">
+        <option value="">All years</option>
+        {% for y in years %}
+          <option value="{{ y }}" {% if filter_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
-            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
-              <i class="fi fi-sr-lightbulb text-purple-600 text-xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-3">Topical Organization</h3>
-            <p class="text-slate-600">Papers organized by topic making it easy to focus on specific subjects and prepare systematically.</p>
-          </div>
+    <button type="submit" class="pp-submit">
+      <i class="fas fa-search"></i> Search
+    </button>
+  </form>
 
-          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
-            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
-              <i class="fi fi-sr-calendar text-purple-600 text-xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-3">Yearly Collections</h3>
-            <p class="text-slate-600">Complete yearly past papers from 2000 onwards, allowing you to track your progress over time.</p>
-          </div>
-
-          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
-            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
-              <i class="fi fi-sr-computer text-purple-600 text-xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-3">Online Exam Builder</h3>
-            <p class="text-slate-600">Pick questions by topic, paper, year, and season to build your own custom exam, organised and saved to your Study Nation account.</p>
-          </div>
-
-          <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300">
-            <div class="bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
-              <i class="fi fi-sr-chart-line text-purple-600 text-xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-3">Progress Tracking</h3>
-            <p class="text-slate-600">Monitor your performance with detailed analytics and insights to identify areas needing improvement.</p>
-          </div>
-        </div>
+  <div class="pp-workspace">
+    <aside class="pp-list-pane">
+      <div class="pp-list-head">
+        Previous year papers
+        {% if papers %} · {{ papers|length }}{% endif %}
       </div>
-    </section>
-
-    <!-- Question Types Section -->
-    <section class="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-purple-600 to-purple-800">
-      <div class="max-w-6xl mx-auto text-center">
-        <h2 class="text-3xl sm:text-4xl font-bold text-white mb-12">Multiple Question Types</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {% for qtype in question_types %}
-            <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 hover:bg-opacity-20 transition-all duration-300">
-              <div class="text-4xl mb-3">
-                {% if qtype == 'SINGLE' %}
-                  📝
-                {% elif qtype == 'MULTIPLE' %}
-                  ✓
-                {% elif qtype == 'NUMERICAL' %}
-                  🔢
-                {% elif qtype == 'TRUE_FALSE' %}
-                  ⚖️
-                {% else %}
-                  🔗
-                {% endif %}
-              </div>
-              <h3 class="text-lg font-semibold text-white">
-                {% if qtype == 'SINGLE' %}
-                  Single Choice
-                {% elif qtype == 'MULTIPLE' %}
-                  Multiple Choice
-                {% elif qtype == 'NUMERICAL' %}
-                  Numerical
-                {% elif qtype == 'TRUE_FALSE' %}
-                  True/False
-                {% else %}
-                  Matching
-                {% endif %}
-              </h3>
+      <div class="pp-list">
+        {% for paper in papers %}
+          <a
+            class="pp-item {% if selected_paper and selected_paper.id == paper.id %}is-active{% endif %}"
+            href="?category={{ filter_category }}&subject={{ filter_subject|urlencode }}&year={{ filter_year }}&paper={{ paper.id }}"
+          >
+            <div class="pp-item-title">
+              {% if paper.paper_code %}{{ paper.paper_code }} · {% endif %}{{ paper.title }}
             </div>
-          {% endfor %}
-        </div>
-      </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="py-16 px-4 sm:px-6 lg:px-8">
-      <div class="max-w-4xl mx-auto">
-        <div class="bg-gradient-to-r from-purple-600 to-purple-800 rounded-2xl p-12 text-center">
-          <h2 class="text-3xl sm:text-4xl font-bold text-white mb-6">Start Your Exam Preparation Today</h2>
-          <p class="text-lg text-purple-100 mb-8">Join thousands of students using our platform to ace their exams with comprehensive past papers and targeted practice.</p>
-          <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            {% if can_use_exam_builder %}
-              <a href="{% url 'courses:student_exams' %}" class="px-8 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-purple-50 transition-all duration-300">Open Exam Builder</a>
+            <div class="pp-item-meta">
+              {{ paper.subject }} · {{ paper.year }}{% if paper.season %} · {{ paper.get_season_display }}{% endif %}
+            </div>
+          </a>
+        {% empty %}
+          <div class="pp-empty-list">
+            {% if has_filters %}
+              No past papers match these filters.<br />Try another category, subject, or year.
             {% else %}
-              <a href="{% url 'courses:student_signup' %}" class="px-8 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-purple-50 transition-all duration-300">Try the Exam Builder</a>
+              No past paper PDFs uploaded yet.<br />
+              Admins can add them under <strong>Admin Panel → Past Papers</strong>.
             {% endif %}
-            <a href="{% url 'courses:contact' %}" class="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-lg transition-all duration-300">Get in Touch</a>
           </div>
-        </div>
+        {% endfor %}
       </div>
-    </section>
-  </main>
+    </aside>
 
-  <script>
-    // Simple search functionality
-    document.getElementById('search-papers').addEventListener('keypress', function (e) {
-      if (e.key === 'Enter') {
-        const query = this.value
-        console.log('[v0] Searching for:', query)
-        // Can be extended to filter papers
-      }
-    })
-  </script>
+    <section class="pp-viewer">
+      {% if selected_paper and selected_paper.pdf %}
+        <div class="pp-viewer-head">
+          <div>
+            <div class="pp-viewer-title">{{ selected_paper.title }}</div>
+            <div class="pp-viewer-sub">
+              {{ selected_paper.category.name }} · {{ selected_paper.subject }} · {{ selected_paper.year }}
+              {% if selected_paper.season %} · {{ selected_paper.get_season_display }}{% endif %}
+            </div>
+          </div>
+          <a class="pp-download" href="{{ selected_paper.pdf.url }}" target="_blank" rel="noopener">
+            <i class="fas fa-download"></i> Download PDF
+          </a>
+        </div>
+        <div class="pp-frame-wrap">
+          <iframe
+            title="{{ selected_paper.title }}"
+            src="{{ selected_paper.pdf.url }}#view=FitH"
+          ></iframe>
+        </div>
+      {% else %}
+        <div class="pp-placeholder">
+          <i class="fas fa-file-pdf"></i>
+          <strong>Select a past paper</strong>
+          <span>
+            {% if papers %}
+              Choose a paper from the list on the left to view the full exam PDF here.
+            {% else %}
+              Use the filters above, then pick a paper to open its PDF.
+            {% endif %}
+          </span>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
 {% endblock %}

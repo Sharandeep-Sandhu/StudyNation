@@ -67,6 +67,9 @@ manage_question_lists, manage_blogs
       {# ---- 5. Site content ---- #}
       <li class="sidebar-section-label">Content</li>
       <li>
+        <a href="{% url 'admin_panel:manage_past_papers' %}" class="{% if active == 'manage_past_papers' %}active{% endif %}">📄 Past Papers</a>
+      </li>
+      <li>
         <a href="{% url 'admin_panel:manage_blogs' %}" class="{% if active == 'manage_blogs' %}active{% endif %}">📝 Manage Blogs</a>
       </li>
 

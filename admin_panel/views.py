@@ -22,6 +22,7 @@ from .forms import (
     CategoryForm,
     ResourceForm,
     ExamForm,
+    PastPaperForm,
 )
 from .models import AdminUser, CSVUpload, ManualQuestionLog
 from courses.models import (
@@ -36,6 +37,7 @@ from courses.models import (
     ExamQuestion,
     QuestionList,
     QuestionListItem,
+    PastPaper,
 )
 from courses.question_preview import question_preview_map as _question_preview_map
 from courses.pagination_utils import paginate, pagination_context
@@ -403,6 +405,12 @@ def manual_question(request):
         bank_questions = page_obj.object_list
         pag_extra = pagination_context(request, page_obj, per_page_label, choices)
 
+    bank_subjects = (
+        QuestionBank.objects.exclude(subject_title="")
+        .values_list("subject_title", flat=True)
+        .distinct()
+        .order_by("subject_title")
+    )
     context = {
         "question_banks": question_banks,
         "selected_bank": selected_bank,
@@ -411,6 +419,7 @@ def manual_question(request):
         "difficulty_levels": Question.DIFFICULTY_LEVELS,
         "recent_questions": Question.objects.order_by("-created_at")[:10],
         "courses": Course.objects.order_by("title"),
+        "bank_subjects": list(bank_subjects),
         **pag_extra,
     }
     return render(request, "admin_panel/manual_question.html", context)
@@ -440,6 +449,11 @@ def create_question_bank(request):
         data = {
             "course": payload.get("course") or payload.get("course_id"),
             "title": (payload.get("title") or "").strip(),
+            "subject_title": (
+                payload.get("subject_title")
+                or payload.get("subject")
+                or ""
+            ).strip(),
             "description": (payload.get("description") or "").strip(),
             "difficulty": payload.get("difficulty") or "medium",
         }
@@ -447,6 +461,11 @@ def create_question_bank(request):
         data = {
             "course": request.POST.get("course") or request.POST.get("course_id"),
             "title": (request.POST.get("title") or "").strip(),
+            "subject_title": (
+                request.POST.get("subject_title")
+                or request.POST.get("subject")
+                or ""
+            ).strip(),
             "description": (request.POST.get("description") or "").strip(),
             "difficulty": request.POST.get("difficulty") or "medium",
         }
@@ -470,6 +489,7 @@ def create_question_bank(request):
     request.session[SESSION_LAST_QUESTION_BANK] = bank.id
     request.session.modified = True
 
+    label = bank.display_label
     if wants_json:
         return JsonResponse(
             {
@@ -477,11 +497,12 @@ def create_question_bank(request):
                 "question_bank": {
                     "id": bank.id,
                     "title": bank.title,
+                    "subject_title": bank.subject_title,
                     "description": bank.description,
                     "difficulty": bank.difficulty,
                     "course_id": bank.course_id,
                     "course_title": bank.course.title,
-                    "label": f"{bank.title} ({bank.course.title})",
+                    "label": label,
                 },
             }
         )
@@ -1067,6 +1088,88 @@ def delete_resource(request, resource_id):
     resource.delete()
     messages.success(request, "Resource deleted successfully!")
     return redirect("admin_panel:manage_resources")
+
+
+# ==================== PAST PAPERS (PDF browser) ====================
+def _past_papers_page_context(form, action="Upload", paper=None):
+    papers = PastPaper.objects.select_related("category").order_by(
+        "-year", "subject", "title"
+    )
+    existing_subjects = (
+        PastPaper.objects.exclude(subject="")
+        .values_list("subject", flat=True)
+        .distinct()
+        .order_by("subject")
+    )
+    return {
+        "form": form,
+        "papers": papers,
+        "paper": paper,
+        "action": action,
+        "existing_subjects": list(existing_subjects),
+    }
+
+
+@admin_required
+def manage_past_papers(request):
+    """Admin page to upload past question paper PDFs (Category / Subject / Year)."""
+    return render(
+        request,
+        "admin_panel/manage_past_papers.html",
+        _past_papers_page_context(PastPaperForm(), "Upload"),
+    )
+
+
+@admin_required
+def create_past_paper(request):
+    if request.method == "POST":
+        form = PastPaperForm(request.POST, request.FILES)
+        if form.is_valid():
+            paper = form.save()
+            messages.success(
+                request,
+                f'Past paper "{paper.title}" uploaded '
+                f"({paper.category.name} · {paper.subject} · {paper.year}).",
+            )
+            return redirect("admin_panel:manage_past_papers")
+        messages.error(request, "Please fix the errors below and try again.")
+    else:
+        form = PastPaperForm()
+    return render(
+        request,
+        "admin_panel/manage_past_papers.html",
+        _past_papers_page_context(form, "Upload"),
+    )
+
+
+@admin_required
+def edit_past_paper(request, paper_id):
+    paper = get_object_or_404(PastPaper, id=paper_id)
+    if request.method == "POST":
+        form = PastPaperForm(request.POST, request.FILES, instance=paper)
+        if form.is_valid():
+            paper = form.save()
+            messages.success(request, f'Past paper "{paper.title}" updated.')
+            return redirect("admin_panel:manage_past_papers")
+        messages.error(request, "Please fix the errors below and try again.")
+    else:
+        form = PastPaperForm(instance=paper)
+    return render(
+        request,
+        "admin_panel/manage_past_papers.html",
+        _past_papers_page_context(form, "Edit", paper=paper),
+    )
+
+
+@admin_required
+@require_POST
+def delete_past_paper(request, paper_id):
+    paper = get_object_or_404(PastPaper, id=paper_id)
+    if paper.pdf:
+        paper.pdf.delete(save=False)
+    paper.delete()
+    messages.success(request, "Past paper deleted successfully!")
+    return redirect("admin_panel:manage_past_papers")
 
 
 # ==================== EXAM BUILDER ====================

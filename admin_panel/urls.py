@@ -112,6 +112,23 @@ urlpatterns = [
         views.delete_resource,
         name="delete_resource",
     ),
+    # Past Papers (full exam PDFs for public browser)
+    path("manage-past-papers/", views.manage_past_papers, name="manage_past_papers"),
+    path(
+        "manage-past-papers/create/",
+        views.create_past_paper,
+        name="create_past_paper",
+    ),
+    path(
+        "manage-past-papers/<int:paper_id>/edit/",
+        views.edit_past_paper,
+        name="edit_past_paper",
+    ),
+    path(
+        "manage-past-papers/<int:paper_id>/delete/",
+        views.delete_past_paper,
+        name="delete_past_paper",
+    ),
     # Exam Builder
     path("exams/", views.manage_exams, name="manage_exams"),
     path("exams/create/", views.create_exam, name="create_exam"),

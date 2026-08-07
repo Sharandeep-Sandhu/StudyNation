@@ -35,6 +35,7 @@ from .models import (
     DiscussionPost,
     DiscussionReply,
     ContactMessage,
+    PastPaper,
 )
 
 logger = logging.getLogger(__name__)
@@ -213,40 +214,71 @@ class ContactView(View):
 
 
 class PastPapersView(TemplateView):
+    """Public Past Papers browser: filter by category / subject / year,
+    list full exam PDFs on the left, preview the selected PDF on the right.
+    """
+
     template_name = "courses/past_papers.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["exam_boards"] = [
-            {"name": "Cambridge IGCSE", "icon": "fi-sr-graduation-cap"},
-            {"name": "Edexcel International GCSE", "icon": "fi-sr-diploma"},
-            {"name": "Cambridge A Level", "icon": "fi-sr-book-open"},
-            {"name": "Edexcel IAL", "icon": "fi-sr-document"},
-            {"name": "IB (International Baccalaureate)", "icon": "fi-sr-globe"},
-            {"name": "AQA", "icon": "fi-sr-clipboard"},
-            {"name": "OCR", "icon": "fi-sr-pen"},
-        ]
-        context["subjects"] = [
-            "Mathematics",
-            "Physics",
-            "Chemistry",
-            "Biology",
-            "English",
-            "Computer Science",
-            "Economics",
-            "History",
-            "Geography",
-            "Business Studies",
-            "Literature",
-            "Art & Design",
-        ]
-        context["question_types"] = [
-            "SINGLE",
-            "MULTIPLE",
-            "NUMERICAL",
-            "TRUE_FALSE",
-            "MATCHING",
-        ]
+        request = self.request
+
+        published = PastPaper.objects.filter(is_published=True).select_related(
+            "category"
+        )
+
+        # All categories available for the filter dropdown
+        categories = CourseCategory.objects.order_by("name")
+
+        subjects = (
+            published.exclude(subject="")
+            .values_list("subject", flat=True)
+            .distinct()
+            .order_by("subject")
+        )
+        years = published.values_list("year", flat=True).distinct().order_by("-year")
+
+        category_id = (request.GET.get("category") or "").strip()
+        subject = (request.GET.get("subject") or "").strip()
+        year = (request.GET.get("year") or "").strip()
+        paper_id = (request.GET.get("paper") or "").strip()
+
+        papers = published
+        if category_id.isdigit():
+            papers = papers.filter(category_id=int(category_id))
+        if subject:
+            papers = papers.filter(subject__iexact=subject)
+        if year.isdigit():
+            papers = papers.filter(year=int(year))
+
+        papers = papers.order_by("-year", "subject", "title")
+
+        selected_paper = None
+        if paper_id.isdigit():
+            selected_paper = papers.filter(pk=int(paper_id)).first()
+            if selected_paper is None:
+                # Allow opening a paper even if filters don't match (deep link)
+                selected_paper = published.filter(pk=int(paper_id)).first()
+        if selected_paper is None and papers.exists() and (
+            category_id or subject or year
+        ):
+            # After applying filters, auto-select first paper for convenience
+            selected_paper = papers.first()
+
+        context.update(
+            {
+                "categories": categories,
+                "subjects": list(subjects),
+                "years": list(years),
+                "papers": papers,
+                "selected_paper": selected_paper,
+                "filter_category": category_id,
+                "filter_subject": subject,
+                "filter_year": year,
+                "has_filters": bool(category_id or subject or year),
+            }
+        )
         return context
 
 

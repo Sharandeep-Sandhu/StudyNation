@@ -180,12 +180,21 @@ class QuestionBankForm(forms.ModelForm):
 
     class Meta:
         model = QuestionBank
-        fields = ["title", "description", "difficulty"]
+        fields = ["title", "subject_title", "description", "difficulty"]
+        labels = {
+            "subject_title": "Subject title",
+        }
         widgets = {
             "title": forms.TextInput(
                 attrs={
                     "class": "form-control",
                     "placeholder": "Enter question bank title",
+                }
+            ),
+            "subject_title": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g. Mathematics, Physics",
                 }
             ),
             "description": forms.Textarea(

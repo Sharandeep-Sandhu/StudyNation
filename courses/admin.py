@@ -8,6 +8,7 @@ from .models import (
     QuestionOption,
     Blog,
     Resource,
+    PastPaper,
     DiscussionBoard,
     DiscussionPost,
     DiscussionReply,
@@ -78,9 +79,16 @@ class StudyMaterialAdmin(admin.ModelAdmin):
 # ==================== QUESTION BANK ====================
 @admin.register(QuestionBank)
 class QuestionBankAdmin(admin.ModelAdmin):
-    list_display = ["title", "course", "difficulty", "total_questions", "created_at"]
-    list_filter = ["difficulty", "course", "created_at"]
-    search_fields = ["title", "course__title", "description"]
+    list_display = [
+        "title",
+        "subject_title",
+        "course",
+        "difficulty",
+        "total_questions",
+        "created_at",
+    ]
+    list_filter = ["difficulty", "course", "subject_title", "created_at"]
+    search_fields = ["title", "subject_title", "course__title", "description"]
     ordering = ["-created_at"]
 
 
@@ -202,6 +210,25 @@ class ResourceAdmin(admin.ModelAdmin):
         ("Pricing", {"fields": ("is_paid", "price")}),
         ("Related Course", {"fields": ("course",)}),
     )
+
+
+# ==================== PAST PAPERS (PDF browser) ====================
+@admin.register(PastPaper)
+class PastPaperAdmin(admin.ModelAdmin):
+    list_display = [
+        "title",
+        "category",
+        "subject",
+        "year",
+        "season",
+        "paper_code",
+        "is_published",
+        "created_at",
+    ]
+    list_filter = ["category", "subject", "year", "is_published", "season"]
+    search_fields = ["title", "subject", "paper_code", "description"]
+    ordering = ["-year", "subject", "title"]
+    list_editable = ["is_published"]
 
 
 # ==================== QUESTION FORM (TOPIC BOARDS) ====================

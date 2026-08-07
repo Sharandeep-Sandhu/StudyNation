@@ -320,6 +320,7 @@ from courses.models import (
     CourseCategory,
     Resource,
     Exam,
+    PastPaper,
 )
 
 
@@ -719,13 +720,28 @@ class QuestionBankForm(forms.ModelForm):
 
     class Meta:
         model = QuestionBank
-        fields = ["course", "title", "description", "difficulty"]
+        fields = ["course", "title", "subject_title", "description", "difficulty"]
+        labels = {
+            "course": "Course",
+            "title": "Bank title",
+            "subject_title": "Subject title",
+            "description": "Description",
+            "difficulty": "Difficulty",
+        }
         widgets = {
             "course": forms.Select(attrs={"class": "form-control"}),
             "title": forms.TextInput(
                 attrs={
                     "class": "form-control",
                     "placeholder": "Enter question bank title",
+                }
+            ),
+            "subject_title": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g. Mathematics, Physics",
+                    "list": "question-bank-subjects",
+                    "autocomplete": "off",
                 }
             ),
             "description": forms.Textarea(
@@ -745,6 +761,16 @@ class QuestionBankForm(forms.ModelForm):
         self.fields["description"].required = False
         self.fields["title"].required = True
         self.fields["course"].required = True
+        self.fields["subject_title"].required = True
+        self.fields["subject_title"].help_text = (
+            "Required. Subject this bank belongs to (used for filters and display)."
+        )
+
+    def clean_subject_title(self):
+        value = (self.cleaned_data.get("subject_title") or "").strip()
+        if not value:
+            raise forms.ValidationError("Subject title is required.")
+        return value
 
 
 # ==================== BLOG ====================
@@ -942,6 +968,139 @@ class ResourceForm(forms.ModelForm):
             ),
             "course": forms.Select(attrs={"class": "form-control"}),
         }
+
+
+# ==================== PAST PAPERS (PDF) ====================
+class PastPaperForm(forms.ModelForm):
+    """Upload / edit full previous-year exam PDFs for the public Past Papers page.
+
+    Required: Category, Subject, Year, Title, PDF.
+    Optional: season, paper code, description.
+    """
+
+    class Meta:
+        model = PastPaper
+        fields = [
+            "category",
+            "subject",
+            "year",
+            "title",
+            "pdf",
+            "season",
+            "paper_code",
+            "description",
+            "is_published",
+        ]
+        labels = {
+            "category": "Category",
+            "subject": "Subject",
+            "year": "Year of exam",
+            "title": "Paper title",
+            "pdf": "Question paper (PDF)",
+            "season": "Season / session",
+            "paper_code": "Paper code",
+            "description": "Description",
+            "is_published": "Published (visible on Past Papers page)",
+        }
+        help_texts = {
+            "category": "Required. Curriculum / board group (e.g. JEE, CIE IGCSE).",
+            "subject": "Required. e.g. Mathematics, Physics, Chemistry.",
+            "year": "Required. Exam year (e.g. 2024).",
+            "title": "Required. Display name shown in the paper list.",
+            "pdf": "Required for new uploads. Full exam paper as PDF only.",
+            "season": "Optional. Summer / Winter / Specimen, etc.",
+            "paper_code": "Optional. e.g. 0606/23",
+            "description": "Optional notes for admins.",
+        }
+        widgets = {
+            "title": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g. Mathematics Paper 1 Summer 2024",
+                    "required": True,
+                }
+            ),
+            "category": forms.Select(
+                attrs={"class": "form-control", "required": True}
+            ),
+            "subject": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g. Mathematics",
+                    "list": "past-paper-subjects",
+                    "required": True,
+                    "autocomplete": "off",
+                }
+            ),
+            "year": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "2024",
+                    "min": 1990,
+                    "max": 2100,
+                    "required": True,
+                }
+            ),
+            "season": forms.Select(attrs={"class": "form-control"}),
+            "paper_code": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "e.g. 0606/23"}
+            ),
+            "pdf": forms.FileInput(
+                attrs={"class": "form-control", "accept": "application/pdf,.pdf"}
+            ),
+            "description": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Optional notes",
+                }
+            ),
+            "is_published": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Required core filters + identity
+        for name in ("category", "subject", "year", "title"):
+            self.fields[name].required = True
+        self.fields["category"].empty_label = "-- Select category --"
+        self.fields["category"].queryset = CourseCategory.objects.order_by("name")
+
+        # When editing an existing paper, keep the current PDF if no new file is uploaded
+        if self.instance and self.instance.pk and self.instance.pdf:
+            self.fields["pdf"].required = False
+            self.fields["pdf"].help_text = (
+                "Leave empty to keep the current PDF, or choose a new file to replace it."
+            )
+        else:
+            self.fields["pdf"].required = True
+
+        self.fields["season"].required = False
+        self.fields["paper_code"].required = False
+        self.fields["description"].required = False
+
+    def clean_subject(self):
+        subject = (self.cleaned_data.get("subject") or "").strip()
+        if not subject:
+            raise forms.ValidationError("Subject is required.")
+        return subject
+
+    def clean_year(self):
+        year = self.cleaned_data.get("year")
+        if year is None:
+            raise forms.ValidationError("Year of exam is required.")
+        if year < 1990 or year > 2100:
+            raise forms.ValidationError("Enter a valid exam year.")
+        return year
+
+    def clean_pdf(self):
+        pdf = self.cleaned_data.get("pdf")
+        if not pdf:
+            return pdf
+        name = getattr(pdf, "name", "") or ""
+        if name and not name.lower().endswith(".pdf"):
+            raise forms.ValidationError("Only PDF files are allowed.")
+        return pdf
 
 
 # ==================== EXAM BUILDER ====================

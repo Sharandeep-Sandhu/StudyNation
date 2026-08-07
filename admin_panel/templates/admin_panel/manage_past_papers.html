@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Past Papers - Admin Panel</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f7fa;
+        color: #333;
+      }
+      .dashboard-wrapper {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        min-height: 100vh;
+      }
+      .main-content {
+        margin-left: 250px;
+        padding: 40px;
+        min-width: 720px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        background: white;
+        padding: 20px 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .header h1 { font-size: 24px; color: #333; }
+      .header p { color: #666; font-size: 14px; margin-top: 4px; line-height: 1.45; }
+      .btn {
+        display: inline-block;
+        padding: 10px 16px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        font-family: inherit;
+      }
+      .btn-primary { background: #667eea; color: #fff; }
+      .btn-primary:hover { background: #5568d3; }
+      .btn-danger { background: #fee2e2; color: #b91c1c; }
+      .btn-ghost { background: #f3f4f6; color: #374151; }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 400px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      .card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        padding: 22px;
+      }
+      .card h2 {
+        font-size: 18px;
+        margin-bottom: 6px;
+        color: #333;
+      }
+      .card-sub {
+        color: #6b7280;
+        font-size: 13px;
+        margin-bottom: 16px;
+        line-height: 1.45;
+      }
+      .section-label {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #667eea;
+        margin: 18px 0 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #eef1f7;
+      }
+      .section-label:first-of-type { margin-top: 0; }
+      .form-group { margin-bottom: 14px; }
+      .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #444;
+      }
+      .req {
+        color: #d64545;
+        font-weight: 700;
+      }
+      .opt {
+        color: #9ca3af;
+        font-weight: 500;
+        font-size: 12px;
+      }
+      .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+        background: #fff;
+      }
+      .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+      }
+      .help { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.4; }
+      .errorlist {
+        list-style: none;
+        color: #b91c1c;
+        font-size: 13px;
+        margin: 4px 0 0;
+      }
+      .alert {
+        padding: 12px 14px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+      }
+      .alert-success { background: #e8f5e9; color: #1b5e20; }
+      .alert-error { background: #ffebee; color: #b71c1c; }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th, td {
+        text-align: left;
+        padding: 12px 10px;
+        border-bottom: 1px solid #eef1f6;
+        vertical-align: middle;
+      }
+      th {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #6b7280;
+        background: #fafbff;
+      }
+      .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .badge-on { background: #dcfce7; color: #166534; }
+      .badge-off { background: #f3f4f6; color: #6b7280; }
+      .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      .empty {
+        text-align: center;
+        color: #9ca3af;
+        padding: 28px 12px;
+        line-height: 1.5;
+      }
+      .current-file {
+        font-size: 12px;
+        color: #4b5563;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+      }
+      .current-file a { color: #667eea; font-weight: 600; }
+      @media (max-width: 1000px) {
+        .grid-2 { grid-template-columns: 1fr; }
+        .main-content { min-width: 0; padding: 20px; }
+      }
+    </style>
+  </head>
+  <body>
+    {% include 'admin_panel/_partials/sidebar_slider.html' %}
+    <div class="dashboard-wrapper">
+      {% include 'admin_panel/_partials/admin_sidebar.html' with active='manage_past_papers' %}
+      <main class="main-content">
+        <div class="header">
+          <div>
+            <h1>📄 Upload Past Papers</h1>
+            <p>
+              Upload full exam PDFs with <strong>Category</strong>, <strong>Subject</strong>, and <strong>Year</strong>.
+              Students use these filters on the public Past Papers page, then open the PDF.
+            </p>
+          </div>
+          <a class="btn btn-ghost" href="/past-papers/" target="_blank">Open public page ↗</a>
+        </div>
+
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'success' }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+
+        <div class="grid-2">
+          <section class="card">
+            <h2>{% if action == 'Edit' %}Edit past paper{% else %}Upload question paper{% endif %}</h2>
+            <p class="card-sub">Fields marked <span class="req">*</span> are required.</p>
+
+            <form
+              method="post"
+              enctype="multipart/form-data"
+              action="{% if paper %}{% url 'admin_panel:edit_past_paper' paper.id %}{% else %}{% url 'admin_panel:create_past_paper' %}{% endif %}"
+              novalidate
+            >
+              {% csrf_token %}
+
+              <div class="section-label">Required details</div>
+
+              <div class="form-group">
+                <label for="{{ form.category.id_for_label }}">Category <span class="req">*</span></label>
+                {{ form.category }}
+                {% if form.category.help_text %}<div class="help">{{ form.category.help_text }}</div>{% endif %}
+                {% if form.category.errors %}{{ form.category.errors }}{% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ form.subject.id_for_label }}">Subject <span class="req">*</span></label>
+                {{ form.subject }}
+                <datalist id="past-paper-subjects">
+                  {% for s in existing_subjects %}
+                    <option value="{{ s }}"></option>
+                  {% endfor %}
+                </datalist>
+                {% if form.subject.help_text %}<div class="help">{{ form.subject.help_text }}</div>{% endif %}
+                {% if form.subject.errors %}{{ form.subject.errors }}{% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ form.year.id_for_label }}">Year of exam <span class="req">*</span></label>
+                {{ form.year }}
+                {% if form.year.help_text %}<div class="help">{{ form.year.help_text }}</div>{% endif %}
+                {% if form.year.errors %}{{ form.year.errors }}{% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ form.title.id_for_label }}">Paper title <span class="req">*</span></label>
+                {{ form.title }}
+                {% if form.title.help_text %}<div class="help">{{ form.title.help_text }}</div>{% endif %}
+                {% if form.title.errors %}{{ form.title.errors }}{% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ form.pdf.id_for_label }}">
+                  Question paper (PDF)
+                  {% if paper and paper.pdf %}
+                    <span class="opt">(optional if keeping current file)</span>
+                  {% else %}
+                    <span class="req">*</span>
+                  {% endif %}
+                </label>
+                {% if paper and paper.pdf %}
+                  <div class="current-file">
+                    Current file:
+                    <a href="{{ paper.pdf.url }}" target="_blank" rel="noopener">{{ paper.pdf.name }}</a>
+                  </div>
+                {% endif %}
+                {{ form.pdf }}
+                {% if form.pdf.help_text %}<div class="help">{{ form.pdf.help_text }}</div>{% endif %}
+                {% if form.pdf.errors %}{{ form.pdf.errors }}{% endif %}
+              </div>
+
+              <div class="section-label">Optional details</div>
+
+              <div class="form-group">
+                <label for="{{ form.season.id_for_label }}">Season / session <span class="opt">(optional)</span></label>
+                {{ form.season }}
+                {% if form.season.errors %}{{ form.season.errors }}{% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ form.paper_code.id_for_label }}">Paper code <span class="opt">(optional)</span></label>
+                {{ form.paper_code }}
+                {% if form.paper_code.errors %}{{ form.paper_code.errors }}{% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ form.description.id_for_label }}">Description <span class="opt">(optional)</span></label>
+                {{ form.description }}
+                {% if form.description.errors %}{{ form.description.errors }}{% endif %}
+              </div>
+
+              <div class="form-group">
+                <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                  {{ form.is_published }} Published (visible on public Past Papers page)
+                </label>
+                {% if form.is_published.errors %}{{ form.is_published.errors }}{% endif %}
+              </div>
+
+              {% if form.non_field_errors %}
+                <div class="alert alert-error">{{ form.non_field_errors }}</div>
+              {% endif %}
+
+              <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary">
+                  {% if action == 'Edit' %}Save changes{% else %}Upload question paper{% endif %}
+                </button>
+                {% if paper %}
+                  <a class="btn btn-ghost" href="{% url 'admin_panel:manage_past_papers' %}">Cancel</a>
+                {% endif %}
+              </div>
+            </form>
+          </section>
+
+          <section class="card">
+            <h2>Uploaded papers ({{ papers|length }})</h2>
+            <p class="card-sub">These appear on the public Past Papers page when published.</p>
+            {% if papers %}
+              <div style="overflow-x:auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Subject</th>
+                      <th>Year</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for p in papers %}
+                      <tr>
+                        <td>
+                          <strong>{{ p.title }}</strong>
+                          {% if p.paper_code %}<div class="help">{{ p.paper_code }}</div>{% endif %}
+                        </td>
+                        <td>{{ p.category.name }}</td>
+                        <td>{{ p.subject }}</td>
+                        <td>{{ p.year }}{% if p.season %} · {{ p.get_season_display }}{% endif %}</td>
+                        <td>
+                          {% if p.is_published %}
+                            <span class="badge badge-on">Published</span>
+                          {% else %}
+                            <span class="badge badge-off">Hidden</span>
+                          {% endif %}
+                        </td>
+                        <td>
+                          <div class="actions">
+                            {% if p.pdf %}
+                              <a class="btn btn-ghost" href="{{ p.pdf.url }}" target="_blank">PDF</a>
+                            {% endif %}
+                            <a class="btn btn-ghost" href="{% url 'admin_panel:edit_past_paper' p.id %}">Edit</a>
+                            <form method="post" action="{% url 'admin_panel:delete_past_paper' p.id %}" onsubmit="return confirm('Delete this past paper?');">
+                              {% csrf_token %}
+                              <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="empty">
+                No past papers yet.<br />
+                Use the form to upload a PDF with Category, Subject, and Year.
+              </div>
+            {% endif %}
+          </section>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

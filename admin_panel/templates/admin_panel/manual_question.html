@@ -244,7 +244,9 @@
             <select id="bankSelect" onchange="onBankChange(this.value)" aria-required="true">
               <option value="">-- Select a question bank --</option>
               {% for qb in question_banks %}
-                <option value="{{ qb.id }}" {% if selected_bank and selected_bank.id == qb.id %}selected{% endif %}>{{ qb.title }} ({{ qb.course.title }})</option>
+                <option value="{{ qb.id }}" {% if selected_bank and selected_bank.id == qb.id %}selected{% endif %}>
+                  {{ qb.title }}{% if qb.subject_title %} · {{ qb.subject_title }}{% endif %} ({{ qb.course.title }})
+                </option>
               {% endfor %}
             </select>
             <button type="button" class="btn btn-primary" onclick="openCreateBankModal()">+ Create Question Bank</button>
@@ -279,7 +281,8 @@
                 {% for qb in question_banks %}
                   <li style="margin:6px 0;">
                     <a href="?question_bank={{ qb.id }}" style="color:#667eea; font-weight:600; text-decoration:none;">
-                      {{ qb.title }} <span style="color:#888; font-weight:500;">({{ qb.course.title }})</span>
+                      {{ qb.title }}{% if qb.subject_title %} · {{ qb.subject_title }}{% endif %}
+                      <span style="color:#888; font-weight:500;">({{ qb.course.title }})</span>
                     </a>
                   </li>
                 {% endfor %}
@@ -301,6 +304,9 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 18px; flex-wrap:wrap; gap:12px;">
               <div>
                 <strong style="font-size:16px;">{{ selected_bank.title }}</strong>
+                {% if selected_bank.subject_title %}
+                  <span style="color:#667eea; font-size:13px; font-weight:600;"> · {{ selected_bank.subject_title }}</span>
+                {% endif %}
                 <span style="color:#777; font-size:13px;"> — {% if page_obj %}{{ page_obj.paginator.count }} Question{{ page_obj.paginator.count|pluralize }}{% else %}{{ bank_questions|length }} Question{{ bank_questions|length|pluralize }}{% endif %}</span>
               </div>
               <button class="btn btn-primary" onclick="openTypeModal()">+ Create Questions</button>
@@ -370,11 +376,12 @@
         </div>
         <div class="modal-body">
           <p style="font-size:13.5px; color:#666; margin-bottom:16px; line-height:1.45;">
-            A question bank groups questions under a course (e.g. “Algebra Midterm”, “Past Papers 2019”).
+            A question bank groups questions under a course and subject (e.g. “Algebra Midterm”, “Past Papers 2019”).
+            Fields marked <span style="color:#d64545;">*</span> are required.
           </p>
           <div class="field-group" style="margin-bottom:14px;">
             <label for="newBankCourse">Course <span style="color:#d64545;">*</span></label>
-            <select id="newBankCourse" style="width:100%;">
+            <select id="newBankCourse" style="width:100%;" required>
               <option value="">-- Select a course --</option>
               {% for c in courses %}
                 <option value="{{ c.id }}">{{ c.title }}</option>
@@ -384,8 +391,27 @@
             </select>
           </div>
           <div class="field-group" style="margin-bottom:14px;">
+            <label for="newBankSubject">Subject title <span style="color:#d64545;">*</span></label>
+            <input
+              type="text"
+              id="newBankSubject"
+              style="width:100%;"
+              placeholder="e.g. Mathematics, Physics"
+              maxlength="150"
+              list="question-bank-subjects"
+              autocomplete="off"
+              required
+            />
+            <datalist id="question-bank-subjects">
+              {% for s in bank_subjects %}
+                <option value="{{ s }}"></option>
+              {% endfor %}
+            </datalist>
+            <small style="color:#888;display:block;margin-top:4px;">Required. Used for display and filtering.</small>
+          </div>
+          <div class="field-group" style="margin-bottom:14px;">
             <label for="newBankTitle">Bank title <span style="color:#d64545;">*</span></label>
-            <input type="text" id="newBankTitle" style="width:100%;" placeholder="e.g. Chapter 1 – Practice Set" maxlength="200" />
+            <input type="text" id="newBankTitle" style="width:100%;" placeholder="e.g. Chapter 1 – Practice Set" maxlength="200" required />
           </div>
           <div class="field-group" style="margin-bottom:14px;">
             <label for="newBankDifficulty">Difficulty</label>
@@ -686,7 +712,13 @@
         const err = document.getElementById('createBankError');
         if (err) { err.style.display = 'none'; err.textContent = ''; }
         const title = document.getElementById('newBankTitle');
-        if (title && !title.value) title.value = '';
+        if (title) title.value = '';
+        const subject = document.getElementById('newBankSubject');
+        if (subject) subject.value = '';
+        const desc = document.getElementById('newBankDescription');
+        if (desc) desc.value = '';
+        const btn = document.getElementById('createBankSubmitBtn');
+        if (btn) { btn.disabled = false; btn.textContent = 'Create Bank'; }
         openModal('createBankModal');
         setTimeout(function () {
           const course = document.getElementById('newBankCourse');
@@ -696,6 +728,7 @@
 
       async function submitCreateBank() {
         const course = document.getElementById('newBankCourse').value;
+        const subjectTitle = (document.getElementById('newBankSubject').value || '').trim();
         const title = (document.getElementById('newBankTitle').value || '').trim();
         const difficulty = document.getElementById('newBankDifficulty').value || 'medium';
         const description = (document.getElementById('newBankDescription').value || '').trim();
@@ -713,6 +746,11 @@
         if (!course) {
           showErr('Please select a Course (required).');
           document.getElementById('newBankCourse').focus();
+          return;
+        }
+        if (!subjectTitle) {
+          showErr('Please enter a Subject title (required).');
+          document.getElementById('newBankSubject').focus();
           return;
         }
         if (!title) {
@@ -735,6 +773,8 @@
               course: course,
               course_id: course,
               title: title,
+              subject_title: subjectTitle,
+              subject: subjectTitle,
               description: description,
               difficulty: difficulty,
             }),
@@ -743,9 +783,10 @@
           if (!res.ok) {
             throw new Error(data.error || 'Failed to create question bank');
           }
-          showToast('Question bank created: ' + (data.question_bank && data.question_bank.title));
+          const bank = data.question_bank || {};
+          showToast('Question bank created: ' + (bank.label || bank.title || 'OK'));
           // Reload page with new bank selected
-          const id = data.question_bank && data.question_bank.id;
+          const id = bank.id;
           window.location.href = id
             ? (URLS.manualQuestion + '?question_bank=' + id)
             : URLS.manualQuestion;
