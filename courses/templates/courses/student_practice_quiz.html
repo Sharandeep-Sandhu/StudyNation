@@ -159,29 +159,49 @@
                 {% endif %}
                 <div class="pq-marks">[{{ q.marks }} mark{{ q.marks|pluralize }}]</div>
 
-                {% if q.question_type == 'single_choice' or q.question_type == 'true_false' %}
-                  <div class="pq-options" data-qid="{{ q.id }}" data-mode="single">
-                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="selectOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
-                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="selectOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
-                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="selectOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
-                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="selectOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
-                  </div>
-                {% elif q.question_type == 'multiple_choice' %}
-                  <div class="pq-options" data-qid="{{ q.id }}" data-mode="multi">
-                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="toggleMultiOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
-                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="toggleMultiOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
-                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="toggleMultiOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
-                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="toggleMultiOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
-                  </div>
-                  <div class="pq-hint">Select all that apply.</div>
-                {% else %}
-                  <div class="pq-text-answer">
-                    <textarea data-qid="{{ q.id }}" placeholder="Type your answer..." oninput="onTextAnswerInput(this)"></textarea>
-                  </div>
-                  <div class="pq-hint">
-                    {% if q.question_type == 'numerical' %}Enter a number.{% else %}Free-text answers are matched against the answer key as a best-effort check.{% endif %}
-                  </div>
-                {% endif %}
+                {% with dyn_opts=q.options.all %}
+                  {% if q.question_type == 'multiple_choice' or q.answer_type == 'multiple' %}
+                    <div class="pq-options" data-qid="{{ q.id }}" data-mode="multi">
+                      {% if dyn_opts %}
+                        {% for opt in dyn_opts %}
+                          <div class="pq-option" data-letter-index="{{ forloop.counter0 }}" onclick="toggleMultiOption(this)">
+                            <span class="pq-option-letter"></span>
+                            <span class="pq-option-text">{{ opt.text|safe_html_option }}</span>
+                          </div>
+                        {% endfor %}
+                      {% else %}
+                        {% if q.option_a %}<div class="pq-option" data-value="A" onclick="toggleMultiOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
+                        {% if q.option_b %}<div class="pq-option" data-value="B" onclick="toggleMultiOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
+                        {% if q.option_c %}<div class="pq-option" data-value="C" onclick="toggleMultiOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
+                        {% if q.option_d %}<div class="pq-option" data-value="D" onclick="toggleMultiOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
+                      {% endif %}
+                    </div>
+                    <div class="pq-hint">Select all that apply.</div>
+                  {% elif q.option_a or q.option_b or q.option_c or q.option_d or dyn_opts or q.question_type == 'single_choice' or q.question_type == 'true_false' or q.question_type == 'mcq' or q.question_type == 'comprehension' %}
+                    <div class="pq-options" data-qid="{{ q.id }}" data-mode="single">
+                      {% if dyn_opts %}
+                        {% for opt in dyn_opts %}
+                          <div class="pq-option" data-letter-index="{{ forloop.counter0 }}" onclick="selectOption(this)">
+                            <span class="pq-option-letter"></span>
+                            <span class="pq-option-text">{{ opt.text|safe_html_option }}</span>
+                          </div>
+                        {% endfor %}
+                      {% else %}
+                        {% if q.option_a %}<div class="pq-option" data-value="A" onclick="selectOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
+                        {% if q.option_b %}<div class="pq-option" data-value="B" onclick="selectOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
+                        {% if q.option_c %}<div class="pq-option" data-value="C" onclick="selectOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
+                        {% if q.option_d %}<div class="pq-option" data-value="D" onclick="selectOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
+                      {% endif %}
+                    </div>
+                  {% else %}
+                    <div class="pq-text-answer">
+                      <textarea data-qid="{{ q.id }}" placeholder="Type your answer..." oninput="onTextAnswerInput(this)"></textarea>
+                    </div>
+                    <div class="pq-hint">
+                      {% if q.question_type == 'numerical' or q.question_type == 'integer' %}Enter a number.{% else %}Free-text answers are matched against the answer key as a best-effort check.{% endif %}
+                    </div>
+                  {% endif %}
+                {% endwith %}
 
                 <input type="hidden" name="answer_{{ q.id }}" id="answerField_{{ q.id }}" value="" />
               </div>
@@ -204,6 +224,26 @@
   let currentIndex = 0;
   const answeredIds = new Set();
 
+  function letterFromIndex(i) {
+    return String.fromCharCode(65 + (parseInt(i, 10) || 0));
+  }
+
+  // Assign A/B/C… for dynamic options that only have data-letter-index
+  function labelOptionLetters() {
+    document.querySelectorAll('.pq-options').forEach(function (group) {
+      group.querySelectorAll('.pq-option').forEach(function (opt, idx) {
+        var letter = opt.dataset.value;
+        if (!letter && opt.dataset.letterIndex !== undefined) {
+          letter = letterFromIndex(opt.dataset.letterIndex);
+        }
+        if (!letter) letter = letterFromIndex(idx);
+        opt.dataset.value = letter;
+        var badge = opt.querySelector('.pq-option-letter');
+        if (badge) badge.textContent = letter;
+      });
+    });
+  }
+
   function updateAnsweredCount() {
     document.getElementById('answeredCount').textContent = answeredIds.size;
   }
@@ -213,7 +253,7 @@
     group.querySelectorAll('.pq-option').forEach(o => o.classList.remove('pq-selected'));
     el.classList.add('pq-selected');
     const qid = group.dataset.qid;
-    document.getElementById('answerField_' + qid).value = el.dataset.value;
+    document.getElementById('answerField_' + qid).value = el.dataset.value || '';
     markAnswered(qid);
   }
 
@@ -299,8 +339,13 @@
     document.getElementById('pqTimer').textContent = `${m}:${s}`;
   }, 1000);
 
+  labelOptionLetters();
+
   if (window.MathJax && window.MathJax.typesetPromise) {
     window.MathJax.typesetPromise();
+  }
+  if (typeof window.eqSizeInlineImages === 'function') {
+    window.eqSizeInlineImages(document.getElementById('pqQuestionBlock'));
   }
 </script>
 {% endblock %}

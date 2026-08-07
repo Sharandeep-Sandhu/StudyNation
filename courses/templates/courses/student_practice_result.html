@@ -8,28 +8,66 @@
 {% block extra_css %}
   {% include 'partials/mathjax.html' %}
   <style>
-    .pr-wrap { max-width: 900px; margin: 20px auto; padding: 0 20px; }
+    .pr-wrap { max-width: 980px; margin: 20px auto; padding: 0 20px; }
     .pr-summary {
-      background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.75rem;
-      margin-bottom: 1.25rem;
+      background: white; border-radius: 14px; box-shadow: 0 4px 18px rgba(80,96,180,0.08);
+      border: 1px solid #e8ecf8; padding: 1.75rem; margin-bottom: 1.25rem;
     }
-    .pr-summary h1 { font-size: 1.3rem; color: #333; margin: 0 0 4px; }
+    .pr-summary h1 { font-size: 1.35rem; color: #1f2550; margin: 0 0 4px; letter-spacing: -0.02em; }
     .pr-summary .pr-sub { font-size: 0.85rem; color: #888; margin-bottom: 18px; }
-    .pr-score-row { display: flex; gap: 14px; flex-wrap: wrap; }
+    .pr-score-row { display: flex; gap: 12px; flex-wrap: wrap; }
     .pr-stat {
-      flex: 1; min-width: 120px; background: #f8f9fd; border-radius: 8px; padding: 14px 16px; text-align: center;
+      flex: 1; min-width: 110px; background: #f8f9fd; border-radius: 10px; padding: 14px 16px; text-align: center;
+      border: 1px solid #eef1f8;
     }
-    .pr-stat .pr-stat-value { font-size: 1.5rem; font-weight: 800; }
-    .pr-stat .pr-stat-label { font-size: 0.75rem; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: .3px; }
+    .pr-stat .pr-stat-value { font-size: 1.45rem; font-weight: 800; }
+    .pr-stat .pr-stat-label { font-size: 0.72rem; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: .3px; }
     .pr-stat.pr-score .pr-stat-value { color: #5b6fd8; }
     .pr-stat.pr-correct .pr-stat-value { color: #2f8a4e; }
     .pr-stat.pr-wrong .pr-stat-value { color: #c0392b; }
     .pr-stat.pr-unanswered .pr-stat-value { color: #999; }
     .pr-stat.pr-time .pr-stat-value { color: #555; }
 
+    .pr-charts {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .pr-chart-card {
+      background: #fafbff;
+      border: 1px solid #e8ecf8;
+      border-radius: 12px;
+      padding: 14px 16px 10px;
+    }
+    .pr-chart-card h3 {
+      margin: 0 0 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #5b627a;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .pr-chart-wrap {
+      position: relative;
+      height: 220px;
+    }
+    .pr-progress-block { margin-top: 16px; }
+    .pr-progress-label {
+      display: flex; justify-content: space-between; font-size: 0.82rem; color: #666; margin-bottom: 6px;
+    }
+    .pr-progress-track {
+      height: 12px; border-radius: 999px; background: #eef0f6; overflow: hidden;
+    }
+    .pr-progress-fill {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      transition: width 0.6s ease;
+    }
+
     .pr-actions { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; }
     .pr-btn {
-      display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 6px; font-size: 0.85rem;
+      display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 0.85rem;
       font-weight: 700; text-decoration: none; border: none; cursor: pointer;
     }
     .pr-btn-primary { background: #5b6fd8; color: white; }
@@ -38,24 +76,36 @@
     .pr-btn-secondary:hover { background: #e4e6f5; }
 
     .pr-review-item {
-      background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 1.25rem 1.5rem;
+      background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 1.25rem 1.5rem;
       margin-bottom: 12px; border-left: 4px solid #ddd;
     }
     .pr-review-item.pr-item-correct { border-left-color: #4caf7d; }
     .pr-review-item.pr-item-wrong { border-left-color: #e05656; }
     .pr-review-item.pr-item-unanswered { border-left-color: #ccc; }
-    .pr-review-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .pr-review-item.pr-item-ungraded { border-left-color: #f0b429; }
+    .pr-review-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 10px; flex-wrap: wrap; }
     .pr-review-num { font-size: 0.8rem; color: #999; font-weight: 700; }
     .pr-review-badge { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: .3px; }
     .pr-review-badge.pr-badge-correct { background: #e3f7e9; color: #2f8a4e; }
     .pr-review-badge.pr-badge-wrong { background: #fbe9e7; color: #c0392b; }
     .pr-review-badge.pr-badge-unanswered { background: #f0f0f0; color: #888; }
+    .pr-review-badge.pr-badge-ungraded { background: #fff7e0; color: #9a6b00; }
     .pr-review-text {
       font-size: 1rem; color: #222; line-height: 1.7; margin-bottom: 10px;
       word-wrap: break-word; overflow-wrap: anywhere;
     }
-    .pr-review-answers { font-size: 0.85rem; color: #555; display: flex; gap: 24px; flex-wrap: wrap; }
+    .pr-review-answers { font-size: 0.85rem; color: #555; display: flex; gap: 16px; flex-wrap: wrap; }
     .pr-review-answers strong { color: #333; }
+    .pr-answer-pill {
+      border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; background: #fafafa;
+    }
+    .pr-answer-pill.ok { background:#eefaf1; border-color:#c8ebd4; }
+    .pr-answer-pill.bad { background:#fff5f5; border-color:#f5c6c6; }
+
+    @media (max-width: 800px) {
+      .pr-charts { grid-template-columns: 1fr; }
+      .pr-chart-wrap { height: 200px; }
+    }
   </style>
 {% endblock %}
 
@@ -88,6 +138,31 @@
       </div>
     </div>
 
+    <div class="pr-progress-block">
+      <div class="pr-progress-label">
+        <span>Accuracy</span>
+        <strong>{{ attempt.score_percent }}%</strong>
+      </div>
+      <div class="pr-progress-track">
+        <div class="pr-progress-fill" style="width: {{ attempt.score_percent }}%;"></div>
+      </div>
+    </div>
+
+    <div class="pr-charts">
+      <div class="pr-chart-card">
+        <h3>Answer breakdown</h3>
+        <div class="pr-chart-wrap">
+          <canvas id="prBreakdownChart" aria-label="Correct wrong unanswered chart"></canvas>
+        </div>
+      </div>
+      <div class="pr-chart-card">
+        <h3>Score vs full marks</h3>
+        <div class="pr-chart-wrap">
+          <canvas id="prScoreChart" aria-label="Score bar chart"></canvas>
+        </div>
+      </div>
+    </div>
+
     <div class="pr-actions">
       <a href="{% url 'courses:student_practice_start' exam.id %}" class="pr-btn pr-btn-primary">↻ Restart Practice</a>
       <a href="{% url 'courses:student_edit_exam' exam.id %}#practice" class="pr-btn pr-btn-secondary">← Back to Exam</a>
@@ -96,11 +171,12 @@
 
   <h3 style="font-size: 1rem; color: #2b2b55; margin: 0 0 12px;">Review</h3>
   {% for ans in answers %}
-    <div class="pr-review-item {% if ans.is_correct is None %}pr-item-unanswered{% elif ans.is_correct %}pr-item-correct{% else %}pr-item-wrong{% endif %}">
+    {% with key=ans.display_correct %}
+    <div class="pr-review-item {% if ans.is_correct is None %}pr-item-unanswered{% elif ans.is_correct %}pr-item-correct{% elif ans.given_answer and not key %}pr-item-ungraded{% else %}pr-item-wrong{% endif %}">
       <div class="pr-review-head">
         <span class="pr-review-num">Q{{ forloop.counter }} · {{ ans.question.question_code }} · {{ ans.marks_awarded|floatformat:0 }}/{{ ans.question.marks }} mark{{ ans.question.marks|pluralize }}</span>
-        <span class="pr-review-badge {% if ans.is_correct is None %}pr-badge-unanswered{% elif ans.is_correct %}pr-badge-correct{% else %}pr-badge-wrong{% endif %}">
-          {% if ans.is_correct is None %}Unanswered{% elif ans.is_correct %}Correct{% else %}Wrong{% endif %}
+        <span class="pr-review-badge {% if ans.is_correct is None %}pr-badge-unanswered{% elif ans.is_correct %}pr-badge-correct{% elif ans.given_answer and not key %}pr-badge-ungraded{% else %}pr-badge-wrong{% endif %}">
+          {% if ans.is_correct is None %}Unanswered{% elif ans.is_correct %}Correct{% elif ans.given_answer and not key %}No answer key{% else %}Wrong{% endif %}
         </span>
       </div>
       <div class="pr-review-text">{{ ans.question.question_text|safe_html_stem }}</div>
@@ -112,10 +188,12 @@
         </div>
       {% endif %}
       <div class="pr-review-answers">
-        <div><strong>Your answer:</strong> {{ ans.given_answer|default:"—"|safe_html }}</div>
-        <div style="background:#eefaf1; border:1px solid #c8ebd4; border-radius:6px; padding:8px 12px;">
+        <div class="pr-answer-pill {% if ans.is_correct %}ok{% elif ans.given_answer %}bad{% endif %}">
+          <strong>Your answer:</strong> {{ ans.given_answer|default:"—"|safe_html }}
+        </div>
+        <div class="pr-answer-pill ok">
           <strong style="color:#2f8a4e;">✓ Correct answer:</strong>
-          {{ ans.question.correct_answer|default:"—"|safe_html }}
+          {% if key %}{{ key|safe_html }}{% else %}<em style="color:#9a6b00;">Not set in question bank</em>{% endif %}
         </div>
       </div>
       {% if ans.question.option_a or ans.question.option_b %}
@@ -136,12 +214,113 @@
         </div>
       {% endif %}
     </div>
+    {% endwith %}
   {% endfor %}
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-  if (window.MathJax && window.MathJax.typesetPromise) {
-    window.MathJax.typesetPromise();
-  }
+  (function () {
+    var data = {{ chart_data|safe }};
+    // chart_data is a dict rendered via json - use json_script instead
+  })();
+</script>
+{{ chart_data|json_script:"pr-chart-data" }}
+<script>
+  (function () {
+    var data = {};
+    try {
+      data = JSON.parse(document.getElementById('pr-chart-data').textContent);
+    } catch (e) { data = {}; }
+
+    var correct = Number(data.correct || 0);
+    var wrong = Number(data.wrong || 0);
+    var unanswered = Number(data.unanswered || 0);
+    var scored = Number(data.marks_scored || 0);
+    var total = Number(data.total_marks || 0);
+
+    if (typeof Chart === 'undefined') return;
+
+    var doughnut = document.getElementById('prBreakdownChart');
+    if (doughnut) {
+      new Chart(doughnut, {
+        type: 'doughnut',
+        data: {
+          labels: ['Correct', 'Wrong', 'Unanswered'],
+          datasets: [{
+            data: [correct, wrong, unanswered],
+            backgroundColor: ['#34c759', '#ef4444', '#cbd5e1'],
+            borderWidth: 0,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 12, padding: 14, font: { size: 12, weight: '600' } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  var sum = correct + wrong + unanswered || 1;
+                  var v = ctx.parsed || 0;
+                  return ' ' + ctx.label + ': ' + v + ' (' + Math.round(100 * v / sum) + '%)';
+                }
+              }
+            }
+          },
+          cutout: '62%'
+        }
+      });
+    }
+
+    var bars = document.getElementById('prScoreChart');
+    if (bars) {
+      new Chart(bars, {
+        type: 'bar',
+        data: {
+          labels: ['Marks scored', 'Full marks'],
+          datasets: [{
+            label: 'Marks',
+            data: [scored, total],
+            backgroundColor: ['#667eea', '#c7d2fe'],
+            borderRadius: 8,
+            maxBarThickness: 48
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) { return ' ' + ctx.parsed.y + ' marks'; }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              suggestedMax: Math.max(total, scored, 1),
+              ticks: { precision: 0 },
+              grid: { color: 'rgba(15,23,42,0.06)' }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+    if (window.eqTypeset) window.eqTypeset();
+  })();
 </script>
 {% endblock %}

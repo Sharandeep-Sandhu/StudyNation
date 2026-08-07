@@ -970,6 +970,63 @@ def _normalize_free_text(value: str) -> str:
     return text
 
 
+def _resolve_correct_answer_key(question) -> str:
+    """Best-effort answer key: correct_answer field, then dynamic options."""
+    correct = (getattr(question, "correct_answer", None) or "").strip()
+    if correct:
+        return correct
+
+    # Dynamic QuestionOption rows (wizard / mcq)
+    try:
+        opts = list(question.options.all())
+    except Exception:
+        opts = []
+    if opts:
+        ordered = sorted(opts, key=lambda o: (o.order, o.id))
+        letters = [
+            chr(65 + i)
+            for i, o in enumerate(ordered)
+            if getattr(o, "is_correct", False)
+        ]
+        if letters:
+            return ",".join(letters)
+
+    return ""
+
+
+def _is_choice_question(question) -> bool:
+    qtype = (question.question_type or "").lower()
+    if qtype in (
+        "single_choice",
+        "multiple_choice",
+        "true_false",
+        "mcq",
+        "comprehension",
+    ):
+        return True
+    # Legacy banks may use option_a..d even with odd type labels
+    if any(
+        [
+            question.option_a,
+            question.option_b,
+            question.option_c,
+            question.option_d,
+        ]
+    ):
+        return True
+    try:
+        return question.options.exists()
+    except Exception:
+        return False
+
+
+def _is_multi_answer_question(question) -> bool:
+    qtype = (question.question_type or "").lower()
+    if qtype == "multiple_choice":
+        return True
+    return (getattr(question, "answer_type", "") or "").lower() == "multiple"
+
+
 def _grade_answer(question, given):
     """
     Best-effort auto-grading for a single question's submitted answer.
@@ -977,49 +1034,55 @@ def _grade_answer(question, given):
       - is_correct = None   -> left blank (counts as "unanswered", not wrong)
       - is_correct = True/False -> counts as correct/wrong
 
-    single_choice / true_false : exact letter match (case-insensitive)
-    multiple_choice            : exact set-of-letters match, comma-separated
-    numerical                  : numeric match with small tolerance, falls
-                                  back to exact text if not parseable as a number
-    structured / matching      : normalized free-text match (case/whitespace/
-                                  light punctuation tolerant)
+    Choice questions (A/B/C/D or dynamic options) match by letter set.
+    If an answer was given but no key exists, it is graded wrong (not unanswered).
     """
     given = (given or "").strip()
-    correct = (question.correct_answer or "").strip()
-
     if not given:
         return None, 0
 
-    if not correct:
-        # No answer key on file for this question — can't grade it, but it
-        # was answered, so don't count it as wrong either.
-        return None, 0
-
-    qtype = question.question_type
+    correct = _resolve_correct_answer_key(question)
     marks = float(question.marks or 0)
+    qtype = (question.question_type or "").lower()
 
-    if qtype in ("single_choice", "true_false"):
-        is_correct = given.upper() == correct.upper()
-    elif qtype == "multiple_choice":
-        given_set = {x.strip().upper() for x in given.split(",") if x.strip()}
-        correct_set = {x.strip().upper() for x in correct.split(",") if x.strip()}
-        is_correct = bool(given_set) and given_set == correct_set
-    elif qtype == "numerical":
+    if not correct:
+        # Student answered, but this question has no answer key yet.
+        # Must NOT count as unanswered (that was the practice bug).
+        return False, 0
+
+    if _is_choice_question(question) or qtype in (
+        "single_choice",
+        "true_false",
+        "mcq",
+        "comprehension",
+        "multiple_choice",
+    ):
+        given_set = {x.strip().upper() for x in re.split(r"[,;\s]+", given) if x.strip()}
+        correct_set = {
+            x.strip().upper() for x in re.split(r"[,;\s]+", correct) if x.strip()
+        }
+        # Single-letter answers often arrive as "C"
+        if not _is_multi_answer_question(question) and len(given_set) == 1:
+            is_correct = given_set == correct_set or given.upper() == correct.upper()
+        else:
+            is_correct = bool(given_set) and given_set == correct_set
+        return is_correct, (marks if is_correct else 0)
+
+    if qtype in ("numerical", "integer"):
         try:
-            # Prefer question numeric_tolerance when set
             tol = float(getattr(question, "numeric_tolerance", None) or 1e-6)
             is_correct = abs(float(given) - float(correct)) <= max(tol, 1e-9)
         except (TypeError, ValueError):
             is_correct = _normalize_free_text(given) == _normalize_free_text(correct)
-    else:  # structured, matching, fill_blank, etc.
-        given_n = _normalize_free_text(given)
-        correct_n = _normalize_free_text(correct)
-        is_correct = given_n == correct_n
-        # Accept any of several correct alternatives separated by "||"
-        if not is_correct and "||" in correct:
-            alts = {_normalize_free_text(a) for a in correct.split("||") if a.strip()}
-            is_correct = given_n in alts
+        return is_correct, (marks if is_correct else 0)
 
+    # structured, matching, fill_blank, free text, etc.
+    given_n = _normalize_free_text(given)
+    correct_n = _normalize_free_text(correct)
+    is_correct = given_n == correct_n
+    if not is_correct and "||" in correct:
+        alts = {_normalize_free_text(a) for a in correct.split("||") if a.strip()}
+        is_correct = given_n in alts
     return is_correct, (marks if is_correct else 0)
 
 
@@ -1034,6 +1097,7 @@ def student_practice_start(request, exam_id):
     exam_questions = (
         ExamQuestion.objects.filter(exam=exam)
         .select_related("question")
+        .prefetch_related("question__options")
         .order_by("order", "added_at")
     )
     if not exam_questions.exists():
@@ -1062,7 +1126,10 @@ def student_practice_submit(request, exam_id):
     """Grades the submitted answers and records an ExamAttempt."""
     exam = _get_owned_exam_or_404(request, exam_id)
     exam_questions = list(
-        ExamQuestion.objects.filter(exam=exam).select_related("question").order_by("order", "added_at")
+        ExamQuestion.objects.filter(exam=exam)
+        .select_related("question")
+        .prefetch_related("question__options")
+        .order_by("order", "added_at")
     )
     if not exam_questions:
         messages.error(request, "This exam has no questions to grade.")
@@ -1145,15 +1212,38 @@ def student_practice_submit(request, exam_id):
 def student_practice_result(request, exam_id, attempt_id):
     exam = _get_owned_exam_or_404(request, exam_id)
     attempt = get_object_or_404(ExamAttempt, id=attempt_id, exam=exam, student=request.user)
-    answers = (
+    answers = list(
         ExamAttemptAnswer.objects.filter(attempt=attempt)
         .select_related("question")
+        .prefetch_related("question__options")
         .order_by("id")
     )
+
+    # Attach resolved answer keys for display (legacy empty correct_answer)
+    for ans in answers:
+        ans.display_correct = _resolve_correct_answer_key(ans.question) or (
+            ans.question.correct_answer or ""
+        )
+
+    chart_data = {
+        "correct": attempt.correct_count,
+        "wrong": attempt.wrong_count,
+        "unanswered": attempt.unanswered_count,
+        "score_percent": attempt.score_percent,
+        "marks_scored": attempt.marks_scored,
+        "total_marks": attempt.total_marks,
+        "time_taken_seconds": attempt.time_taken_seconds,
+    }
+
     return render(
         request,
         "courses/student_practice_result.html",
-        {"exam": exam, "attempt": attempt, "answers": answers},
+        {
+            "exam": exam,
+            "attempt": attempt,
+            "answers": answers,
+            "chart_data": chart_data,
+        },
     )
 
 
