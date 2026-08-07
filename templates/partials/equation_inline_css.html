@@ -1,98 +1,134 @@
 <style id="eq-inline-css">
   /*
-    Word-imported equation PNGs — size like normal body text.
-    Source files are often ~70–130px tall; always scale down to em units.
+    Glyph-normalized equation PNGs (see docx _enhance_equation_png):
+    main character line ≈ 28px in the file. Display at natural size
+    (height:auto) so every formula has the SAME character size.
+    Multi-line formulas are taller overall but letters match single-line ones.
   */
-  img.eq-inline {
-    display: inline !important;
-    height: 1.25em !important;
-    width: auto !important;
-    max-height: 1.6em !important;
-    max-width: min(100%, 16em) !important;
-    min-height: 0 !important;
-    min-width: 0 !important;
-    vertical-align: -0.2em !important;
-    margin: 0 0.12em !important;
-    padding: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    object-fit: contain !important;
-    image-rendering: auto;
-  }
-
-  /* Question stems: room for superscripts without looking huge */
-  .question-text img.eq-inline,
-  .question-item .question-text img.eq-inline,
-  .q-stem img.eq-inline,
-  .eb-q-stem img.eq-inline,
-  .eb-preview-body img.eq-inline,
-  .eb-preview-body .eb-q-stem img.eq-inline,
-  .preview-body img.eq-inline,
-  .preview-body .eb-q-stem img.eq-inline,
-  .pq-question-text img.eq-inline,
-  .pr-review-text img.eq-inline,
-  .pc-comment-text img.eq-inline,
-  .pc-post-content img.eq-inline,
-  .mq-body img.eq-inline,
-  .bank-questions img.eq-inline,
-  .cd-question-text img.eq-inline {
-    height: 1.3em !important;
-    max-height: 1.75em !important;
-    max-width: min(100%, 18em) !important;
-    vertical-align: middle !important;
-  }
-
-  /* Options A–D */
-  .q-options img.eq-inline,
-  .eb-opt-text img.eq-inline,
-  .eb-preview-body .eb-opt-text img.eq-inline,
-  .preview-body .eb-opt-text img.eq-inline,
-  .pq-option-text img.eq-inline {
-    height: 1.2em !important;
-    max-height: 1.55em !important;
-    vertical-align: middle !important;
-  }
-
-  /*
-    Thumbnail strip — only when equations are NOT already inlined.
-    Keep chips small so they never dominate the list.
-  */
-  .eq-images img,
-  .eq-images img.eq-inline {
+  img.eq-math-img,
+  img.eq-inline,
+  img[src*="question_equations"],
+  .question-text img[src*="question_equations"],
+  .q-options img[src*="question_equations"],
+  .pq-question-text img[src*="question_equations"],
+  .pq-option-text img[src*="question_equations"],
+  .pq-option img[src*="question_equations"],
+  .eb-q-stem img[src*="question_equations"],
+  .eb-opt-text img[src*="question_equations"],
+  .pr-review-text img[src*="question_equations"] {
     display: inline-block !important;
-    height: 28px !important;
-    max-height: 28px !important;
-    max-width: 160px !important;
+    height: auto !important;
+    max-height: 48px !important;
     width: auto !important;
+    max-width: min(96vw, 720px) !important;
     vertical-align: middle !important;
-    border: 1px solid #d6dbf2 !important;
-    border-radius: 4px !important;
-    background: #fff !important;
-    padding: 2px !important;
+    object-fit: contain !important;
+    margin: 2px 4px !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  span.eq-math,
+  span.eq-math--lg {
+    display: inline !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    line-height: inherit !important;
     margin: 0 !important;
+    padding: 0 !important;
+    vertical-align: middle !important;
+    border: none !important;
+    background: transparent !important;
   }
 
-  /* MathJax SVG — match body text */
-  mjx-container {
-    font-size: 100% !important;
-    margin: 0 0.06em !important;
-  }
-  mjx-container[display="true"] {
-    font-size: 105% !important;
-    margin: 0.35em 0 !important;
+  .eq-images img,
+  .eq-ref-strip img {
+    height: auto !important;
+    max-height: 48px !important;
+    width: auto !important;
+    object-fit: contain !important;
+    vertical-align: middle !important;
   }
 
-  .question-text,
-  .question-item .question-text,
-  .eb-q-stem,
-  .pq-question-text,
-  .pr-review-text,
-  .cd-question-text {
-    line-height: 1.75;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
+  .katex { font-size: 1.05em !important; }
+  .katex-display { margin: 0.4em 0 !important; overflow-x: auto; }
+  .katex-display > .katex { font-size: 1.08em !important; }
+
+  .question-text, .pq-question-text, .pq-option-text, .q-options, .pr-review-text {
+    line-height: 1.9;
   }
 </style>
+<script id="eq-natural-size-js">
+(function () {
+  /**
+   * Clear forced heights from older CSS/DB so glyph-normalized PNGs
+   * display at natural size (same character size for every formula).
+   */
+  function force(img) {
+    if (!img || img.tagName !== "IMG") return;
+    var src = img.getAttribute("src") || "";
+    var cls = String(img.className || "");
+    if (
+      src.indexOf("question_equations") === -1 &&
+      cls.indexOf("eq-math") === -1 &&
+      cls.indexOf("eq-inline") === -1
+    ) return;
 
+    img.classList.add("eq-math-img");
+    img.removeAttribute("width");
+    img.removeAttribute("height");
+    img.style.setProperty("height", "auto", "important");
+    img.style.setProperty("max-height", "48px", "important");
+    img.style.setProperty("min-height", "0", "important");
+    img.style.setProperty("width", "auto", "important");
+    img.style.setProperty("max-width", "min(96vw,720px)", "important");
+    img.style.setProperty("display", "inline-block", "important");
+    img.style.setProperty("vertical-align", "middle", "important");
+    img.style.setProperty("object-fit", "contain", "important");
+    img.style.setProperty("margin", "2px 4px", "important");
+    img.style.setProperty("padding", "0", "important");
+    img.style.setProperty("border", "0", "important");
+    img.style.setProperty("background", "transparent", "important");
+
+    var p = img.parentElement;
+    if (p && p.classList && p.classList.contains("eq-math")) {
+      p.style.cssText =
+        "display:inline!important;height:auto!important;max-height:none!important;" +
+        "margin:0!important;padding:0!important;vertical-align:middle!important;";
+    }
+  }
+
+  function all(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    var list = scope.querySelectorAll
+      ? scope.querySelectorAll(
+          'img.eq-math-img, img.eq-inline, img[src*="question_equations"]'
+        )
+      : [];
+    for (var i = 0; i < list.length; i++) force(list[i]);
+  }
+
+  window.eqSizeInlineImages = all;
+
+  function boot() { all(document); }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+  window.addEventListener("load", boot);
+  setTimeout(boot, 50);
+  setTimeout(boot, 400);
+
+  if (typeof MutationObserver !== "undefined") {
+    var t = null;
+    new MutationObserver(function () {
+      if (t) clearTimeout(t);
+      t = setTimeout(boot, 30);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+})();
+</script>

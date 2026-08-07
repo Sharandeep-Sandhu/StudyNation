@@ -18,6 +18,7 @@ from .views import (
     student_exams,
     student_create_exam,
     student_edit_exam,
+    student_generate_exam_paper,
     student_exam_toggle_question,
     student_exam_reorder_questions,
     student_exam_settings,
@@ -25,12 +26,6 @@ from .views import (
     student_practice_start,
     student_practice_submit,
     student_practice_result,
-    student_question_lists,
-    student_create_question_list,
-    student_edit_question_list,
-    student_question_list_toggle_question,
-    student_question_list_reorder,
-    student_delete_question_list,
     discussion_create_post,
     discussion_add_reply,
     discussion_edit_reply,
@@ -75,6 +70,11 @@ urlpatterns = [
     path("my-exams/create/", student_create_exam, name="student_create_exam"),
     path("my-exams/<int:exam_id>/", student_edit_exam, name="student_edit_exam"),
     path(
+        "my-exams/<int:exam_id>/generate/",
+        student_generate_exam_paper,
+        name="student_generate_exam_paper",
+    ),
+    path(
         "my-exams/<int:exam_id>/settings/",
         student_exam_settings,
         name="student_exam_settings",
@@ -108,32 +108,5 @@ urlpatterns = [
         "my-exams/<int:exam_id>/reorder/",
         student_exam_reorder_questions,
         name="student_exam_reorder_questions",
-    ),
-    # Student: Build Question List
-    path("my-lists/", student_question_lists, name="student_question_lists"),
-    path(
-        "my-lists/create/",
-        student_create_question_list,
-        name="student_create_question_list",
-    ),
-    path(
-        "my-lists/<int:list_id>/",
-        student_edit_question_list,
-        name="student_edit_question_list",
-    ),
-    path(
-        "my-lists/<int:list_id>/delete/",
-        student_delete_question_list,
-        name="student_delete_question_list",
-    ),
-    path(
-        "my-lists/<int:list_id>/toggle-question/",
-        student_question_list_toggle_question,
-        name="student_question_list_toggle_question",
-    ),
-    path(
-        "my-lists/<int:list_id>/reorder/",
-        student_question_list_reorder,
-        name="student_question_list_reorder",
     ),
 ]

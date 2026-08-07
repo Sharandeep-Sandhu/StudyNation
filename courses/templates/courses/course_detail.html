@@ -176,20 +176,20 @@
                 <div class="bank-questions" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
                   {% for question in bank.questions.all %}
                     <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9f9f9; border-radius: 4px;">
-                      <div class="cd-question-text question-text" style="font-weight: 500; margin-bottom: 0.5rem; font-size: 1rem; line-height: 1.7;">{{ question.question_text|safe_html }}</div>
+                      <div class="cd-question-text question-text" style="font-weight: 500; margin-bottom: 0.5rem; font-size: 1rem; line-height: 1.7;">{{ question.question_text|safe_html_stem }}</div>
                       {% if question.question_type in 'single_choice|multiple_choice' %}
                         <div class="q-options" style="margin-left: 1rem; color: #666; font-size: 1rem; line-height: 1.6;">
                           {% if question.option_a %}
-                            <p class="eb-opt-text">A) {{ question.option_a|safe_html }}</p>
+                            <p class="eb-opt-text">A) {{ question.option_a|safe_html_option }}</p>
                           {% endif %}
                           {% if question.option_b %}
-                            <p class="eb-opt-text">B) {{ question.option_b|safe_html }}</p>
+                            <p class="eb-opt-text">B) {{ question.option_b|safe_html_option }}</p>
                           {% endif %}
                           {% if question.option_c %}
-                            <p class="eb-opt-text">C) {{ question.option_c|safe_html }}</p>
+                            <p class="eb-opt-text">C) {{ question.option_c|safe_html_option }}</p>
                           {% endif %}
                           {% if question.option_d %}
-                            <p class="eb-opt-text">D) {{ question.option_d|safe_html }}</p>
+                            <p class="eb-opt-text">D) {{ question.option_d|safe_html_option }}</p>
                           {% endif %}
                         </div>
                       {% endif %}

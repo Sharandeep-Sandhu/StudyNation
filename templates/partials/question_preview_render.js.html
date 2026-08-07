@@ -134,11 +134,15 @@
     }
     if (!Array.isArray(list) || !list.length) return '';
     const thumbs = list.map(function (src) {
-      return '<img src="' + escapeHtml(src) + '" alt="equation" class="eq-inline" />';
-    }).join('');
+      return (
+        '<span class="eq-math" contenteditable="false">' +
+        '<img src="' + escapeHtml(src) + '" alt="" class="eq-math-img" decoding="async" />' +
+        '</span>'
+      );
+    }).join(' ');
     return '<div style="margin-top:14px;">' +
       '<div style="font-size:0.78rem; color:#667eea; margin-bottom:6px;">∑ Equation image(s)</div>' +
-      '<div style="display:flex; flex-wrap:wrap; gap:8px;">' + thumbs + '</div></div>';
+      '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">' + thumbs + '</div></div>';
   }
 
   /**

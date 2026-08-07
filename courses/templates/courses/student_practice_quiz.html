@@ -41,7 +41,7 @@
     .pq-question-block { flex: 1; }
     .pq-topic { font-size: 0.8rem; color: #a33; margin-bottom: 10px; }
     .pq-question-text {
-      font-size: 1rem; color: #222; line-height: 1.7; margin-bottom: 18px;
+      font-size: 1.05rem; color: #222; line-height: 1.75; margin-bottom: 18px;
       word-wrap: break-word; overflow-wrap: anywhere;
     }
     .pq-marks { font-size: 0.8rem; color: #888; margin-bottom: 18px; }
@@ -58,7 +58,38 @@
       justify-content: center; font-size: 0.8rem; font-weight: 700; color: #666; flex-shrink: 0;
     }
     .pq-option.pq-selected .pq-option-letter { border-color: #5b6fd8; background: #5b6fd8; color: white; }
-    .pq-option-text { font-size: 1rem; color: #333; line-height: 1.6; }
+    .pq-option-text {
+      font-size: 1.05rem; color: #333; line-height: 1.75;
+    }
+    /* Natural size after glyph-normalized PNGs (same letter size always) */
+    .pq-question-text img,
+    .pq-option-text img,
+    .pq-option img,
+    .pq-equation-images img {
+      height: auto !important;
+      max-height: 48px !important;
+      min-height: 0 !important;
+      width: auto !important;
+      max-width: min(96vw, 720px) !important;
+      vertical-align: middle !important;
+      object-fit: contain !important;
+      display: inline-block !important;
+      margin: 2px 4px !important;
+      padding: 0 !important;
+      border: none !important;
+      background: transparent !important;
+    }
+    .pq-question-text span.eq-math,
+    .pq-option-text span.eq-math {
+      display: inline !important;
+      height: auto !important;
+      max-height: none !important;
+      margin: 0 !important;
+    }
+    .pq-question-text .katex,
+    .pq-option-text .katex {
+      font-size: 1.05em !important;
+    }
 
     .pq-text-answer textarea {
       width: 100%; min-height: 90px; padding: 10px 12px; border-radius: 8px; border: 1.5px solid #e0e3f5;
@@ -115,13 +146,13 @@
             {% with q=eq.question %}
               <div class="pq-question" data-index="{{ forloop.counter0 }}" style="{% if not forloop.first %}display:none;{% endif %}">
                 {% if q.topic %}<div class="pq-topic"><strong>Topic(s):</strong> {{ q.topic }}</div>{% endif %}
-                <div class="pq-question-text">{{ q.question_text|safe_html }}</div>
+                <div class="pq-question-text">{{ q.question_text|safe_html_stem }}</div>
                 {% if q.equation_image_list and '<img' not in q.question_text %}
                   <div class="pq-equation-images">
                     <div class="pq-hint" style="margin-bottom:6px;">Embedded formulas from the original document:</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; align-items:center;">
                       {% for img in q.equation_image_list %}
-                        <img src="{{ img }}" alt="equation" class="eq-inline" />
+                        <img src="{{ img }}" alt="" class="eq-math-img" style="height:auto!important;max-height:48px!important;width:auto!important;vertical-align:middle;object-fit:contain;" decoding="async" />
                       {% endfor %}
                     </div>
                   </div>
@@ -130,17 +161,17 @@
 
                 {% if q.question_type == 'single_choice' or q.question_type == 'true_false' %}
                   <div class="pq-options" data-qid="{{ q.id }}" data-mode="single">
-                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="selectOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html }}</span></div>{% endif %}
-                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="selectOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html }}</span></div>{% endif %}
-                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="selectOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html }}</span></div>{% endif %}
-                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="selectOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html }}</span></div>{% endif %}
+                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="selectOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
+                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="selectOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
+                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="selectOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
+                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="selectOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
                   </div>
                 {% elif q.question_type == 'multiple_choice' %}
                   <div class="pq-options" data-qid="{{ q.id }}" data-mode="multi">
-                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="toggleMultiOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html }}</span></div>{% endif %}
-                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="toggleMultiOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html }}</span></div>{% endif %}
-                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="toggleMultiOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html }}</span></div>{% endif %}
-                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="toggleMultiOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html }}</span></div>{% endif %}
+                    {% if q.option_a %}<div class="pq-option" data-value="A" onclick="toggleMultiOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
+                    {% if q.option_b %}<div class="pq-option" data-value="B" onclick="toggleMultiOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
+                    {% if q.option_c %}<div class="pq-option" data-value="C" onclick="toggleMultiOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
+                    {% if q.option_d %}<div class="pq-option" data-value="D" onclick="toggleMultiOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
                   </div>
                   <div class="pq-hint">Select all that apply.</div>
                 {% else %}
@@ -238,6 +269,9 @@
     document.getElementById('pqNextBtn').disabled = (index === TOTAL_QUESTIONS - 1);
     if (window.MathJax && window.MathJax.typesetPromise) {
       window.MathJax.typesetPromise([document.getElementById('pqQuestionBlock')]);
+    }
+    if (typeof window.eqSizeInlineImages === 'function') {
+      window.eqSizeInlineImages(document.getElementById('pqQuestionBlock'));
     }
   }
 

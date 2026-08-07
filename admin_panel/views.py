@@ -1,6 +1,6 @@
 from functools import wraps
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
@@ -14,7 +14,6 @@ import json
 import os
 
 from .forms import (
-    AdminLoginForm,
     CSVUploadForm,
     ManualQuestionForm,
     QuestionBankForm,
@@ -63,51 +62,44 @@ def _wants_json(request):
 
 # ==================== AUTHENTICATION ====================
 def admin_login(request):
-    """Admin login view"""
+    """Legacy admin login URL — redirect to the single unified login form.
+
+    Admins and students both sign in at /login/. Role decides the destination.
+    """
     if request.user.is_authenticated:
         if hasattr(request.user, "admin_profile"):
             return redirect("admin_panel:dashboard")
-        elif request.user.is_superuser:
+        if request.user.is_superuser:
             AdminUser.objects.get_or_create(user=request.user)
             return redirect("admin_panel:dashboard")
+        if hasattr(request.user, "student_profile"):
+            return redirect("courses:student_exams")
 
-    if request.method == "POST":
-        form = AdminLoginForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data["username"]
-            password = form.cleaned_data["password"]
-            user = authenticate(request, username=username, password=password)
-
-            if user is not None and hasattr(user, "admin_profile"):
-                login(request, user)
-                admin_user = user.admin_profile
-                admin_user.last_login = timezone.now()
-                admin_user.save()
-                messages.success(request, f"Welcome back, {username}!")
-                return redirect("admin_panel:dashboard")
-            else:
-                messages.error(request, "Invalid credentials or not an admin user")
-    else:
-        form = AdminLoginForm()
-
-    return render(request, "admin_panel/login.html", {"form": form})
+    login_url = reverse("courses:student_login")
+    next_url = request.GET.get("next") or reverse("admin_panel:dashboard")
+    separator = "&" if "?" in login_url else "?"
+    return redirect(f"{login_url}{separator}next={next_url}")
 
 
 def admin_logout(request):
     logout(request)
     messages.success(request, "Logged out successfully")
-    return redirect("admin_panel:login")
+    return redirect("courses:student_login")
 
 
 def admin_required(view_func):
     """Require login + admin_profile for all admin-panel views."""
 
-    @login_required(login_url="admin_panel:login")
+    @login_required(login_url="courses:student_login")
     @wraps(view_func)
     def wrapped_view(request, *args, **kwargs):
         if not hasattr(request.user, "admin_profile"):
-            messages.error(request, "You do not have admin access")
-            return redirect("admin_panel:login")
+            # Superusers get an admin profile on the fly
+            if request.user.is_superuser:
+                AdminUser.objects.get_or_create(user=request.user)
+            else:
+                messages.error(request, "You do not have admin access")
+                return redirect("courses:student_login")
         return view_func(request, *args, **kwargs)
 
     return wrapped_view
@@ -211,7 +203,8 @@ def csv_upload(request):
                 successful = 0
                 failed = 0
                 errors = []
-                questions_with_equations = 0
+                questions_with_latex = 0
+                questions_with_eq_images = 0
                 equation_image_total = 0
 
                 with transaction.atomic():
@@ -220,8 +213,19 @@ def csv_upload(request):
                             eq_images = q_data.get("equation_images") or []
                             if not isinstance(eq_images, list):
                                 eq_images = []
+                            blob = " ".join(
+                                [
+                                    str(q_data.get("question_text") or ""),
+                                    str(q_data.get("option_a") or ""),
+                                    str(q_data.get("option_b") or ""),
+                                    str(q_data.get("option_c") or ""),
+                                    str(q_data.get("option_d") or ""),
+                                ]
+                            )
+                            if "$" in blob or "\\(" in blob:
+                                questions_with_latex += 1
                             if eq_images:
-                                questions_with_equations += 1
+                                questions_with_eq_images += 1
                                 equation_image_total += len(eq_images)
 
                             paper_code = (q_data.get("paper_code") or "").strip()
@@ -289,11 +293,16 @@ def csv_upload(request):
                     + (f", {failed} failed" if failed else "")
                     + f" into “{question_bank.title}”."
                 )
-                if questions_with_equations:
+                if questions_with_latex:
                     success_msg += (
-                        f" {questions_with_equations} question(s) include "
-                        f"{equation_image_total} equation image(s) shown inline "
-                        "(formulas kept as clear images from the Word file)."
+                        f" {questions_with_latex} question(s) store math as "
+                        f"text + LaTeX (rendered with KaTeX)."
+                    )
+                if questions_with_eq_images:
+                    success_msg += (
+                        f" {questions_with_eq_images} question(s) still have "
+                        f"{equation_image_total} fallback image(s) where LaTeX "
+                        f"could not be extracted."
                     )
                 success_msg += " Open Manage Questions to review them."
                 messages.success(request, success_msg)
@@ -370,7 +379,7 @@ def create_question_bank(request):
     if not hasattr(request.user, "admin_profile"):
         if _wants_json(request):
             return JsonResponse({"error": "Unauthorized"}, status=403)
-        return redirect("admin_panel:login")
+        return redirect("courses:student_login")
 
     wants_json = _wants_json(request)
 
@@ -712,6 +721,48 @@ def question_wizard_delete(request, question_id):
     bank.total_questions = bank.questions.count()
     bank.save(update_fields=["total_questions"])
     return JsonResponse({"success": True})
+
+
+@admin_required
+@require_POST
+def questions_bulk_delete(request):
+    """Delete multiple questions by id (from Manage Questions select-all)."""
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({"error": "Invalid JSON body"}, status=400)
+
+    raw_ids = payload.get("ids") or payload.get("question_ids") or []
+    if not isinstance(raw_ids, list) or not raw_ids:
+        return JsonResponse({"error": "No questions selected"}, status=400)
+
+    ids = []
+    for x in raw_ids:
+        try:
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    ids = list(dict.fromkeys(ids))  # unique, preserve order
+    if not ids:
+        return JsonResponse({"error": "No valid question ids"}, status=400)
+
+    # Cap one request so a bad client cannot wipe the whole bank accidentally
+    if len(ids) > 500:
+        return JsonResponse(
+            {"error": "Please delete at most 500 questions at a time"},
+            status=400,
+        )
+
+    qs = Question.objects.filter(id__in=ids).select_related("question_bank")
+    bank_ids = set(qs.values_list("question_bank_id", flat=True))
+    deleted_count, _ = qs.delete()
+
+    # Refresh question-bank counters
+    for bank in QuestionBank.objects.filter(id__in=bank_ids):
+        bank.total_questions = bank.questions.count()
+        bank.save(update_fields=["total_questions"])
+
+    return JsonResponse({"success": True, "deleted": deleted_count})
 
 
 # ==================== MANAGE QUESTIONS ====================

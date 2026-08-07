@@ -67,6 +67,11 @@ urlpatterns = [
         views.question_wizard_delete,
         name="question_wizard_delete",
     ),
+    path(
+        "questions/bulk-delete/",
+        views.questions_bulk_delete,
+        name="questions_bulk_delete",
+    ),
     # Blogs
     path("manage-blogs/", views.manage_blogs, name="manage_blogs"),
     path("manage-blogs/create/", views.create_blog, name="create_blog"),

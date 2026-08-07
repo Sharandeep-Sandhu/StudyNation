@@ -8,7 +8,7 @@
   <div style="max-width: 480px; margin: 2rem auto;">
     <div class="hero" style="padding: 2.5rem 2rem; margin-bottom: 2rem;">
       <h1 style="font-size: 1.8rem;">👋 Welcome back</h1>
-      <p style="margin-bottom: 0;">Log in to access your saved exams and the Exam Builder.</p>
+      <p style="margin-bottom: 0;">One login for students and admins. We’ll send you to the right portal.</p>
     </div>
 
     {% if messages %}
@@ -37,8 +37,12 @@
         <button type="submit" class="btn" style="width: 100%; padding: 0.85rem;">Log in</button>
       </form>
 
-      <p style="text-align: center; margin-top: 1.5rem; color: #666;">
-        New to Study Nation? <a href="{% url 'courses:student_signup' %}" style="color: #667eea; font-weight: 600;">Create a free account</a>
+      <p style="text-align: center; margin-top: 1.25rem; color: #6b7280; font-size: 0.9rem;">
+        Students go to My Exams · Admins go to the Admin Panel
+      </p>
+
+      <p style="text-align: center; margin-top: 1rem; color: #666;">
+        New student? <a href="{% url 'courses:student_signup' %}" style="color: #667eea; font-weight: 600;">Create a free account</a>
       </p>
     </div>
   </div>

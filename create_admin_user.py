@@ -44,7 +44,7 @@ def create_admin():
     print(f"   Username: admin")
     print(f"   Password: admin123")
     print(f"   Email: admin@learninghub.com")
-    print(f"\n🔐 Login at: http://localhost:8000/admin-panel/login/")
+    print(f"\n🔐 Login at: http://localhost:8000/login/  (admin is redirected to Admin Panel)")
 
 
 if __name__ == "__main__":

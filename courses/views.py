@@ -14,6 +14,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST, require_http_methods
 from datetime import datetime
 import json
+import random
 import re
 import logging
 
@@ -249,10 +250,82 @@ class PastPapersView(TemplateView):
         return context
 
 
-# ==================== STUDENT AUTHENTICATION ====================
+# ==================== UNIFIED AUTHENTICATION ====================
+def _user_is_admin(user):
+    """True if user has admin panel access (AdminUser profile or superuser)."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if hasattr(user, "admin_profile"):
+        return True
+    return bool(getattr(user, "is_superuser", False))
+
+
+def _user_is_student(user):
+    return bool(
+        user
+        and getattr(user, "is_authenticated", False)
+        and hasattr(user, "student_profile")
+    )
+
+
+def _user_can_access_portal(user):
+    """Student portal + exam builder: students and admins both allowed."""
+    return _user_is_student(user) or _user_is_admin(user)
+
+
+def _ensure_admin_profile(user):
+    """Create AdminUser for superusers who lack a profile; return profile or None."""
+    if hasattr(user, "admin_profile"):
+        return user.admin_profile
+    if getattr(user, "is_superuser", False):
+        from admin_panel.models import AdminUser
+
+        profile, _ = AdminUser.objects.get_or_create(user=user)
+        return profile
+    return None
+
+
+def _safe_next_url(request, next_url, *, is_admin=False, is_student=False):
+    """Return next_url only if it is same-host and allowed for this role.
+
+    Admins may open any same-host page (including student portal routes).
+    Students may open student routes but not the admin panel.
+    """
+    if not next_url:
+        return None
+    if not url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return None
+
+    path = next_url.split("?", 1)[0]
+    if path.startswith("/admin-panel") and not is_admin:
+        return None
+    # Student-only areas are open to admins as well (full-site admin access)
+    student_only = ("/my-exams",)
+    if any(path.startswith(p) for p in student_only) and not (
+        is_student or is_admin
+    ):
+        return None
+    return next_url
+
+
+def _default_post_login_redirect(user):
+    """Admin → admin panel; student → user portal; else home."""
+    if _user_is_admin(user):
+        return reverse("admin_panel:dashboard")
+    if _user_is_student(user):
+        return reverse("courses:student_exams")
+    return reverse("courses:home")
+
+
 def student_signup(request):
     if request.user.is_authenticated and hasattr(request.user, "student_profile"):
         return redirect("courses:student_exams")
+    if request.user.is_authenticated and _user_is_admin(request.user):
+        return redirect("admin_panel:dashboard")
 
     if request.method == "POST":
         form = StudentSignupForm(request.POST)
@@ -268,8 +341,21 @@ def student_signup(request):
 
 
 def student_login(request):
-    if request.user.is_authenticated and hasattr(request.user, "student_profile"):
-        return redirect("courses:student_exams")
+    """Single login form for both admin and student accounts.
+
+    - Admin / superuser → admin panel dashboard
+    - Student role → user portal (My Exams)
+    """
+    if request.user.is_authenticated:
+        next_url = _safe_next_url(
+            request,
+            request.GET.get("next") or "",
+            is_admin=_user_is_admin(request.user),
+            is_student=_user_is_student(request.user),
+        )
+        if next_url:
+            return redirect(next_url)
+        return redirect(_default_post_login_redirect(request.user))
 
     if request.method == "POST":
         form = StudentLoginForm(request.POST)
@@ -285,17 +371,43 @@ def student_login(request):
                     username = user_match.username
 
             user = authenticate(request, username=username, password=password)
-            if user is not None and hasattr(user, "student_profile"):
-                login(request, user)
-                messages.success(request, f"Welcome back, {user.first_name or user.username}!")
-                next_url = request.GET.get("next") or request.POST.get("next") or ""
-                if next_url and url_has_allowed_host_and_scheme(
-                    next_url,
-                    allowed_hosts={request.get_host()},
-                    require_https=request.is_secure(),
-                ):
-                    return redirect(next_url)
-                return redirect("courses:student_exams")
+            if user is not None:
+                is_admin = _user_is_admin(user)
+                is_student = _user_is_student(user)
+
+                if not is_admin and not is_student:
+                    messages.error(
+                        request,
+                        "This account is not set up as a student or admin. "
+                        "Please contact support.",
+                    )
+                else:
+                    login(request, user)
+
+                    if is_admin:
+                        admin_profile = _ensure_admin_profile(user)
+                        if admin_profile is not None:
+                            admin_profile.last_login = timezone.now()
+                            admin_profile.save(update_fields=["last_login"])
+
+                    messages.success(
+                        request,
+                        f"Welcome back, {user.first_name or user.username}!",
+                    )
+
+                    next_url = _safe_next_url(
+                        request,
+                        request.GET.get("next") or request.POST.get("next") or "",
+                        is_admin=is_admin,
+                        is_student=is_student,
+                    )
+                    if next_url:
+                        return redirect(next_url)
+
+                    # Role-based default destinations
+                    if is_admin:
+                        return redirect("admin_panel:dashboard")
+                    return redirect("courses:student_exams")
             else:
                 messages.error(request, "Invalid username/email or password.")
     else:
@@ -307,18 +419,28 @@ def student_login(request):
 def student_logout(request):
     logout(request)
     messages.success(request, "You've been logged out.")
-    return redirect("courses:past_papers")
+    return redirect("courses:student_login")
 
 
 def student_required(view_func):
-    """Decorator ensuring the user is logged in with a student profile."""
+    """Allow student portal views for students and admin-role users.
+
+    Admins have full-site access (exam builder, practice, lists, etc.)
+    in addition to the admin panel.
+    """
 
     def wrapped(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect(f"/login/?next={request.path}")
-        if not hasattr(request.user, "student_profile"):
-            messages.error(request, "Please log in with a student account to continue.")
+        if not _user_can_access_portal(request.user):
+            messages.error(
+                request,
+                "Please log in with a student or admin account to continue.",
+            )
             return redirect("courses:student_login")
+        # Ensure superusers always have an admin profile for panel + nav links
+        if _user_is_admin(request.user):
+            _ensure_admin_profile(request.user)
         return view_func(request, *args, **kwargs)
 
     return wrapped
@@ -349,14 +471,59 @@ def _get_owned_exam_or_404(request, exam_id):
     return get_object_or_404(Exam, id=exam_id, created_by=request.user)
 
 
+def _question_type_choices():
+    """All question types available for the generate-paper form."""
+    return list(Question.QUESTION_TYPES)
+
+
+def _difficulty_choices():
+    return [c for c in Question.DIFFICULTY_LEVELS if c[0]]
+
+
+def _available_topics(category_ids=None):
+    """Distinct topic labels from the question bank (comma-separated fields split)."""
+    option_scope = Question.objects.all()
+    ids = []
+    if category_ids:
+        if isinstance(category_ids, (list, tuple, set)):
+            ids = [c for c in category_ids if c]
+        else:
+            ids = [category_ids]
+    if ids:
+        option_scope = option_scope.filter(
+            question_bank__course__category_id__in=ids
+        )
+    raw_topics = option_scope.exclude(topic="").values_list("topic", flat=True)
+    return sorted(
+        {
+            part.strip()
+            for blob in raw_topics
+            for part in (blob or "").split(",")
+            if part.strip()
+        }
+    )
+
+
+def _exam_builder_form_defaults(exam):
+    return {
+        "categories": [str(exam.category_id)] if exam.category_id else [],
+        "topics": [],
+        "question_types": [],
+        "num_sections": 1,
+        # Defaults used to pre-fill the first section type row
+        "num_questions": 10,
+        "difficulties": [],
+    }
+
+
 @student_required
 def student_edit_exam(request, exam_id):
-    """
-    Student-facing Exam Builder (mirrors the admin builder, scoped to the
-    logged-in student's own exam, with no enrollment restriction on which
-    questions can be browsed).
-    Filters: Topic(s), Year(s), Type (Category) + Submit. Questions are
-    pulled live from the database.
+    """Student Exam Builder: generate a paper from filters, then practice it.
+
+    Students no longer browse the full bank or preview answers here. They
+    choose category / topic / sections (count + per-section difficulty),
+    click Create Question Paper, and the paper appears under the My List tab.
+    Correct answers are shown only after a practice attempt is submitted.
     """
     exam = _get_owned_exam_or_404(request, exam_id)
 
@@ -368,85 +535,293 @@ def student_edit_exam(request, exam_id):
             messages.success(request, "Exam name updated.")
         return redirect("courses:student_edit_exam", exam_id=exam.id)
 
-    categories = CourseCategory.objects.all()
-
-    category_id = request.GET.get("category") or (exam.category_id or "")
-    topic = request.GET.get("topic", "")
-    year = request.GET.get("year", "")
-    sort = request.GET.get("sort", "desc")
-
-    questions = Question.objects.select_related("question_bank__course__category")
-    if category_id:
-        questions = questions.filter(question_bank__course__category_id=category_id)
-    if topic:
-        questions = questions.filter(topic__icontains=topic)
-    if year:
-        questions = questions.filter(year=year)
-
-    questions = questions.exclude(paper_code="")
-    questions = (
-        questions.order_by("-year", "-paper_code")
-        if sort == "desc"
-        else questions.order_by("year", "paper_code")
-    )
-
-    option_scope = Question.objects.exclude(paper_code="")
-    if category_id:
-        option_scope = option_scope.filter(question_bank__course__category_id=category_id)
-
-    # Single values_list query then split in Python (avoids N+1 ORM hits)
-    raw_topics = option_scope.exclude(topic="").values_list("topic", flat=True)
-    topics = sorted(
-        {
-            part.strip()
-            for blob in raw_topics
-            for part in (blob or "").split(",")
-            if part.strip()
-        }
-    )
-    years = sorted(
-        option_scope.exclude(year__isnull=True)
-        .values_list("year", flat=True)
-        .distinct(),
-        reverse=True,
-    )
-
-    page_obj, per_page_label, per_page_choices = paginate(request, questions)
-
-    selected_ids = set(
-        ExamQuestion.objects.filter(exam=exam).values_list("question_id", flat=True)
-    )
     exam_questions = (
         ExamQuestion.objects.filter(exam=exam)
         .select_related("question")
         .order_by("order", "added_at")
     )
-
     settings_form = StudentExamForm(instance=exam)
+    active_tab = request.GET.get("tab") or ""
 
     context = {
         "exam": exam,
-        "categories": categories,
-        "questions": page_obj.object_list,
-        "selected_ids": selected_ids,
+        "categories": CourseCategory.objects.all(),
+        "topics": _available_topics(
+            [exam.category_id] if exam.category_id else None
+        ),
+        "question_types": _question_type_choices(),
+        "difficulty_levels": _difficulty_choices(),
         "exam_questions": exam_questions,
         "selected_count": exam_questions.count(),
         "total_marks": exam.total_marks,
-        "filters": {
-            "category": str(category_id) if category_id else "",
-            "topic": topic,
-            "year": year,
-            "sort": sort,
-            "per_page": per_page_label,
-        },
-        "topics": topics,
-        "years": years,
         "settings_form": settings_form,
-        "practice_attempts": ExamAttempt.objects.filter(exam=exam, student=request.user)[:20],
-        "question_preview_data": question_preview_map(page_obj.object_list),
-        **pagination_context(request, page_obj, per_page_label, per_page_choices),
+        "practice_attempts": ExamAttempt.objects.filter(
+            exam=exam, student=request.user
+        )[:20],
+        "active_tab": active_tab,
+        "form_defaults": _exam_builder_form_defaults(exam),
+        "max_sections": 5,
     }
     return render(request, "courses/student_edit_exam.html", context)
+
+
+@student_required
+@require_POST
+def student_generate_exam_paper(request, exam_id):
+    """Auto-build a paper from multi-select filters + per-section type counts.
+
+    Top filters (multi): category, topic, question type.
+    Per section: multi difficulty + how many questions of each type.
+    """
+    exam = _get_owned_exam_or_404(request, exam_id)
+
+    category_ids = [
+        c.strip() for c in request.POST.getlist("category") if (c or "").strip()
+    ]
+    topics = [t.strip() for t in request.POST.getlist("topic") if (t or "").strip()]
+    question_types = [
+        t.strip()
+        for t in request.POST.getlist("question_type")
+        if (t or "").strip()
+    ]
+    paper_name = (request.POST.get("paper_name") or "").strip()
+
+    try:
+        num_sections = int(request.POST.get("num_sections") or 1)
+    except (TypeError, ValueError):
+        num_sections = 1
+    num_sections = max(1, min(num_sections, 5))
+
+    valid_types = {t[0] for t in Question.QUESTION_TYPES}
+    for qt in question_types:
+        if qt not in valid_types:
+            messages.error(request, "Invalid question type selected.")
+            return redirect("courses:student_edit_exam", exam_id=exam.id)
+
+    valid_diff = {d[0] for d in Question.DIFFICULTY_LEVELS if d[0]}
+
+    # Parse per-section difficulties (multi) + per-type question counts
+    sections = []
+    for i in range(1, num_sections + 1):
+        sec_diffs = [
+            d.strip()
+            for d in request.POST.getlist(f"section_{i}_difficulty")
+            if (d or "").strip()
+        ]
+        for d in sec_diffs:
+            if d not in valid_diff:
+                messages.error(request, f"Invalid difficulty for section {i}.")
+                return redirect(
+                    f"{reverse('courses:student_edit_exam', args=[exam.id])}?tab=create"
+                )
+
+        type_counts = {}
+        for tval, _label in Question.QUESTION_TYPES:
+            try:
+                n = int(request.POST.get(f"section_{i}_type_{tval}") or 0)
+            except (TypeError, ValueError):
+                n = 0
+            n = max(0, min(n, 100))
+            if n > 0:
+                type_counts[tval] = n
+
+        # Legacy fallback: plain section count (no type breakdown)
+        if not type_counts:
+            try:
+                sec_count = int(request.POST.get(f"section_{i}_count") or 0)
+            except (TypeError, ValueError):
+                sec_count = 0
+            sec_count = max(0, min(sec_count, 100))
+            if sec_count > 0:
+                type_counts = {"": sec_count}  # empty key = any type
+
+        if type_counts:
+            sections.append(
+                {
+                    "index": i,
+                    "difficulties": sec_diffs,
+                    "type_counts": type_counts,
+                    "count": sum(type_counts.values()),
+                }
+            )
+
+    # Backward-compatible fallback: single count/difficulty fields
+    if not sections:
+        try:
+            num_questions = int(request.POST.get("num_questions") or 10)
+        except (TypeError, ValueError):
+            num_questions = 10
+        num_questions = max(1, min(num_questions, 100))
+        difficulty = (request.POST.get("difficulty") or "").strip()
+        if difficulty and difficulty not in valid_diff:
+            messages.error(request, "Invalid difficulty level selected.")
+            return redirect(
+                f"{reverse('courses:student_edit_exam', args=[exam.id])}?tab=create"
+            )
+        sections = [
+            {
+                "index": 1,
+                "difficulties": [difficulty] if difficulty else [],
+                "type_counts": {"": num_questions},
+                "count": num_questions,
+            }
+        ]
+
+    requested_total = sum(s["count"] for s in sections)
+    if requested_total < 1:
+        messages.error(
+            request,
+            "Please set at least one question (pick a type count under each section).",
+        )
+        return redirect(
+            f"{reverse('courses:student_edit_exam', args=[exam.id])}?tab=create"
+        )
+
+    base_qs = Question.objects.select_related("question_bank__course__category")
+
+    if category_ids:
+        base_qs = base_qs.filter(
+            question_bank__course__category_id__in=category_ids
+        )
+        try:
+            exam.category_id = int(category_ids[0])
+        except (TypeError, ValueError):
+            pass
+
+    if topics:
+        topic_q = Q()
+        for t in topics:
+            topic_q |= Q(topic__icontains=t)
+        base_qs = base_qs.filter(topic_q)
+
+    # Global type multi-select narrows which types can be picked
+    if question_types:
+        base_qs = base_qs.filter(question_type__in=question_types)
+
+    # Treat closely related type keys as interchangeable so counts fill better
+    type_aliases = {
+        "multiple_choice": ("multiple_choice", "mcq"),
+        "mcq": ("mcq", "multiple_choice"),
+        "single_choice": ("single_choice", "mcq", "multiple_choice"),
+        "numerical": ("numerical", "integer"),
+        "integer": ("integer", "numerical"),
+        "comprehension": ("comprehension", "structured"),
+        "structured": ("structured", "comprehension"),
+    }
+
+    selected_ids = []
+    used_ids = set()
+    shortfalls = []
+
+    for sec in sections:
+        for qtype, want in sec["type_counts"].items():
+            qs = base_qs
+            if qtype:
+                type_keys = type_aliases.get(qtype, (qtype,))
+                qs = qs.filter(question_type__in=type_keys)
+            if sec["difficulties"]:
+                qs = qs.filter(
+                    Q(difficulty_level__in=sec["difficulties"])
+                    | Q(question_bank__difficulty__in=sec["difficulties"])
+                )
+            if used_ids:
+                qs = qs.exclude(id__in=used_ids)
+
+            candidate_ids = list(qs.values_list("id", flat=True))
+            type_label = (
+                dict(Question.QUESTION_TYPES).get(qtype, "Any type")
+                if qtype
+                else "Any type"
+            )
+            if not candidate_ids:
+                shortfalls.append(
+                    f"Section {sec['index']} · {type_label}: 0 of {want}"
+                )
+                continue
+
+            # Always take as many as available (never fail the whole paper)
+            pick = min(want, len(candidate_ids))
+            picked = random.sample(candidate_ids, pick)
+            selected_ids.extend(picked)
+            used_ids.update(picked)
+            if pick < want:
+                shortfalls.append(
+                    f"Section {sec['index']} · {type_label}: {pick} of {want}"
+                )
+
+    # Still create the paper whenever we have at least 1 matching question
+    if not selected_ids:
+        messages.error(
+            request,
+            "No questions match those filters, so the paper could not be "
+            "created. Try other categories, topics, types, or difficulties.",
+        )
+        return redirect(
+            f"{reverse('courses:student_edit_exam', args=[exam.id])}?tab=create"
+        )
+
+    pick_count = len(selected_ids)
+
+    if paper_name:
+        exam.name = paper_name[:200]
+    elif exam.name in ("", "My Practice Exam"):
+        cat_name = ""
+        if exam.category_id:
+            cat = CourseCategory.objects.filter(pk=exam.category_id).first()
+            cat_name = cat.name if cat else ""
+        if len(category_ids) > 1:
+            cat_name = f"{cat_name}+" if cat_name else "Multi"
+        type_label = "Mixed"
+        if len(question_types) == 1:
+            type_label = dict(Question.QUESTION_TYPES).get(
+                question_types[0], "Mixed"
+            )
+        topic_bit = f" · {topics[0]}" if len(topics) == 1 else (
+            f" · {len(topics)} topics" if topics else ""
+        )
+        sec_bit = f" · {num_sections} sec" if num_sections > 1 else ""
+        exam.name = (
+            f"{cat_name or 'Mixed'}{topic_bit} · {type_label} · "
+            f"{pick_count}Q{sec_bit}"
+        )[:200]
+
+    with transaction.atomic():
+        exam.save()
+        ExamQuestion.objects.filter(exam=exam).delete()
+        ExamQuestion.objects.bulk_create(
+            [
+                ExamQuestion(exam=exam, question_id=qid, order=index)
+                for index, qid in enumerate(selected_ids)
+            ]
+        )
+
+    # Always keep the paper; tell the user clearly when some counts were short
+    if shortfalls or pick_count < requested_total:
+        detail = "; ".join(shortfalls[:8]) if shortfalls else (
+            f"{pick_count} of {requested_total} available in the bank"
+        )
+        if shortfalls and len(shortfalls) > 8:
+            detail += f"; +{len(shortfalls) - 8} more"
+        messages.success(
+            request,
+            f"✅ Exam created with {pick_count} available question(s) "
+            f"(you asked for {requested_total}). "
+            f"Not enough matching questions for: {detail}. "
+            f"Open My List to review or Practice when ready.",
+        )
+    else:
+        sec_msg = (
+            f" across {num_sections} section(s)" if num_sections > 1 else ""
+        )
+        messages.success(
+            request,
+            f"✅ Question paper created with {pick_count} question(s){sec_msg}. "
+            f"Open the My List tab to review, then Practice when ready.",
+        )
+
+    return redirect(
+        f"{reverse('courses:student_edit_exam', args=[exam.id])}?tab=list"
+    )
 
 
 @student_required
@@ -504,6 +879,11 @@ def student_exam_settings(request, exam_id):
     else:
         form = StudentExamForm(instance=exam)
 
+    exam_questions = (
+        ExamQuestion.objects.filter(exam=exam)
+        .select_related("question")
+        .order_by("order", "added_at")
+    )
     return render(
         request,
         "courses/student_edit_exam.html",
@@ -512,10 +892,19 @@ def student_exam_settings(request, exam_id):
             "settings_form": form,
             "active_tab": "settings",
             "categories": CourseCategory.objects.all(),
-            "exam_questions": ExamQuestion.objects.filter(exam=exam).select_related("question"),
-            "selected_count": ExamQuestion.objects.filter(exam=exam).count(),
+            "topics": _available_topics(
+                [exam.category_id] if exam.category_id else None
+            ),
+            "question_types": _question_type_choices(),
+            "difficulty_levels": _difficulty_choices(),
+            "exam_questions": exam_questions,
+            "selected_count": exam_questions.count(),
             "total_marks": exam.total_marks,
-            "practice_attempts": ExamAttempt.objects.filter(exam=exam, student=request.user)[:20],
+            "practice_attempts": ExamAttempt.objects.filter(
+                exam=exam, student=request.user
+            )[:20],
+            "form_defaults": _exam_builder_form_defaults(exam),
+            "max_sections": 5,
         },
     )
 

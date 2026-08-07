@@ -351,6 +351,15 @@
         border-radius: 4px;
         margin: 1rem 0;
       }
+
+      .warning {
+        background: #fff8e6;
+        color: #8a5a00;
+        border: 1px solid #f0d78c;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+      }
       
       @media (max-width: 768px) {
         header nav {
@@ -374,6 +383,7 @@
     </style>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+    {% include 'partials/katex.html' %}
     {% include 'partials/equation_inline_css.html' %}
     <style>
       .eb-q-stem,
@@ -385,9 +395,11 @@
       .pr-review-text,
       .pc-comment-text,
       .pc-post-content {
-        line-height: 1.75;
+        line-height: 1.7;
         font-size: 1rem;
       }
+
+
     </style>
     {% block extra_css %}
 
@@ -407,7 +419,7 @@
               <button type="button" class="nav-dropdown-toggle" onclick="toggleNavDropdown(event, 'pastPapersDropdown')">Past Papers <i class="fas fa-chevron-down nav-caret"></i></button>
               <div class="nav-dropdown-menu">
                 <a href="/past-papers/">📄 Past Papers</a>
-                {% if user.is_authenticated and user.student_profile %}
+                {% if can_use_exam_builder %}
                   <a href="/my-exams/">🧾 My Exams</a>
                 {% endif %}
                 <a href="/question-form/">❓ Question Form</a>
@@ -416,14 +428,15 @@
             <a href="/resources/">Resources</a>
             <a href="/blogs/">Blogs</a>
             <a href="/contact/">Contact</a>
-            {% if user.is_authenticated and user.student_profile %}
-              <a href="/my-lists/">📋 My Lists</a>
+            {% if user.is_authenticated %}
+              {% if is_admin_user %}
+                <a href="/admin-panel/dashboard/" style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 4px; transition: 0.3s;">🔐 Admin Panel</a>
+              {% endif %}
               <a href="/logout/">Log Out</a>
             {% else %}
               <a href="/login/">Log In</a>
               <a href="/signup/" style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 4px; transition: 0.3s;">Sign Up</a>
             {% endif %}
-            <a href="/admin-panel/login/" style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 4px; transition: 0.3s;">🔐 Admin</a>
           </div>
         </div>
       </nav>

@@ -435,18 +435,20 @@ class StudentSignupForm(forms.Form):
 
 
 class StudentLoginForm(forms.Form):
-    """Login form for public, student-facing accounts."""
+    """Unified login form for student and admin accounts."""
 
     username = forms.CharField(
         max_length=150,
+        label="Username or email",
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Username or email"}
+            attrs={"class": "form-control", "placeholder": "Username or email", "autocomplete": "username"}
         ),
     )
     password = forms.CharField(
+        label="Password",
         widget=forms.PasswordInput(
-            attrs={"class": "form-control", "placeholder": "Password"}
-        )
+            attrs={"class": "form-control", "placeholder": "Password", "autocomplete": "current-password"}
+        ),
     )
 
 

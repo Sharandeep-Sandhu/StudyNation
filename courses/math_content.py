@@ -1,4 +1,4 @@
-"""Sanitize and prepare user chat / question text for MathJax display.
+"""Sanitize and prepare user chat / question text for KaTeX display.
 
 Problems this solves:
   - Old MathLive inserts left literal ``#0`` / ``#1`` placeholders
@@ -61,10 +61,8 @@ def sanitize_math_content(text: str | None) -> str:
     if not text:
         return ""
 
-    # If there is TeX but no math delimiters, wrap the whole string so MathJax
-    # renders it (works for pure formulas and mixed "few\int ..." cases).
+    # If there is TeX but no math delimiters, wrap so KaTeX can typeset it.
     if _HAS_TEX_CMD_RE.search(text) and not _HAS_MATH_DELIM_RE.search(text):
-        # Prefer display for multi-line, else inline
         if "\n" in text or "\\\\" in text or "\\begin" in text:
             text = f"$${text}$$"
         else:
@@ -74,10 +72,11 @@ def sanitize_math_content(text: str | None) -> str:
 
 
 def render_chat_math(text: str | None) -> str:
-    """HTML-safe string for templates; MathJax will typeset $...$ regions."""
+    """HTML-safe string for templates; KaTeX typesets $...$ regions."""
     cleaned = sanitize_math_content(text)
     if not cleaned:
         return ""
     # Escape HTML, keep newlines as <br>
+    # Preserve $...$ / $$...$$ for KaTeX auto-render
     safe = escape(cleaned).replace("\n", "<br>\n")
     return mark_safe(safe)

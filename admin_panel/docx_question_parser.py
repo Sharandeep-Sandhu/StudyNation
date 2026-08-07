@@ -12,18 +12,16 @@ Parses past-paper style Word documents shaped like:
     b  c  c  ...
 
 Equations in these banks are almost always embedded as:
-  - WMF/EMF OLE previews (MS Equation Editor / MathType), and/or
-  - DrawingML images (a:blip), and/or
-  - Native Word OMML math (m:oMath)
+  - Native Word OMML math (m:oMath)  ← preferred
+  - WMF/EMF OLE previews (MS Equation Editor / MathType)
+  - DrawingML images (a:blip)
 
-This importer keeps equations **as-is** by:
-  1. Walking each paragraph in document order
-  2. Inserting position markers where equations/images sit
-  3. Converting WMF/EMF → PNG (LibreOffice if available, else Windows
-     System.Drawing — so Windows servers work without LibreOffice)
-  4. Splicing inline HTML <img class="eq-inline"> tags into question text
-     and options so they render on the site without manual re-typing
-  5. Also converting OMML → LaTeX ($...$) via pandoc when available
+LaTeX-first strategy (clean KaTeX rendering on the site):
+  1. Walk each paragraph; mark OMML + image positions
+  2. Convert OMML → LaTeX via pandoc, with pure-Python OMML fallback
+  3. Store questions as plain text + $LaTeX$ (not equation PNGs when possible)
+  4. Drop image placeholders that sit next to successful OMML→LaTeX
+  5. Image → PNG only as last resort when no LaTeX is available
 """
 import copy
 import hashlib
@@ -118,20 +116,29 @@ _BATCH_MARKER_RE = re.compile(
     r"OMATHMARKERSTART(omatheq\d+)OMATHMARKEREND\s*\\[\(\[](.*?)\\[\)\]]", re.DOTALL
 )
 
-# Inline equation image HTML — size controlled by global CSS (.eq-inline)
-# so formulas match surrounding body text (no giant padded chips).
-_EQ_IMG_HTML = (
-    '<img src="{url}" alt="equation" class="eq-inline" loading="lazy" '
-    'decoding="async" />'
-)
+# Equation images are wrapped in <span class="eq-math"> so display height is
+# always 1.15em of surrounding text (see courses.equation_display).
+def _eq_img_html(url: str) -> str:
+    try:
+        from courses.equation_display import equation_img_html
 
-# Readable size band after conversion — keep close to body text (~16–20px).
-# Slightly larger source pixels stay sharp when CSS scales to ~1.15–1.7em.
-_EQ_MIN_HEIGHT_PX = 36
-_EQ_MIN_WIDTH_PX = 48
-_EQ_TARGET_HEIGHT_PX = 56    # ~ matches 1.4em at 16px root
-_EQ_MAX_HEIGHT_PX = 96
-_EQ_MAX_WIDTH_PX = 480
+        return equation_img_html(url)
+    except Exception:
+        return (
+            f'<span class="eq-math" contenteditable="false">'
+            f'<img src="{url}" alt="" class="eq-math-img" '
+            f'decoding="async" loading="lazy" /></span>'
+        )
+
+
+# Normalize by MAIN GLYPH height (not full canvas) so simple and multi-line
+# formulas have the same optical character size when shown with height:auto.
+_EQ_TARGET_GLYPH_PX = 28   # main text-line height in the PNG
+_EQ_MIN_GLYPH_PX = 18
+_EQ_MAX_TOTAL_HEIGHT_PX = 72  # multi-line formulas may be taller overall
+_EQ_MAX_WIDTH_PX = 960
+_EQ_MIN_HEIGHT_PX = 22  # absolute floor after scale
+_EQ_MIN_WIDTH_PX = 20
 _CONVERT_BATCH_SIZE = 150
 _ENHANCE_WORKERS = min(8, (os.cpu_count() or 4))
 
@@ -243,83 +250,151 @@ def _dedupe_adjacent_img_placeholders(text):
 
 
 # ---------------------------------------------------------------------------
-# OMML → LaTeX (pandoc)
+# OMML → LaTeX (pandoc + pure-Python fallback) — LaTeX-first storage
 # ---------------------------------------------------------------------------
 
-def _render_omath_batch_to_latex(omath_registry, work_dir):
-    latex_by_key = {}
-    if not omath_registry or not shutil.which("pandoc"):
-        # Fallback: extract plain math text from m:t so something remains
-        for key, node in omath_registry:
-            texts = []
-            for t in node.findall(f".//{{{MATH_NS}}}t"):
-                if t.text:
-                    texts.append(t.text)
-            joined = "".join(texts).strip()
-            if joined:
-                latex_by_key[key] = joined
-        return latex_by_key
-
-    doc = docx.Document()
-    for p in list(doc.paragraphs):
-        p._p.getparent().remove(p._p)
-    for key, node in omath_registry:
-        doc.add_paragraph(f"OMATHMARKERSTART{key}OMATHMARKEREND")
-        eq_p = doc.add_paragraph()
-        eq_p._p.append(copy.deepcopy(node))
-
-    batch_path = os.path.join(work_dir, "omath_batch.docx")
-    doc.save(batch_path)
-
+def _omml_python_latex(node) -> str:
     try:
-        result = subprocess.run(
-            ["pandoc", batch_path, "-t", "latex"],
-            capture_output=True, text=True, timeout=60, check=True,
-        )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-        # plain-text fallback
-        for key, node in omath_registry:
-            texts = []
-            for t in node.findall(f".//{{{MATH_NS}}}t"):
-                if t.text:
-                    texts.append(t.text)
-            joined = "".join(texts).strip()
-            if joined:
-                latex_by_key[key] = joined
+        from admin_panel.omml_to_latex import clean_latex, omml_node_to_latex
+
+        return clean_latex(omml_node_to_latex(node))
+    except Exception:
+        return ""
+
+
+def _omml_plain_text_fallback(node) -> str:
+    texts = []
+    for t in node.findall(f".//{{{MATH_NS}}}t"):
+        if t.text:
+            texts.append(t.text)
+    return "".join(texts).strip()
+
+
+def _render_omath_batch_to_latex(omath_registry, work_dir):
+    """Map omatheq keys → LaTeX strings (no $ delimiters)."""
+    latex_by_key = {}
+    if not omath_registry:
         return latex_by_key
 
-    for key, latex in _BATCH_MARKER_RE.findall(result.stdout):
-        latex = latex.strip()
+    # 1) Pure-Python OMML conversion for every node (always available)
+    for key, node in omath_registry:
+        latex = _omml_python_latex(node)
         if latex:
             latex_by_key[key] = latex
+
+    # 2) Prefer pandoc when available (often better for complex OMML)
+    if shutil.which("pandoc"):
+        try:
+            doc = docx.Document()
+            for p in list(doc.paragraphs):
+                p._p.getparent().remove(p._p)
+            for key, node in omath_registry:
+                doc.add_paragraph(f"OMATHMARKERSTART{key}OMATHMARKEREND")
+                eq_p = doc.add_paragraph()
+                eq_p._p.append(copy.deepcopy(node))
+
+            batch_path = os.path.join(work_dir, "omath_batch.docx")
+            doc.save(batch_path)
+            result = subprocess.run(
+                ["pandoc", batch_path, "-t", "latex", "--wrap=none"],
+                capture_output=True,
+                text=True,
+                timeout=90,
+                check=True,
+            )
+            from admin_panel.omml_to_latex import clean_latex
+
+            for key, latex in _BATCH_MARKER_RE.findall(result.stdout or ""):
+                latex = clean_latex(latex)
+                if latex:
+                    # Prefer pandoc when it produced real TeX (has commands)
+                    prev = latex_by_key.get(key, "")
+                    if "\\" in latex or not prev or len(latex) >= len(prev):
+                        latex_by_key[key] = latex
+        except (
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+            OSError,
+            Exception,
+        ):
+            pass
+
+    # 3) Last resort: plain m:t text (still better than a blank)
+    for key, node in omath_registry:
+        if key not in latex_by_key or not latex_by_key[key]:
+            plain = _omml_plain_text_fallback(node)
+            if plain:
+                latex_by_key[key] = plain
+
     return latex_by_key
 
 
-def _substitute_placeholders(text, latex_by_key, rid_to_url):
-    """Replace OMATH + IMGRID markers with LaTeX / inline equation images."""
+def _drop_images_next_to_omath(text: str, latex_by_key: dict) -> str:
+    """When OMML converted to LaTeX, drop adjacent equation image placeholders.
+
+    Word often stores the same formula as OMML + MathType preview image.
+    """
     if not text:
         return text
 
+    def repl(m):
+        key = m.group(1)
+        if latex_by_key.get(key):
+            return f"\x02OMATH{key}\x02"
+        return m.group(0)
+
+    # OMATH followed by one or more IMGRID
+    text = re.sub(
+        r"\x02OMATH(omatheq\d+)\x02(?:\s*\x02IMGRIDrId[^\x02]+\x02)+",
+        repl,
+        text,
+    )
+    # IMGRID followed by OMATH (rarer order)
+    text = re.sub(
+        r"(?:\x02IMGRIDrId[^\x02]+\x02\s*)+\x02OMATH(omatheq\d+)\x02",
+        repl,
+        text,
+    )
+    return text
+
+
+def _substitute_placeholders(text, latex_by_key, rid_to_url, *, prefer_latex=True):
+    """Replace markers with $LaTeX$ (preferred) or PNG only as last resort."""
+    if not text:
+        return text
+
+    if prefer_latex:
+        text = _drop_images_next_to_omath(text, latex_by_key)
+
     def omath_repl(m):
         latex = latex_by_key.get(m.group(1))
-        if latex:
-            # Already looks like LaTeX command / has specials
-            return f"${latex}$"
-        return ""
+        if not latex:
+            return ""
+        from admin_panel.omml_to_latex import wrap_inline_math
+
+        return wrap_inline_math(latex)
 
     def img_repl(m):
+        # LaTeX-first: images only when no alternative
+        if not prefer_latex:
+            return ""
         rid = m.group(1)
         url = rid_to_url.get(rid)
         if url:
-            return _EQ_IMG_HTML.format(url=url)
+            return _eq_img_html(url)
         return ""
 
     text = _OMATH_PLACEHOLDER_RE.sub(omath_repl, text)
     text = _IMG_PLACEHOLDER_RE.sub(img_repl, text)
-    # Clean leftover control chars / messy whitespace around images
+    # Clean whitespace around math
     text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"\s+\$", " $", text)
+    text = re.sub(r"\$\s+", "$ ", text)
     text = re.sub(r"\s+(?=<img)", " ", text)
     text = re.sub(r"(?<=>)\s+", " ", text)
+    # Drop empty leftover control chars
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
     return text.strip()
 
 
@@ -504,15 +579,67 @@ def _enhance_equation_pngs_parallel(paths):
         list(pool.map(_enhance_equation_png, paths))
 
 
-def _enhance_equation_png(path, padding=12):
+def _estimate_main_glyph_height(gray_img):
     """
-    Crop whitespace and fit equation PNGs into a readable size band.
+    Estimate the height of the primary text line from row ink density.
 
-    WMF rasters are either tiny (~40px) or huge page canvases. We:
-      1. Flatten onto white
-      2. Threshold-crop near-white margins (more reliable than RGB diff)
-      3. Scale so height sits around ~110px (clear next to body text)
-      4. Light contrast/sharpen so thin strokes stay visible
+    Simple single-line formulas → almost full content height.
+    Formulas with fractions/exponents → longest dense band (main baseline).
+    Scaling so this height is constant makes 'log y = cx' and dense options
+    share the same optical character size.
+    """
+    w, h = gray_img.size
+    if w < 2 or h < 2:
+        return max(h, 1)
+
+    # Row ink counts (pixels darker than near-white)
+    rows = []
+    pix = gray_img.load()
+    for y in range(h):
+        ink = 0
+        for x in range(w):
+            if pix[x, y] < 230:
+                ink += 1
+        rows.append(ink)
+
+    max_ink = max(rows) if rows else 0
+    if max_ink < 1:
+        return max(h, 1)
+
+    thr = max(2, int(max_ink * 0.12))
+    active = [i for i, v in enumerate(rows) if v >= thr]
+    if not active:
+        return max(h, 1)
+
+    # Contiguous bands of active rows
+    bands = []
+    start = active[0]
+    prev = active[0]
+    for i in active[1:]:
+        if i == prev + 1:
+            prev = i
+            continue
+        bands.append((start, prev))
+        start = prev = i
+    bands.append((start, prev))
+
+    band_heights = [b[1] - b[0] + 1 for b in bands]
+    longest = max(band_heights)
+    total_span = active[-1] - active[0] + 1
+
+    # Multi-line / fraction: use longest band as "main glyph" height
+    if total_span > longest * 1.55 and len(bands) >= 2:
+        return max(longest, 6)
+    # Single visual line (maybe with exponents still one band)
+    return max(total_span, 6)
+
+
+def _enhance_equation_png(path, padding=2):
+    """
+    Crop + scale so the MAIN GLYPH line is always ~28px tall.
+
+    Then display with height:auto — simple and complex formulas share the
+    same character size (no more huge log(...) vs tiny fractions).
     """
     try:
         from PIL import Image, ImageEnhance, ImageOps, ImageFilter
@@ -526,10 +653,8 @@ def _enhance_equation_png(path, padding=12):
         else:
             im = im.convert("RGB")
 
-        # Threshold crop: keep anything darker than near-white
         gray = im.convert("L")
         mask = gray.point(lambda p: 255 if p < 248 else 0)
-        # Dilate slightly so thin strokes aren't clipped
         mask = mask.filter(ImageFilter.MaxFilter(3))
         bbox = mask.getbbox()
         if bbox:
@@ -539,46 +664,48 @@ def _enhance_equation_png(path, padding=12):
             right = min(im.width, right + padding)
             bottom = min(im.height, bottom + padding)
             im = im.crop((left, top, right, bottom))
+            gray = im.convert("L")
 
         w, h = im.size
         if w < 2 or h < 2:
             return
 
-        # Fit into readable band (not microscopic, not a full page)
-        if h < _EQ_MIN_HEIGHT_PX or w < _EQ_MIN_WIDTH_PX:
-            scale = max(
-                _EQ_TARGET_HEIGHT_PX / max(h, 1),
-                _EQ_MIN_WIDTH_PX / max(w, 1),
-            )
-            scale = min(max(scale, 1.5), 10.0)
-            im = im.resize(
-                (max(1, int(w * scale)), max(1, int(h * scale))),
-                Image.Resampling.LANCZOS,
-            )
-        else:
-            # Downscale oversized canvases while keeping sharpness
-            scale = 1.0
-            if h > _EQ_TARGET_HEIGHT_PX:
-                scale = min(scale, _EQ_TARGET_HEIGHT_PX / h)
-            if w * scale > _EQ_MAX_WIDTH_PX:
-                scale = min(scale, _EQ_MAX_WIDTH_PX / w)
-            if h * scale > _EQ_MAX_HEIGHT_PX:
-                scale = min(scale, _EQ_MAX_HEIGHT_PX / h)
-            if scale < 0.999:
-                im = im.resize(
-                    (max(1, int(w * scale)), max(1, int(h * scale))),
-                    Image.Resampling.LANCZOS,
-                )
+        glyph_h = _estimate_main_glyph_height(gray)
+        glyph_h = max(glyph_h, 4)
 
-        im = ImageEnhance.Contrast(im).enhance(1.25)
-        im = ImageEnhance.Sharpness(im).enhance(1.35)
-        im = ImageOps.expand(im, border=8, fill=(255, 255, 255))
+        scale = _EQ_TARGET_GLYPH_PX / float(glyph_h)
+        # Clamp insane scales
+        scale = min(max(scale, 0.25), 10.0)
+
+        new_w = max(1, int(round(w * scale)))
+        new_h = max(1, int(round(h * scale)))
+
+        # Cap overall dimensions
+        if new_h > _EQ_MAX_TOTAL_HEIGHT_PX:
+            s2 = _EQ_MAX_TOTAL_HEIGHT_PX / float(new_h)
+            new_w = max(1, int(round(new_w * s2)))
+            new_h = _EQ_MAX_TOTAL_HEIGHT_PX
+        if new_w > _EQ_MAX_WIDTH_PX:
+            s2 = _EQ_MAX_WIDTH_PX / float(new_w)
+            new_h = max(1, int(round(new_h * s2)))
+            new_w = _EQ_MAX_WIDTH_PX
+        if new_h < _EQ_MIN_HEIGHT_PX:
+            s2 = _EQ_MIN_HEIGHT_PX / float(max(new_h, 1))
+            new_w = max(1, int(round(new_w * s2)))
+            new_h = _EQ_MIN_HEIGHT_PX
+
+        if (new_w, new_h) != (w, h):
+            im = im.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        im = ImageEnhance.Contrast(im).enhance(1.15)
+        im = ImageEnhance.Sharpness(im).enhance(1.25)
+        im = ImageOps.expand(im, border=2, fill=(255, 255, 255))
         im.save(path, format="PNG", optimize=True)
     except Exception:
         pass
 
 
-def _autocrop_png(path, padding=10):
+def _autocrop_png(path, padding=2):
     """Back-compat name used by the import pipeline."""
     _enhance_equation_png(path, padding=padding)
 
@@ -676,9 +803,8 @@ def _parse_answer_sheet_tables(document):
 def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
     """
     Parse an uploaded .doc/.docx and return row-dicts with:
-      - question_text / option_a..d containing inline equation <img> tags
-        and/or $LaTeX$ where OMML conversion succeeded
-      - equation_images: list of MEDIA URLs (same images, for review UI)
+      - question_text / option_a..d as plain text + $LaTeX$ (KaTeX)
+      - equation_images: only leftover image URLs when LaTeX was unavailable
     """
     if docx is None:
         raise forms.ValidationError(
@@ -913,46 +1039,56 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                 question_type = "structured"
 
             q_text = _substitute_placeholders(
-                q["question_text"].strip(), latex_by_key, rid_to_url
+                q["question_text"].strip(), latex_by_key, rid_to_url, prefer_latex=True
             )
-            # If equation images exist but none made it into the text (edge case),
-            # append them so the equation is never dropped.
-            if saved_urls and "<img " not in q_text and "$" not in q_text:
-                q_text = (
-                    q_text
-                    + " "
-                    + " ".join(_EQ_IMG_HTML.format(url=u) for u in saved_urls)
-                ).strip()
+            opt_a = _substitute_placeholders(
+                options.get("a", ""), latex_by_key, rid_to_url, prefer_latex=True
+            )
+            opt_b = _substitute_placeholders(
+                options.get("b", ""), latex_by_key, rid_to_url, prefer_latex=True
+            )
+            opt_c = _substitute_placeholders(
+                options.get("c", ""), latex_by_key, rid_to_url, prefer_latex=True
+            )
+            opt_d = _substitute_placeholders(
+                options.get("d", ""), latex_by_key, rid_to_url, prefer_latex=True
+            )
+            expl = _substitute_placeholders(
+                f"Option (e): {options['e']}" if "e" in options else "",
+                latex_by_key,
+                rid_to_url,
+                prefer_latex=True,
+            )
+
+            # Only keep equation image URLs that are still referenced as <img>
+            combined = " ".join([q_text, opt_a, opt_b, opt_c, opt_d, expl])
+            still_used = [
+                u for u in saved_urls if u and u in combined
+            ]
+            # Last resort: if we have images but zero math made it into text
+            if still_used == [] and saved_urls and "$" not in combined and "<img" not in combined:
+                # Prefer not to dump raw images into stem when LaTeX path failed
+                # for everything — keep list for admin review only
+                pass
 
             row = {
                 "question_text": q_text,
                 "question_type": question_type,
-                "option_a": _substitute_placeholders(
-                    options.get("a", ""), latex_by_key, rid_to_url
-                ),
-                "option_b": _substitute_placeholders(
-                    options.get("b", ""), latex_by_key, rid_to_url
-                ),
-                "option_c": _substitute_placeholders(
-                    options.get("c", ""), latex_by_key, rid_to_url
-                ),
-                "option_d": _substitute_placeholders(
-                    options.get("d", ""), latex_by_key, rid_to_url
-                ),
+                "option_a": opt_a,
+                "option_b": opt_b,
+                "option_c": opt_c,
+                "option_d": opt_d,
                 "correct_answer": answer_letters.upper(),
                 "marks": 1,
-                "explanation": _substitute_placeholders(
-                    f"Option (e): {options['e']}" if "e" in options else "",
-                    latex_by_key,
-                    rid_to_url,
-                ),
+                "explanation": expl,
                 "topic": "",
                 "paper_code": "",
                 "year": None,
                 "season": "",
                 "zone": "",
                 "question_number": qnum,
-                "equation_images": saved_urls,
+                # Review only: images not embedded when LaTeX succeeded
+                "equation_images": still_used,
             }
             rows_out.append(row)
 

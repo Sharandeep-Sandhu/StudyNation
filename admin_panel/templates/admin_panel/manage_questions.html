@@ -65,59 +65,77 @@
         .questions-section {
             background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); overflow: hidden;
         }
-        .question-item { padding: 18px 20px; border-bottom: 1px solid #e0e0e0; }
+        .question-item {
+            padding: 18px 20px; border-bottom: 1px solid #e0e0e0;
+            display: grid; grid-template-columns: 28px 1fr; gap: 10px 12px; align-items: start;
+        }
         .question-item:hover { background: #fafbff; }
         .question-item:last-child { border-bottom: none; }
         .question-text {
             font-weight: 500; color: #222; margin-bottom: 8px;
-            font-size: 15px; line-height: 1.8; word-wrap: break-word;
+            font-size: 15px; line-height: 1.9; word-wrap: break-word;
         }
-        /* Force equation images to body-text size on this list (override any residual rules) */
-        .questions-section .question-text img.eq-inline,
-        .questions-section .question-text img {
-            display: inline !important;
-            height: 3.3em !important;
+        /* Glyph-normalized PNGs: natural height, same letter size */
+        .question-text img,
+        .q-options img,
+        .question-item img[src*="question_equations"] {
+            height: auto !important;
+            max-height: 48px !important;
+            min-height: 0 !important;
             width: auto !important;
-            max-height: 1.7em !important;
-            max-width: min(100%, 18em) !important;
+            max-width: min(96vw, 720px) !important;
             vertical-align: middle !important;
-            margin: 0 0.12em !important;
+            object-fit: contain !important;
+            display: inline-block !important;
+            margin: 2px 4px !important;
             padding: 0 !important;
             border: none !important;
             background: transparent !important;
-            box-shadow: none !important;
-            object-fit: contain !important;
         }
-        .questions-section .q-options img.eq-inline,
-        .questions-section .q-options img {
-            height: 5.2em !important;
-            max-height: 2.5em !important;
-            width: auto !important;
-            vertical-align: middle !important;
-            margin: 0 0.1em !important;
-            padding: 0 !important;
-            border: none !important;
-            background: transparent !important;
-            object-fit: contain !important;
-        }
+        .q-options { margin: 10px 0 12px; padding-left: 4px; font-size: 15px; color: #444; line-height: 1.9; }
         .question-meta { display: flex; gap: 14px; font-size: 12px; color: #999; margin-bottom: 10px; flex-wrap: wrap; }
         .type-badge {
             display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px;
             font-weight: 600; background: #e3f2fd; color: #1565c0;
         }
-        .q-options { margin: 8px 0 10px; padding-left: 4px; font-size: 14px; color: #444; line-height: 1.7; }
-        .q-options .opt { padding: 3px 0; }
+        .q-options .opt { padding: 4px 0; }
         .q-options .opt.correct { color: #1c8a4c; font-weight: 600; }
         .q-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
         .empty-state { padding: 60px 20px; text-align: center; color: #999; }
         .empty-state h3 { font-size: 20px; margin-bottom: 10px; color: #667eea; }
+
+        /* Bulk select / delete */
+        .bulk-toolbar {
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            padding: 12px 18px; background: #f7f8fd; border-bottom: 1px solid #e8eaf5;
+        }
+        .bulk-toolbar label.bulk-select-all {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 13.5px; font-weight: 600; color: #333; cursor: pointer; user-select: none;
+        }
+        .bulk-toolbar input[type="checkbox"],
+        .q-check {
+            width: 17px; height: 17px; accent-color: #667eea; cursor: pointer; flex-shrink: 0;
+        }
+        .bulk-count { font-size: 13px; color: #666; }
+        .bulk-count strong { color: #3b3b78; }
+        .btn-danger-solid {
+            background: #d64545; color: #fff; border: none;
+            padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 700;
+            cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-danger-solid:disabled { opacity: 0.45; cursor: not-allowed; }
+        .btn-danger-solid:not(:disabled):hover { background: #c0392b; }
+        .question-item .q-check-wrap { padding-top: 4px; }
+        .question-item .q-body { min-width: 0; }
+        .question-item.selected-row { background: #f0f3ff; }
         /* Only show reference strip when formulas are NOT already in the stem */
         .eq-ref-strip {
             margin-top: 8px; padding: 8px 10px; background: #f0f7ff;
             border: 1px solid #c5d8f7; border-radius: 6px;
         }
         .eq-ref-strip .eq-images img {
-            height: 26px !important; max-height: 26px !important; max-width: 140px !important;
+            height: auto !important; max-height: 48px !important; max-width: 320px !important;
         }
 
         /* Modal editor */
@@ -210,8 +228,23 @@
 
         <div class="questions-section" id="questionsList">
             {% if questions %}
+                <div class="bulk-toolbar" id="bulkToolbar">
+                    <label class="bulk-select-all">
+                        <input type="checkbox" id="selectAllQuestions" onchange="toggleSelectAll(this)" />
+                        Select all on this page
+                    </label>
+                    <span class="bulk-count"><strong id="selectedCount">0</strong> selected</span>
+                    <button type="button" class="btn-danger-solid" id="bulkDeleteBtn" disabled onclick="bulkDeleteSelected()">
+                        🗑️ Delete selected
+                    </button>
+                </div>
                 {% for question in questions %}
-                <div class="question-item" id="q-row-{{ question.id }}">
+                <div class="question-item" id="q-row-{{ question.id }}" data-question-id="{{ question.id }}">
+                    <div class="q-check-wrap">
+                        <input type="checkbox" class="q-check" value="{{ question.id }}"
+                               onchange="onQuestionCheckChange()" aria-label="Select question {{ question.id }}" />
+                    </div>
+                    <div class="q-body">
                     <div class="question-text"><span style="color:#667eea;font-weight:700;margin-right:6px;">{{ page_obj.start_index|add:forloop.counter0 }}.</span>{{ question.question_text|safe_html }}</div>
                     <div class="question-meta">
                         <span class="type-badge">{{ question.get_question_type_display }}</span>
@@ -259,6 +292,7 @@
                     <div class="q-actions">
                         <button type="button" class="btn btn-outline" onclick="openEdit({{ question.id }})">✏️ Edit</button>
                         <button type="button" class="btn btn-danger" onclick="deleteQuestion({{ question.id }})">🗑️ Delete</button>
+                    </div>
                     </div>
                 </div>
                 {% endfor %}
@@ -380,6 +414,7 @@
     dataTpl: "{% url 'admin_panel:question_wizard_data' 0 %}".replace('0', '__ID__'),
     saveTpl: "{% url 'admin_panel:question_wizard_save' 0 %}".replace('0', '__ID__'),
     deleteTpl: "{% url 'admin_panel:question_wizard_delete' 0 %}".replace('0', '__ID__'),
+    bulkDelete: "{% url 'admin_panel:questions_bulk_delete' %}",
   };
 
   let current = null;
@@ -618,6 +653,7 @@
       if (row) row.remove();
       toast('Deleted');
       if (current && current.id === id) closeEdit();
+      syncSelectAllState();
     } catch (e) {
       toast(e.message, true);
     }
@@ -627,8 +663,83 @@
     if (current) deleteQuestion(current.id);
   }
 
+  function getQuestionChecks() {
+    return Array.from(document.querySelectorAll('.q-check'));
+  }
+
+  function getSelectedIds() {
+    return getQuestionChecks()
+      .filter(function (c) { return c.checked; })
+      .map(function (c) { return parseInt(c.value, 10); })
+      .filter(function (id) { return !isNaN(id); });
+  }
+
+  function onQuestionCheckChange() {
+    getQuestionChecks().forEach(function (c) {
+      var row = c.closest('.question-item');
+      if (row) row.classList.toggle('selected-row', c.checked);
+    });
+    syncSelectAllState();
+  }
+
+  function syncSelectAllState() {
+    var checks = getQuestionChecks();
+    var selected = checks.filter(function (c) { return c.checked; });
+    var countEl = document.getElementById('selectedCount');
+    var btn = document.getElementById('bulkDeleteBtn');
+    var master = document.getElementById('selectAllQuestions');
+    if (countEl) countEl.textContent = String(selected.length);
+    if (btn) btn.disabled = selected.length === 0;
+    if (master && checks.length) {
+      master.checked = selected.length === checks.length;
+      master.indeterminate = selected.length > 0 && selected.length < checks.length;
+    }
+  }
+
+  function toggleSelectAll(master) {
+    var on = !!(master && master.checked);
+    getQuestionChecks().forEach(function (c) {
+      c.checked = on;
+      var row = c.closest('.question-item');
+      if (row) row.classList.toggle('selected-row', on);
+    });
+    syncSelectAllState();
+  }
+
+  async function bulkDeleteSelected() {
+    var ids = getSelectedIds();
+    if (!ids.length) {
+      toast('Select at least one question first', true);
+      return;
+    }
+    if (!confirm('Delete ' + ids.length + ' selected question(s) permanently? This cannot be undone.')) {
+      return;
+    }
+    var btn = document.getElementById('bulkDeleteBtn');
+    if (btn) btn.disabled = true;
+    try {
+      var data = await api(URLS.bulkDelete, { method: 'POST', body: { ids: ids } });
+      ids.forEach(function (id) {
+        var row = document.getElementById('q-row-' + id);
+        if (row) row.remove();
+        if (current && current.id === id) closeEdit();
+      });
+      toast('Deleted ' + (data.deleted || ids.length) + ' question(s)');
+      syncSelectAllState();
+      // If page is empty after delete, reload to refresh pagination
+      if (!document.querySelector('.question-item')) {
+        setTimeout(function () { window.location.reload(); }, 500);
+      }
+    } catch (e) {
+      toast(e.message, true);
+      if (btn) btn.disabled = false;
+      syncSelectAllState();
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     if (window.eqTypeset) eqTypeset([document.getElementById('questionsList')]);
+    syncSelectAllState();
   });
 </script>
 </body>

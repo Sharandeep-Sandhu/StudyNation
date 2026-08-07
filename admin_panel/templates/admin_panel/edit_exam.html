@@ -529,7 +529,7 @@
         }
         if (!Array.isArray(list) || !list.length) return '';
         const thumbs = list.map(src =>
-          `<img src="${escapeHtml(src)}" alt="equation" class="eq-inline" />`
+          `<span class="eq-math"><img src="${escapeHtml(src)}" alt="" class="eq-math-img" decoding="async" /></span>`
         ).join('');
         return `<div style="margin-top:14px;">
           <div style="font-size:0.78rem; color:#667eea; margin-bottom:6px;">∑ Equation image(s)</div>

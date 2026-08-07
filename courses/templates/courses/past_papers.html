@@ -39,9 +39,9 @@
         <!-- Feature 1 -->
         <div class="card" style="text-align: center; padding: 2rem 1.5rem">
           <div style="font-size: 3rem; margin-bottom: 1rem">📝</div>
-          <h3 style="color: #667eea; margin-bottom: 1rem">Build Exam or Worksheet</h3>
-          <p style="color: #666; line-height: 1.6; margin-bottom: 1.5rem">Create custom exams, worksheets, and practice tests tailored to your needs.</p>
-          {% if user.is_authenticated and user.student_profile %}
+          <h3 style="color: #667eea; margin-bottom: 1rem">Build Question Paper</h3>
+          <p style="color: #666; line-height: 1.6; margin-bottom: 1.5rem">Create a paper by category, question type, and difficulty — then practice. Answers unlock after you submit.</p>
+          {% if can_use_exam_builder %}
             <a href="{% url 'courses:student_exams' %}" class="btn">Start Building →</a>
           {% else %}
             <a href="{% url 'courses:student_signup' %}" class="btn">Start Building →</a>
@@ -49,18 +49,6 @@
         </div>
 
         <!-- Feature 2 -->
-        <div class="card" style="text-align: center; padding: 2rem 1.5rem">
-          <div style="font-size: 3rem; margin-bottom: 1rem">📋</div>
-          <h3 style="color: #667eea; margin-bottom: 1rem">Build Question List</h3>
-          <p style="color: #666; line-height: 1.6; margin-bottom: 1.5rem">Generate targeted question lists by topic, paper, year, and season for focused practice.</p>
-          {% if user.is_authenticated and user.student_profile %}
-            <a href="{% url 'courses:student_question_lists' %}" class="btn">Create List →</a>
-          {% else %}
-            <a href="{% url 'courses:student_signup' %}" class="btn">Create List →</a>
-          {% endif %}
-        </div>
-
-        <!-- Feature 3 -->
         <div class="card" style="text-align: center; padding: 2rem 1.5rem">
           <div style="font-size: 3rem; margin-bottom: 1rem">📚</div>
           <h3 style="color: #667eea; margin-bottom: 1rem">Golden Notes & Free Worksheets</h3>
@@ -172,7 +160,7 @@
           <h2 class="text-3xl sm:text-4xl font-bold text-white mb-6">Start Your Exam Preparation Today</h2>
           <p class="text-lg text-purple-100 mb-8">Join thousands of students using our platform to ace their exams with comprehensive past papers and targeted practice.</p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            {% if user.is_authenticated and user.student_profile %}
+            {% if can_use_exam_builder %}
               <a href="{% url 'courses:student_exams' %}" class="px-8 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-purple-50 transition-all duration-300">Open Exam Builder</a>
             {% else %}
               <a href="{% url 'courses:student_signup' %}" class="px-8 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-purple-50 transition-all duration-300">Try the Exam Builder</a>

@@ -103,20 +103,32 @@
           {% if ans.is_correct is None %}Unanswered{% elif ans.is_correct %}Correct{% else %}Wrong{% endif %}
         </span>
       </div>
-      <div class="pr-review-text">{{ ans.question.question_text|safe_html }}</div>
+      <div class="pr-review-text">{{ ans.question.question_text|safe_html_stem }}</div>
       {% if ans.question.equation_image_list and '<img' not in ans.question.question_text %}
         <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
           {% for img in ans.question.equation_image_list %}
-            <img src="{{ img }}" alt="equation" class="eq-inline" />
+            <img src="{{ img }}" alt="" class="eq-math-img" style="height:auto!important;max-height:48px!important;width:auto!important;vertical-align:middle;object-fit:contain;" decoding="async" />
           {% endfor %}
         </div>
       {% endif %}
       <div class="pr-review-answers">
         <div><strong>Your answer:</strong> {{ ans.given_answer|default:"—"|safe_html }}</div>
-        <div><strong>Correct answer:</strong> {{ ans.question.correct_answer|default:"—"|safe_html }}</div>
+        <div style="background:#eefaf1; border:1px solid #c8ebd4; border-radius:6px; padding:8px 12px;">
+          <strong style="color:#2f8a4e;">✓ Correct answer:</strong>
+          {{ ans.question.correct_answer|default:"—"|safe_html }}
+        </div>
       </div>
+      {% if ans.question.option_a or ans.question.option_b %}
+        <div class="pr-review-answers" style="margin-top: 8px; flex-direction: column; gap: 4px;">
+          <strong>Options:</strong>
+          {% if ans.question.option_a %}<div>A. {{ ans.question.option_a|safe_html_option }}</div>{% endif %}
+          {% if ans.question.option_b %}<div>B. {{ ans.question.option_b|safe_html_option }}</div>{% endif %}
+          {% if ans.question.option_c %}<div>C. {{ ans.question.option_c|safe_html_option }}</div>{% endif %}
+          {% if ans.question.option_d %}<div>D. {{ ans.question.option_d|safe_html_option }}</div>{% endif %}
+        </div>
+      {% endif %}
       {% if ans.question.explanation %}
-        <div class="pr-review-answers" style="margin-top: 6px;"><div><strong>Explanation:</strong> {{ ans.question.explanation|safe_html }}</div></div>
+        <div class="pr-review-answers" style="margin-top: 6px;"><div><strong>Explanation / Solution:</strong> {{ ans.question.explanation|safe_html }}</div></div>
       {% endif %}
     </div>
   {% endfor %}

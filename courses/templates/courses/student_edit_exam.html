@@ -6,13 +6,20 @@
 {% endblock %}
 
 {% block extra_css %}
-  {% include 'partials/mathjax.html' %}
   <style>
-    .eb-wrap { max-width: 1200px; }
+    .eb-wrap { max-width: 980px; }
 
-    .eb-header { background: white; border-radius: 8px; padding: 1.5rem 1.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
-    .eb-header h1 { font-size: 1.5rem; color: #333; display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; }
-    .eb-header .desc { color: #666; font-size: 0.92rem; line-height: 1.55; max-width: 900px; }
+    .eb-header {
+      background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
+      border: 1px solid #e8ecf8;
+      border-radius: 16px; padding: 1.5rem 1.75rem;
+      box-shadow: 0 8px 24px rgba(80, 96, 180, 0.07); margin-bottom: 1.5rem;
+    }
+    .eb-header h1 {
+      font-size: 1.55rem; color: #1f2550; display: flex; align-items: center;
+      gap: 8px; margin-bottom: 0.5rem; letter-spacing: -0.02em;
+    }
+    .eb-header .desc { color: #6b7288; font-size: 0.92rem; line-height: 1.55; max-width: 900px; }
 
     .eb-name-row { display: flex; align-items: center; gap: 12px; margin-top: 1rem; flex-wrap: wrap; }
     .eb-name-row form { display: flex; align-items: center; gap: 10px; }
@@ -22,119 +29,506 @@
       padding: 2px 4px; background: transparent; min-width: 220px;
     }
     .eb-name-row input[type="text"]:focus { outline: none; border-bottom-color: #667eea; background: #f5f7fa; }
-    .eb-name-row button { font-size: 0.8rem; padding: 6px 12px; border-radius: 5px; border: 1px solid #667eea; background: #fff; color: #667eea; cursor: pointer; }
+    .eb-name-row button {
+      font-size: 0.8rem; padding: 6px 12px; border-radius: 5px; border: 1px solid #667eea;
+      background: #fff; color: #667eea; cursor: pointer;
+    }
     .eb-name-row button:hover { background: #667eea; color: #fff; }
 
     .eb-tabs { display: flex; gap: 24px; border-bottom: 1px solid #eee; margin-top: 1.25rem; flex-wrap: wrap; }
     .eb-tab {
       padding: 12px 2px; font-size: 0.82rem; font-weight: 700; letter-spacing: .3px; color: #888;
-      text-decoration: none; border-bottom: 3px solid transparent; text-transform: uppercase; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none;
+      text-decoration: none; border-bottom: 3px solid transparent; text-transform: uppercase; cursor: pointer;
+      background: none; border-top: none; border-left: none; border-right: none;
     }
     .eb-tab.eb-active { color: #3b3b78; border-bottom-color: #667eea; }
-    .eb-tab .eb-badge { background: #eef0fb; color: #667eea; border-radius: 10px; padding: 1px 8px; font-size: 0.68rem; margin-left: 4px; }
-
-    .eb-filter-card { background: #eef1fc; border: 1px solid #dde2f7; border-radius: 10px; padding: 1.1rem 1.3rem; margin-bottom: 1.25rem; }
-    .eb-filter-top { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 0.85rem; font-size: 0.85rem; color: #444; }
-    .eb-filter-top strong { color: #2b2b55; }
-    .eb-filter-top select { border: none; background: transparent; font-weight: 600; color: #2b2b55; font-size: 0.85rem; cursor: pointer; }
-    .eb-chip { background: #5b6fd8; color: white; font-size: 0.72rem; padding: 4px 10px; border-radius: 14px; font-weight: 600; }
-
-    .eb-filter-grid { display: grid; grid-template-columns: repeat(3, 1fr) 130px; gap: 12px; align-items: end; }
-    .eb-filter-grid .eb-field label { display: block; font-size: 0.75rem; color: #777; margin-bottom: 4px; }
-    .eb-filter-grid .eb-field select {
-      width: 100%; padding: 8px 9px; border-radius: 6px; border: 1px solid #d6dbf2; background: white; font-size: 0.82rem; color: #333;
+    .eb-tab .eb-badge {
+      background: #eef0fb; color: #667eea; border-radius: 10px; padding: 1px 8px;
+      font-size: 0.68rem; margin-left: 4px;
     }
-    .eb-search-btn {
-      background: #5b6fd8; border: none; border-radius: 6px; color: white; height: 36px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 700;
-      letter-spacing: .3px; padding: 0 16px; gap: 6px;
-    }
-    .eb-search-btn:hover { background: #4a5bc4; }
 
-    .eb-workspace { display: grid; grid-template-columns: 300px 1fr; gap: 0; border: 1px solid #dde2f7; border-radius: 10px; overflow: hidden; background: white; }
-    .eb-qlist-pane { border-right: 1px solid #eee; display: flex; flex-direction: column; max-height: 640px; }
-    .eb-qlist-toolbar { display: flex; justify-content: space-around; padding: 10px 6px; border-bottom: 1px solid #eee; background: #fafbff; font-size: 0.7rem; color: #667eea; }
-    .eb-qlist-scroll { flex: 1; overflow-y: auto; }
-    .eb-qrow {
-      display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f1f1f8;
-      cursor: pointer; font-size: 0.8rem; color: #333;
+    .eb-create-card {
+      position: relative;
+      background: #fff;
+      border: 1px solid #e2e8f5;
+      border-radius: 16px;
+      padding: 1.85rem 1.9rem 1.75rem;
+      box-shadow: 0 10px 30px rgba(80, 96, 180, 0.08);
+      overflow: hidden;
     }
-    .eb-qrow:hover { background: #f5f7ff; }
-    .eb-qrow.eb-selected { background: #eef3ff; }
-    .eb-qrow.eb-active-row { background: #e4eaff; font-weight: 600; }
-    .eb-qrow .eb-code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .eb-add-btn {
-      width: 22px; height: 22px; border-radius: 50%; border: none; background: #e9f7ef; color: #2e7d32;
-      font-weight: 700; cursor: pointer; flex-shrink: 0; font-size: 14px; line-height: 1;
+    .eb-create-card::before {
+      content: "";
+      position: absolute; left: 0; top: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #667eea 0%, #8b5cf6 50%, #764ba2 100%);
     }
-    .eb-add-btn.eb-added { background: #fdecea; color: #c0392b; }
-    .eb-add-btn.eb-added::before { content: "−"; }
-    .eb-add-btn:not(.eb-added)::before { content: "+"; }
-    .eb-qlist-empty { padding: 36px 16px; text-align: center; color: #999; font-size: 0.8rem; }
+    .eb-create-card h2 {
+      margin: 0 0 6px; font-size: 1.2rem; color: #1f2550; letter-spacing: -0.02em;
+    }
+    .eb-create-card .eb-create-sub {
+      margin: 0 0 1.45rem; color: #6b7288; font-size: 0.9rem; line-height: 1.55;
+    }
+    .eb-form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.05rem 1.25rem;
+    }
+    .eb-form-grid .eb-field-full { grid-column: 1 / -1; }
+    .eb-field label {
+      display: block; font-size: 0.78rem; font-weight: 650; color: #4b5568;
+      margin-bottom: 7px; letter-spacing: 0.01em;
+    }
+    .eb-field > label .eb-field-hint {
+      font-weight: 500; color: #9aa3b8; font-size: 0.72rem; margin-left: 4px;
+    }
+    .eb-field select,
+    .eb-field input[type="number"],
+    .eb-field input[type="text"] {
+      width: 100%; padding: 0.78rem 0.9rem; border-radius: 10px; border: 1px solid #d8def2;
+      background: #f8f9ff; font-size: 0.92rem; color: #1f2937; box-sizing: border-box;
+      font-family: inherit; transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    .eb-field select:focus,
+    .eb-field input:focus {
+      outline: none; border-color: #7c8cf0; background: #fff;
+      box-shadow: 0 0 0 4px rgba(102,126,234,.14);
+    }
+    /* Cool chip multi-select (Category / Topic / Type) */
+    .eb-chip-box {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 10px;
+      min-height: 52px;
+      border-radius: 12px;
+      border: 1px solid #dfe5f5;
+      background:
+        linear-gradient(180deg, #fbfcff 0%, #f4f6fc 100%);
+      box-shadow: inset 0 1px 0 #fff;
+    }
+    .eb-chip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      margin: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .eb-chip input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 0; height: 0;
+    }
+    .eb-chip span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 650;
+      color: #4b5568;
+      background: #fff;
+      border: 1px solid #e0e6f4;
+      box-shadow: 0 1px 3px rgba(60, 75, 140, 0.06);
+      transition: background .12s, border-color .12s, color .12s, box-shadow .12s, transform .1s;
+      line-height: 1.2;
+      max-width: 100%;
+    }
+    .eb-chip span::before {
+      content: "";
+      width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
+      border: 1.5px solid #c5cde8;
+      background: #f3f5fb;
+      box-sizing: border-box;
+      transition: background .12s, border-color .12s, box-shadow .12s;
+    }
+    .eb-chip:hover span {
+      border-color: #c9d2f4;
+      box-shadow: 0 4px 12px rgba(90, 105, 180, 0.1);
+      transform: translateY(-1px);
+    }
+    .eb-chip input:checked + span {
+      color: #2f3470;
+      background: linear-gradient(180deg, #f2f4ff 0%, #e8ebff 100%);
+      border-color: #b8c3f5;
+      box-shadow: 0 0 0 3px rgba(102,126,234,.12), 0 4px 12px rgba(102,126,234,.12);
+    }
+    .eb-chip input:checked + span::before {
+      border-color: #667eea;
+      background:
+        linear-gradient(135deg, #667eea, #764ba2);
+      box-shadow: inset 0 0 0 2px #fff;
+    }
+    .eb-chip input:focus-visible + span {
+      outline: 2px solid #7c8cf0;
+      outline-offset: 2px;
+    }
+    .eb-chip-empty {
+      font-size: 0.8rem; color: #9aa3b8; padding: 6px 4px;
+    }
+    /* Segmented control — number of sections */
+    .eb-seg {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid #dfe5f5;
+      background: linear-gradient(180deg, #fbfcff 0%, #f4f6fc 100%);
+    }
+    .eb-seg-opt {
+      position: relative;
+      margin: 0;
+      cursor: pointer;
+      flex: 1 1 auto;
+      min-width: 72px;
+    }
+    .eb-seg-opt input {
+      position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
+    }
+    .eb-seg-opt span {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #5b6278;
+      background: #fff;
+      border: 1px solid #e2e8f5;
+      transition: background .12s, color .12s, border-color .12s, box-shadow .12s, transform .1s;
+      white-space: nowrap;
+    }
+    .eb-seg-opt:hover span {
+      border-color: #c9d2f4;
+      transform: translateY(-1px);
+    }
+    .eb-seg-opt input:checked + span {
+      color: #fff;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-color: transparent;
+      box-shadow: 0 6px 14px rgba(102,126,234,.28);
+    }
+    .eb-seg-opt input:focus-visible + span {
+      outline: 2px solid #7c8cf0;
+      outline-offset: 2px;
+    }
+    .eb-create-actions {
+      margin-top: 1.5rem; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding-top: 0.35rem;
+    }
+    .eb-create-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff; border: none; border-radius: 12px; padding: 13px 24px; font-weight: 700;
+      font-size: 0.95rem; cursor: pointer;
+      box-shadow: 0 8px 18px rgba(102, 126, 234, 0.28);
+      transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+    }
+    .eb-create-btn:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(102, 126, 234, 0.34);
+    }
+    .eb-create-btn:active { transform: translateY(0); }
+    .eb-create-hint { font-size: 0.82rem; color: #8b92a8; }
 
-    .eb-pagination { display: flex; justify-content: center; align-items: center; gap: 4px; padding: 8px; border-top: 1px solid #eee; background: #fafbff; flex-wrap: wrap; }
-    .eb-pagination a, .eb-pagination span {
-      min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 4px; font-size: 0.72rem; color: #555; text-decoration: none;
+    .eb-sections-wrap {
+      margin-top: 0.2rem; grid-column: 1 / -1;
+      border: 1px solid #e0e6fb;
+      border-radius: 14px;
+      background:
+        radial-gradient(120% 80% at 0% 0%, rgba(102,126,234,.08), transparent 55%),
+        radial-gradient(100% 70% at 100% 0%, rgba(118,75,162,.07), transparent 50%),
+        #f6f7fd;
+      padding: 1.15rem 1.2rem 1.1rem;
     }
-    .eb-pagination a:hover { background: #eef0fb; }
-    .eb-pagination .eb-current { background: #667eea; color: white; }
-
-    .eb-preview-pane { display: flex; flex-direction: column; max-height: 640px; }
-    .eb-preview-toggle { display: flex; justify-content: center; gap: 30px; padding: 12px; border-bottom: 1px solid #eee; }
-    .eb-ptoggle { font-size: 0.72rem; font-weight: 700; color: #888; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; text-transform: uppercase; background: none; border: none; }
-    .eb-ptoggle.eb-active-toggle { color: #667eea; }
-    .eb-preview-scroll { flex: 1; overflow-y: auto; padding: 20px 24px; }
-    .eb-preview-topic { color: #b5474d; font-size: 0.78rem; margin-bottom: 12px; }
-    .eb-preview-empty { color: #999; text-align: center; padding: 64px 16px; font-size: 0.85rem; }
-    .eb-preview-marks { text-align: right; color: #555; font-size: 0.82rem; margin-top: 6px; }
-    .eb-preview-body {
-      font-size: 1rem;
-      line-height: 1.75;
-      color: #222;
+    .eb-sections-wrap > .eb-sections-title {
+      font-size: 0.9rem; font-weight: 750; color: #2f3470; margin: 0 0 4px;
+      display: flex; align-items: center; gap: 8px;
     }
-    .eb-answer-block { display: none; }
-    .eb-answer-block.eb-shown { display: block; }
-    .eb-question-block.eb-hidden-block { display: none; }
+    .eb-sections-wrap > .eb-sections-title::before {
+      content: "";
+      width: 8px; height: 8px; border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      box-shadow: 0 0 0 4px rgba(102,126,234,.15);
+    }
+    .eb-sections-wrap > .eb-sections-sub {
+      font-size: 0.78rem; color: #6b7288; margin: 0 0 14px; line-height: 1.5;
+    }
+    .eb-section-row {
+      display: grid; grid-template-columns: 96px minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 12px 14px;
+      align-items: start; padding: 14px 14px 12px; background: #fff;
+      border: 1px solid #e6eaf8; border-radius: 12px; margin-bottom: 10px;
+      box-shadow: 0 4px 14px rgba(70, 85, 160, 0.05);
+    }
+    .eb-section-row .eb-chip-box {
+      min-height: 44px;
+      padding: 8px;
+    }
+    .eb-section-row .eb-chip span {
+      padding: 6px 10px;
+      font-size: 0.78rem;
+    }
+    .eb-section-row:last-child { margin-bottom: 0; }
+    .eb-section-row .eb-sec-label {
+      font-size: 0.78rem; font-weight: 750; color: #5b6fd8;
+      padding-bottom: 0.7rem;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .eb-section-row .eb-sec-label::before {
+      content: "";
+      width: 22px; height: 22px; border-radius: 7px;
+      background: linear-gradient(145deg, #eef0ff, #e4e8ff);
+      border: 1px solid #d7dcf8;
+      box-shadow: inset 0 1px 0 #fff;
+    }
+    .eb-section-row label {
+      display: block; font-size: 0.72rem; font-weight: 650; color: #667085; margin-bottom: 5px;
+    }
+    .eb-section-row select,
+    .eb-section-row input[type="number"] {
+      width: 100%; padding: 0.65rem 0.75rem; border-radius: 10px; border: 1px solid #d8def2;
+      background: #f8f9ff; font-size: 0.88rem; color: #1f2937; box-sizing: border-box;
+      font-family: inherit; transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    .eb-section-row select[multiple] {
+      min-height: 88px;
+      padding: 0.4rem 0.45rem;
+    }
+    .eb-section-row select:focus,
+    .eb-section-row input:focus {
+      outline: none; border-color: #7c8cf0; background: #fff;
+      box-shadow: 0 0 0 3px rgba(102,126,234,.14);
+    }
+    .eb-section-row input.eb-sec-count[readonly] {
+      font-weight: 750; color: #3b3b78; letter-spacing: 0.02em;
+      background: linear-gradient(180deg, #f4f6ff 0%, #eef1ff 100%);
+      border-color: #d4dbf5;
+      cursor: default;
+    }
+    .eb-type-filter {
+      grid-column: 1 / -1;
+      display: none;
+      margin-top: 2px;
+      padding-top: 12px;
+      border-top: 1px dashed #e0e5f6;
+    }
+    .eb-type-filter.eb-type-filter-open { display: block; }
+    .eb-type-filter > .eb-type-filter-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .eb-type-filter > .eb-type-filter-head label {
+      margin: 0; font-size: 0.78rem; font-weight: 750; color: #3b3b78;
+    }
+    .eb-type-filter-hint {
+      font-size: 0.72rem; color: #8b92a8;
+    }
+    .eb-type-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .eb-type-field {
+      background: linear-gradient(180deg, #fbfcff 0%, #f4f6fc 100%);
+      border: 1px solid #e6eaf6;
+      border-radius: 12px;
+      padding: 10px 12px 12px;
+      transition: border-color .15s, box-shadow .15s, transform .12s;
+    }
+    .eb-type-field:hover {
+      border-color: #d2daf5;
+      box-shadow: 0 6px 16px rgba(90, 105, 180, 0.07);
+    }
+    .eb-type-field.is-active {
+      border-color: #c5cef5;
+      background: linear-gradient(180deg, #f7f8ff 0%, #eef1ff 100%);
+      box-shadow: 0 0 0 3px rgba(102,126,234,.08);
+    }
+    .eb-type-grid .eb-type-field label {
+      display: block; font-size: 0.74rem; font-weight: 650; color: #4b5568;
+      margin-bottom: 8px; line-height: 1.3;
+    }
+    /* Counter Input — cool pill stepper */
+    .eb-counter {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 100%;
+      height: 42px;
+      padding: 3px;
+      border-radius: 999px;
+      background: #e9eef6;
+      border: 1px solid #dfe6f1;
+      box-sizing: border-box;
+      user-select: none;
+      box-shadow: inset 0 1px 2px rgba(20, 30, 60, 0.04);
+    }
+    .eb-type-field.is-active .eb-counter {
+      background: linear-gradient(180deg, #eceffc 0%, #e4e9fb 100%);
+      border-color: #cfd7f5;
+    }
+    .eb-counter-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      background: #fff;
+      color: #4a5568;
+      font-size: 1.2rem;
+      font-weight: 600;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(40, 50, 90, 0.1);
+      transition: transform .1s ease, background .12s, color .12s, box-shadow .12s;
+    }
+    .eb-counter-btn:hover {
+      background: #667eea; color: #fff;
+      box-shadow: 0 4px 10px rgba(102,126,234,.28);
+      transform: scale(1.04);
+    }
+    .eb-counter-btn:active { transform: scale(0.96); }
+    .eb-counter-btn:disabled {
+      opacity: 0.4; cursor: default; background: #f3f5f9; color: #9aa3b5;
+      box-shadow: none; transform: none;
+    }
+    .eb-counter-btn:disabled:hover {
+      background: #f3f5f9; color: #9aa3b5; box-shadow: none; transform: none;
+    }
+    .eb-counter input.eb-sec-type-count,
+    .eb-counter input[type="number"].eb-sec-type-count {
+      width: 3.2rem;
+      min-width: 2.5rem;
+      flex: 1;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      outline: none !important;
+      text-align: center;
+      font-size: 1.08rem;
+      font-weight: 750;
+      color: #334155;
+      font-family: inherit;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .eb-type-field.is-active .eb-counter input.eb-sec-type-count {
+      color: #3b3b78;
+    }
+    .eb-counter input.eb-sec-type-count::-webkit-outer-spin-button,
+    .eb-counter input.eb-sec-type-count::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .eb-sections-total {
+      margin-top: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: #5b6278;
+      background: #fff;
+      border: 1px solid #e0e6fb;
+      border-radius: 999px;
+      padding: 8px 14px;
+      box-shadow: 0 2px 8px rgba(70, 85, 160, 0.05);
+    }
+    .eb-sections-total strong {
+      color: #2b2b55;
+      font-size: 0.95rem;
+      min-width: 1.2em;
+      display: inline-block;
+      text-align: center;
+    }
+    .eb-sections-total .eb-total-chip {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 28px; height: 28px; padding: 0 8px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff; font-weight: 750; font-size: 0.85rem;
+      box-shadow: 0 4px 10px rgba(102,126,234,.3);
+    }
 
-    .eb-selected-list { background: white; border: 1px solid #dde2f7; border-radius: 10px; margin-bottom: 1rem; overflow: hidden; }
-    .eb-selected-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f1f1f8; cursor: grab; background: white; }
+    @media (max-width: 720px) {
+      .eb-section-row { grid-template-columns: 1fr 1fr; }
+      .eb-section-row .eb-sec-label { grid-column: 1 / -1; padding-bottom: 0; }
+      .eb-type-grid { grid-template-columns: 1fr; }
+    }
+
+    .eb-selected-list {
+      background: white; border: 1px solid #dde2f7; border-radius: 10px;
+      margin-bottom: 1rem; overflow: hidden;
+    }
+    .eb-selected-row {
+      display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+      border-bottom: 1px solid #f1f1f8; background: white;
+    }
     .eb-selected-row:last-child { border-bottom: none; }
-    .eb-selected-row .eb-drag-handle { color: #ccc; font-size: 15px; }
-    .eb-selected-row .eb-order-num { width: 24px; height: 24px; border-radius: 50%; background: #eef0fb; color: #667eea; font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .eb-selected-row .eb-meta { flex: 1; }
-    .eb-selected-row .eb-meta .eb-code { font-weight: 600; font-size: 0.82rem; color: #333; }
-    .eb-selected-row .eb-meta .eb-topic { font-size: 0.72rem; color: #888; margin-top: 2px; }
-    .eb-selected-row .eb-marks-tag { font-size: 0.72rem; color: #667eea; font-weight: 600; }
-    .eb-selected-row .eb-remove-btn { background: none; border: none; color: #c0392b; font-size: 0.78rem; cursor: pointer; padding: 6px 10px; }
+    .eb-selected-row .eb-drag-handle { color: #ccc; font-size: 15px; cursor: grab; }
+    .eb-selected-row .eb-order-num {
+      width: 24px; height: 24px; border-radius: 50%; background: #eef0fb; color: #667eea;
+      font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .eb-selected-row .eb-meta { flex: 1; min-width: 0; }
+    .eb-selected-row .eb-meta .eb-code { font-weight: 600; font-size: 0.88rem; color: #333; }
+    .eb-selected-row .eb-meta .eb-topic {
+      font-size: 0.75rem; color: #888; margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .eb-selected-row .eb-type-tag {
+      font-size: 0.72rem; color: #5b6fd8; background: #eef0fb; padding: 3px 8px;
+      border-radius: 12px; font-weight: 600; white-space: nowrap;
+    }
+    .eb-selected-row .eb-marks-tag { font-size: 0.72rem; color: #667eea; font-weight: 600; white-space: nowrap; }
+    .eb-selected-row .eb-remove-btn {
+      background: none; border: none; color: #c0392b; font-size: 0.78rem; cursor: pointer; padding: 6px 10px;
+    }
     .eb-selected-row.eb-dragging { opacity: .4; }
     .eb-selected-empty { text-align: center; padding: 50px 16px; color: #999; }
+    .eb-no-answer-note {
+      background: #f8f9fd; border: 1px dashed #cfd5f0; border-radius: 8px; padding: 12px 14px;
+      font-size: 0.85rem; color: #555; margin-bottom: 1rem;
+    }
 
-    .eb-summary-bar { display: flex; gap: 24px; padding: 14px 18px; background: #fafbff; border-top: 1px solid #eee; font-size: 0.8rem; color: #444; flex-wrap: wrap; }
+    .eb-summary-bar {
+      display: flex; gap: 24px; padding: 14px 18px; background: #fafbff;
+      border: 1px solid #dde2f7; border-radius: 10px; font-size: 0.8rem; color: #444; flex-wrap: wrap;
+    }
     .eb-summary-bar strong { color: #2b2b55; }
 
-    .eb-settings-card { background: white; border: 1px solid #dde2f7; border-radius: 10px; padding: 1.5rem; max-width: 560px; }
+    .eb-settings-card {
+      background: white; border: 1px solid #dde2f7; border-radius: 10px; padding: 1.5rem; max-width: 560px;
+    }
     .eb-settings-card .form-group select {
-      width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: 0.95rem;
+      width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 4px;
+      font-family: inherit; font-size: 0.95rem;
     }
     .eb-settings-card .eb-checkbox-row { display: flex; align-items: center; gap: 8px; }
     .eb-settings-card .eb-checkbox-row input { width: auto; }
 
-    .eb-practice-card { background: white; border: 1px solid #dde2f7; border-radius: 10px; padding: 1.5rem; max-width: 640px; }
+    .eb-practice-card {
+      background: white; border: 1px solid #dde2f7; border-radius: 10px; padding: 1.5rem; max-width: 640px;
+    }
     .eb-practice-start-btn {
       display: inline-flex; align-items: center; gap: 8px; background: #5b6fd8; color: white;
       padding: 10px 22px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 0.9rem;
     }
     .eb-practice-start-btn:hover { background: #4a5bc4; }
     .eb-attempts-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    .eb-attempts-table th { text-align: left; padding: 8px 10px; color: #777; font-weight: 600; border-bottom: 1px solid #eee; }
+    .eb-attempts-table th {
+      text-align: left; padding: 8px 10px; color: #777; font-weight: 600; border-bottom: 1px solid #eee;
+    }
     .eb-attempts-table td { padding: 8px 10px; border-bottom: 1px solid #f2f2f8; color: #333; }
     .eb-attempts-table a { color: #667eea; text-decoration: none; font-weight: 600; }
 
-    @media (max-width: 1000px) {
-      .eb-workspace { grid-template-columns: 1fr; }
-      .eb-filter-grid { grid-template-columns: 1fr 1fr; }
-      .eb-filter-grid .eb-search-btn { grid-column: 1 / -1; }
+    @media (max-width: 720px) {
+      .eb-form-grid { grid-template-columns: 1fr; }
     }
   </style>
 {% endblock %}
@@ -143,20 +537,24 @@
   <div class="eb-wrap">
     {% if messages %}
       {% for message in messages %}
-        <div class="{% if message.tags == 'success' %}success{% else %}error{% endif %}">{{ message }}</div>
+        <div class="{% if 'success' in message.tags %}success{% elif 'warning' in message.tags %}warning{% else %}error{% endif %}">{{ message }}</div>
       {% endfor %}
     {% endif %}
 
     <div class="eb-header">
       <h1>🧾 Exam Builder</h1>
-      <p class="desc">Build a personalised exam from real questions in the question bank, filtered by topic, year, and type (category). Your exams are saved to your account.</p>
+      <p class="desc">
+        Create a question paper with a simple form — pick category, topic, type, how many sections,
+        and the difficulty for each section. Your paper appears in <strong>My List</strong>.
+        Correct answers are shown only after you finish a practice test.
+      </p>
 
       <div class="eb-name-row">
         <span>📝</span>
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="rename_exam" value="1" />
-          <label for="examNameInput">exam name:</label>
+          <label for="examNameInput">paper name:</label>
           <input id="examNameInput" type="text" name="name" value="{{ exam.name }}" />
           <button type="submit">Save name</button>
         </form>
@@ -164,134 +562,249 @@
       </div>
 
       <div class="eb-tabs">
-        <a class="eb-tab {% if active_tab != 'settings' %}eb-active{% endif %}" data-tab="select">Select Questions</a>
-        <a class="eb-tab" data-tab="selected">Selected Questions <span class="eb-badge">{{ selected_count }}</span></a>
-        <a class="eb-tab" data-tab="practice">Practice{% if practice_attempts %} <span class="eb-badge">{{ practice_attempts|length }}</span>{% endif %}</a>
-        <a class="eb-tab {% if active_tab == 'settings' %}eb-active{% endif %}" data-tab="settings">Settings</a>
+        <a class="eb-tab" data-tab="create" href="#create">Create Paper</a>
+        <a class="eb-tab" data-tab="list" href="#list">My List <span class="eb-badge" id="listBadge">{{ selected_count }}</span></a>
+        <a class="eb-tab" data-tab="practice" href="#practice">Practice{% if practice_attempts %} <span class="eb-badge">{{ practice_attempts|length }}</span>{% endif %}</a>
+        <a class="eb-tab" data-tab="settings" href="#settings">Settings</a>
       </div>
     </div>
 
-    <!-- ============ SELECT QUESTIONS TAB ============ -->
-    <div id="eb-tab-select" class="eb-tab-panel">
-      <div class="eb-filter-card">
-        <div class="eb-filter-top">
-          <div>🌐 Curriculum: <strong>CIE IGCSE</strong></div>
-          {% if years %}<span class="eb-chip">Latest: {{ years|first }}</span>{% endif %}
-        </div>
+    <!-- ============ CREATE PAPER TAB ============ -->
+    <div id="eb-tab-create" class="eb-tab-panel" style="display:none;">
+      <div class="eb-create-card">
+        <h2>Create Question Paper</h2>
+        <p class="eb-create-sub">
+          Questions are chosen automatically from the bank by category, topic, type, and per-section difficulty.
+          You will not see answers until after practice.
+        </p>
 
-        <form method="get" id="filterForm">
-          <div class="eb-filter-grid">
-            <div class="eb-field">
-              <label>Topic(s)</label>
-              <select name="topic">
-                <option value="">Select Topic</option>
-                {% for t in topics %}
-                  <option value="{{ t }}" {% if filters.topic == t %}selected{% endif %}>{{ t }}</option>
-                {% endfor %}
-              </select>
+        <form method="post" action="{% url 'courses:student_generate_exam_paper' exam.id %}" id="createPaperForm">
+          {% csrf_token %}
+
+          <div class="eb-form-grid">
+            <div class="eb-field eb-field-full">
+              <label for="paperName">Paper name <span class="eb-field-hint">(optional)</span></label>
+              <input id="paperName" type="text" name="paper_name" placeholder="e.g. JEE Algebra Practice Set" value="{{ exam.name }}" />
             </div>
+
             <div class="eb-field">
-              <label>Year(s)</label>
-              <select name="year">
-                <option value="">Select Year</option>
-                {% for y in years %}
-                  <option value="{{ y }}" {% if filters.year == y|stringformat:'s' %}selected{% endif %}>{{ y }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="eb-field">
-              <label>Type (Category)</label>
-              <select name="category">
-                <option value="">All Types</option>
+              <label>Category <span class="eb-field-hint">(pick one or more)</span></label>
+              <div class="eb-chip-box" id="categorySelect">
                 {% for cat in categories %}
-                  <option value="{{ cat.id }}" {% if filters.category == cat.id|stringformat:'s' %}selected{% endif %}>{{ cat.name }}</option>
+                  <label class="eb-chip">
+                    <input
+                      type="checkbox"
+                      name="category"
+                      value="{{ cat.id }}"
+                      {% if cat.id|stringformat:'s' in form_defaults.categories %}checked{% endif %}
+                    />
+                    <span>{{ cat.name }}</span>
+                  </label>
+                {% empty %}
+                  <span class="eb-chip-empty">No categories available</span>
                 {% endfor %}
-              </select>
+              </div>
             </div>
-            <button type="submit" class="eb-search-btn">🔍 Submit</button>
+
+            <div class="eb-field">
+              <label>Topic <span class="eb-field-hint">(optional multi)</span></label>
+              <div class="eb-chip-box" id="topicSelect">
+                {% for t in topics %}
+                  <label class="eb-chip">
+                    <input
+                      type="checkbox"
+                      name="topic"
+                      value="{{ t }}"
+                      {% if t in form_defaults.topics %}checked{% endif %}
+                    />
+                    <span>{{ t }}</span>
+                  </label>
+                {% empty %}
+                  <span class="eb-chip-empty">No topics found for this bank</span>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="eb-field">
+              <label>Type of questions <span class="eb-field-hint">(optional multi)</span></label>
+              <div class="eb-chip-box" id="questionType">
+                {% for value, label in question_types %}
+                  <label class="eb-chip">
+                    <input
+                      type="checkbox"
+                      name="question_type"
+                      value="{{ value }}"
+                      class="eb-global-type"
+                      {% if value in form_defaults.question_types %}checked{% endif %}
+                    />
+                    <span>{{ label }}</span>
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="eb-field">
+              <label>Number of sections</label>
+              <div class="eb-seg" id="numSections">
+                {% for n in "12345" %}
+                  <label class="eb-seg-opt">
+                    <input
+                      type="radio"
+                      name="num_sections"
+                      value="{{ n }}"
+                      class="eb-num-sections"
+                      {% if form_defaults.num_sections|stringformat:'s' == n %}checked{% endif %}
+                    />
+                    <span>{{ n }}{% if n == "1" %} sec{% else %} secs{% endif %}</span>
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="eb-sections-wrap" id="sectionsWrap">
+              <p class="eb-sections-title">Section configuration</p>
+              <p class="eb-sections-sub">
+                Set how many questions go in each section and the difficulty for that section.
+                Questions are picked randomly from the bank matching your filters.
+              </p>
+              <div id="sectionRows">
+                {% for n in "12345" %}
+                  <div class="eb-section-row" data-section="{{ n }}" {% if forloop.counter > form_defaults.num_sections %}style="display:none;"{% endif %}>
+                    <div class="eb-sec-label">Section {{ n }}</div>
+                    <div>
+                      <label for="section{{ n }}Count">Questions</label>
+                      <input
+                        id="section{{ n }}Count"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value="{% if forloop.counter == 1 %}{{ form_defaults.num_questions }}{% else %}0{% endif %}"
+                        class="eb-sec-count"
+                        data-section="{{ n }}"
+                        readonly
+                        tabindex="-1"
+                        title="Total from question type counts below"
+                      />
+                    </div>
+                    <div>
+                      <label>Difficulty <span class="eb-field-hint">(multi)</span></label>
+                      <div class="eb-chip-box eb-sec-difficulty" id="section{{ n }}Difficulty" data-section="{{ n }}">
+                        {% for value, label in difficulty_levels %}
+                          <label class="eb-chip">
+                            <input
+                              type="checkbox"
+                              name="section_{{ n }}_difficulty"
+                              value="{{ value }}"
+                              class="eb-sec-diff-input"
+                              data-section="{{ n }}"
+                            />
+                            <span>{{ label }}</span>
+                          </label>
+                        {% endfor %}
+                      </div>
+                    </div>
+
+                    <div class="eb-type-filter" id="section{{ n }}TypeFilter" data-section="{{ n }}">
+                      <div class="eb-type-filter-head">
+                        <label>Question type filter</label>
+                        <span class="eb-type-filter-hint">Use − / + to set count per type</span>
+                      </div>
+                      <div class="eb-type-grid">
+                        {% for value, label in question_types %}
+                          <div class="eb-type-field{% if forloop.parentloop.counter == 1 and forloop.counter == 1 %} is-active{% endif %}">
+                            <label for="section{{ n }}Type{{ value }}">{{ label }}</label>
+                            <div class="eb-counter" data-section="{{ n }}">
+                              <button type="button" class="eb-counter-btn eb-counter-minus" aria-label="Decrease {{ label }}">−</button>
+                              <input
+                                id="section{{ n }}Type{{ value }}"
+                                type="number"
+                                name="section_{{ n }}_type_{{ value }}"
+                                min="0"
+                                max="100"
+                                value="{% if forloop.parentloop.counter == 1 and forloop.counter == 1 %}{{ form_defaults.num_questions }}{% else %}0{% endif %}"
+                                class="eb-sec-type-count"
+                                data-section="{{ n }}"
+                                inputmode="numeric"
+                              />
+                              <button type="button" class="eb-counter-btn eb-counter-plus" aria-label="Increase {{ label }}">+</button>
+                            </div>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              <div class="eb-sections-total">
+                Total questions
+                <span class="eb-total-chip" id="sectionsTotal">{{ form_defaults.num_questions }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="eb-create-actions">
+            <button type="submit" class="eb-create-btn">📄 Create Question Paper</button>
+            <span class="eb-create-hint">Replaces the current list on this exam with a new random set.</span>
           </div>
         </form>
       </div>
-
-      <div class="eb-workspace">
-        <div class="eb-qlist-pane">
-          <div class="eb-qlist-toolbar">
-            <span>{{ page_obj.paginator.count }} question(s)</span>
-          </div>
-
-          <div class="eb-qlist-scroll" id="qlistScroll">
-            {% if questions %}
-              {% for q in questions %}
-                <div class="eb-qrow {% if q.id in selected_ids %}eb-selected{% endif %}"
-                     data-question-id="{{ q.id }}"
-                     onclick="previewQuestion({{ q.id }}, this)">
-                  <span class="eb-code">{{ q.question_code|default:q.question_number }}</span>
-                  <button type="button"
-                          class="eb-add-btn {% if q.id in selected_ids %}eb-added{% endif %}"
-                          data-question-id="{{ q.id }}"
-                          onclick="event.stopPropagation(); toggleQuestion({{ q.id }}, this)"></button>
-                </div>
-              {% endfor %}
-            {% else %}
-              <div class="eb-qlist-empty">No questions match these filters yet.<br />Try a different topic, year, or type.</div>
-            {% endif %}
-          </div>
-
-          {% if page_obj %}
-            {% include 'partials/question_pagination.html' %}
-          {% endif %}
-        </div>
-
-        <div class="eb-preview-pane">
-          <div class="eb-preview-toggle">
-            <button type="button" class="eb-ptoggle eb-active-toggle" data-mode="question" onclick="setPreviewMode('question', this)">📋 Question</button>
-            <button type="button" class="eb-ptoggle" data-mode="answer" onclick="setPreviewMode('answer', this)">🔗 Answer</button>
-          </div>
-          <div class="eb-preview-scroll" id="previewScroll">
-            <div class="eb-preview-empty">Select a question on the left to preview it here.</div>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <!-- ============ SELECTED QUESTIONS TAB ============ -->
-    <div id="eb-tab-selected" class="eb-tab-panel" style="display:none;">
+    <!-- ============ MY LIST TAB ============ -->
+    <div id="eb-tab-list" class="eb-tab-panel" style="display:none;">
+      <div class="eb-no-answer-note">
+        🔒 Correct answers are hidden here. Start a <strong>Practice</strong> test to attempt questions;
+        answers appear on the results page after you submit.
+      </div>
+
       <div class="eb-selected-list" id="selectedList">
         {% for eq in exam_questions %}
           <div class="eb-selected-row" draggable="true" data-question-id="{{ eq.question.id }}">
             <span class="eb-drag-handle">⠿</span>
             <span class="eb-order-num">{{ forloop.counter }}</span>
             <div class="eb-meta">
-              <div class="eb-code">{{ eq.question.question_code }}</div>
-              <div class="eb-topic">{{ eq.question.topic }}</div>
+              <div class="eb-code">{{ eq.question.question_code|default:eq.question.question_number|default:"Question" }}</div>
+              <div class="eb-topic">
+                {% if eq.question.topic %}{{ eq.question.topic }}{% else %}No topic{% endif %}
+                {% if eq.question.difficulty_level %} · {{ eq.question.get_difficulty_level_display }}{% endif %}
+              </div>
             </div>
-            <span class="eb-marks-tag">{{ eq.question.marks }} marks</span>
-            <button type="button" class="eb-remove-btn" onclick="toggleQuestion({{ eq.question.id }}, null, true)">Remove</button>
+            <span class="eb-type-tag">{{ eq.question.get_question_type_display }}</span>
+            <span class="eb-marks-tag">{{ eq.question.marks }} mark{{ eq.question.marks|pluralize }}</span>
+            <button type="button" class="eb-remove-btn" onclick="removeQuestion({{ eq.question.id }})">Remove</button>
           </div>
         {% empty %}
-          <div class="eb-selected-empty">No questions selected yet. Go to <strong>Select Questions</strong> and click + next to a question to add it here.</div>
+          <div class="eb-selected-empty">
+            No questions on this paper yet.<br />
+            Go to <strong>Create Paper</strong> and click <strong>Create Question Paper</strong>.
+          </div>
         {% endfor %}
       </div>
+
       <div class="eb-summary-bar">
         <div><strong id="summaryCount">{{ selected_count }}</strong> question(s)</div>
         <div><strong id="summaryMarks">{{ total_marks }}</strong> total marks</div>
         <div><strong>{{ exam.duration_minutes }}</strong> minute timer</div>
+        {% if selected_count %}
+          <div style="margin-left:auto;">
+            <a href="{% url 'courses:student_practice_start' exam.id %}" class="eb-practice-start-btn" style="padding: 8px 16px; font-size: 0.82rem;">▶ Start Practice</a>
+          </div>
+        {% endif %}
       </div>
     </div>
 
     <!-- ============ PRACTICE TAB ============ -->
     <div id="eb-tab-practice" class="eb-tab-panel" style="display:none;">
       <div class="eb-practice-card">
-        <h3 style="margin: 0 0 6px; font-size: 1.05rem; color: #2b2b55;">Practice this exam</h3>
+        <h3 style="margin: 0 0 6px; font-size: 1.05rem; color: #2b2b55;">Practice this paper</h3>
         <p style="margin: 0 0 16px; font-size: 0.85rem; color: #666;">
-          Answer all {{ selected_count }} selected question(s) against a running timer, then submit for
-          an instant score. Multiple-choice, true/false, and numerical questions are auto-graded;
-          structured/matching answers are best-effort matched against the answer key.
+          Answer all {{ selected_count }} question(s) against a timer, then submit for an instant score.
+          <strong>Correct answers are revealed only on the results page after you submit.</strong>
         </p>
         {% if selected_count %}
           <a href="{% url 'courses:student_practice_start' exam.id %}" class="eb-practice-start-btn">▶ Start Practice</a>
         {% else %}
-          <div class="eb-selected-empty">Add some questions in <strong>Select Questions</strong> first.</div>
+          <div class="eb-selected-empty">Create a question paper first on the <strong>Create Paper</strong> tab.</div>
         {% endif %}
       </div>
 
@@ -319,7 +832,7 @@
                   <td>{{ attempt.wrong_count }}</td>
                   <td>{{ attempt.unanswered_count }}</td>
                   <td>{{ attempt.time_taken_display }}</td>
-                  <td><a href="{% url 'courses:student_practice_result' exam.id attempt.id %}">Review →</a></td>
+                  <td><a href="{% url 'courses:student_practice_result' exam.id attempt.id %}">Review answers →</a></td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -361,136 +874,282 @@
     </div>
   </div>
 
-  {{ question_preview_data|json_script:"question-preview-data" }}
-  {% include 'partials/question_preview_render.js.html' %}
   <script>
     const TOGGLE_URL = "{% url 'courses:student_exam_toggle_question' exam.id %}";
     const REORDER_URL = "{% url 'courses:student_exam_reorder_questions' exam.id %}";
     const CSRF_TOKEN = "{{ csrf_token }}";
 
-    window.QUESTION_DATA = JSON.parse(
-      document.getElementById('question-preview-data').textContent || '{}'
-    );
-    const QUESTION_DATA = window.QUESTION_DATA;
-
-    let currentPreviewMode = 'question';
-    window.currentPreviewMode = currentPreviewMode;
-
-    const PREVIEW_UI = {
-      containerId: 'previewScroll',
-      topicClass: 'eb-preview-topic',
-      bodyClass: 'eb-preview-body',
-      qBlockClass: 'eb-question-block',
-      aBlockClass: 'eb-answer-block',
-      hiddenClass: 'eb-hidden-block',
-      shownClass: 'eb-shown',
-      marksClass: 'eb-preview-marks',
-      emptyHtml: '<div class="eb-preview-empty">Select a question on the left to preview it here.</div>'
-    };
-
-    function renderPreview(qid) {
-      window.currentPreviewMode = currentPreviewMode;
-      PREVIEW_UI.mode = currentPreviewMode;
-      window.renderQuestionPreview(qid, PREVIEW_UI);
-    }
-
-    function previewQuestion(qid, el) {
-      document.querySelectorAll('.eb-qrow').forEach(r => r.classList.remove('eb-active-row'));
-      if (el) el.classList.add('eb-active-row');
-      renderPreview(qid);
-    }
-
-    function setPreviewMode(mode, el) {
-      currentPreviewMode = mode;
-      window.currentPreviewMode = mode;
-      document.querySelectorAll('.eb-ptoggle').forEach(t => t.classList.remove('eb-active-toggle'));
-      el.classList.add('eb-active-toggle');
-      document.querySelectorAll('.eb-question-block').forEach(b => b.classList.toggle('eb-hidden-block', mode === 'answer'));
-      document.querySelectorAll('.eb-answer-block').forEach(b => b.classList.toggle('eb-shown', mode === 'answer'));
-    }
-
-    function toggleQuestion(qid, btnEl, fromSelectedTab) {
+    function removeQuestion(qid) {
+      if (!confirm('Remove this question from the paper?')) return;
       fetch(TOGGLE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF_TOKEN },
-        body: `question_id=${qid}`
+        body: 'question_id=' + qid
       })
-        .then(r => r.json())
-        .then(data => {
-          document.getElementById('summaryCount').textContent = data.selected_count;
-          document.getElementById('summaryMarks').textContent = data.total_marks;
-          document.querySelectorAll('.eb-badge')[0].textContent = data.selected_count;
-
-          if (fromSelectedTab) {
-            window.location.reload();
-            return;
-          }
-
-          const matchingBtn = document.querySelector(`.eb-add-btn[data-question-id="${qid}"]`);
-          const matchingRow = document.querySelector(`.eb-qrow[data-question-id="${qid}"]`);
-          if (matchingBtn) matchingBtn.classList.toggle('eb-added', data.added);
-          if (matchingRow) matchingRow.classList.toggle('eb-selected', data.added);
-        })
-        .catch(() => alert('Could not update the exam. Please try again.'));
+        .then(function (r) { return r.json(); })
+        .then(function () { window.location.reload(); })
+        .catch(function () { alert('Could not update the paper. Please try again.'); });
     }
 
     function activateTab(tabName) {
-      document.querySelectorAll('.eb-tab-panel').forEach(p => p.style.display = 'none');
-      document.getElementById('eb-tab-' + tabName).style.display = 'block';
-      document.querySelectorAll('.eb-tab').forEach(t => t.classList.remove('eb-active'));
-      const link = document.querySelector(`.eb-tab[data-tab="${tabName}"]`);
+      document.querySelectorAll('.eb-tab-panel').forEach(function (p) { p.style.display = 'none'; });
+      var panel = document.getElementById('eb-tab-' + tabName);
+      if (panel) panel.style.display = 'block';
+      document.querySelectorAll('.eb-tab').forEach(function (t) { t.classList.remove('eb-active'); });
+      var link = document.querySelector('.eb-tab[data-tab="' + tabName + '"]');
       if (link) link.classList.add('eb-active');
-      window.location.hash = tabName;
+      if (history.replaceState) {
+        history.replaceState(null, '', '#' + tabName);
+      } else {
+        window.location.hash = tabName;
+      }
     }
 
-    document.querySelectorAll('.eb-tab').forEach(link => {
-      link.addEventListener('click', (e) => {
+    document.querySelectorAll('.eb-tab').forEach(function (link) {
+      link.addEventListener('click', function (e) {
         e.preventDefault();
         activateTab(link.dataset.tab);
       });
     });
 
     (function initTab() {
-      const hash = window.location.hash.replace('#', '');
-      if (hash) {
-        activateTab(hash);
-      } else if ("{{ active_tab }}" === "settings") {
-        activateTab('settings');
+      var params = new URLSearchParams(window.location.search);
+      var tab = params.get('tab') || window.location.hash.replace('#', '') || '{{ active_tab }}';
+      if (!tab || !document.getElementById('eb-tab-' + tab)) {
+        tab = {{ selected_count|default:0 }} > 0 ? 'list' : 'create';
       }
+      activateTab(tab);
     })();
 
     (function setupDragReorder() {
-      const list = document.getElementById('selectedList');
+      var list = document.getElementById('selectedList');
       if (!list) return;
-      let draggedEl = null;
+      var draggedEl = null;
 
-      list.addEventListener('dragstart', (e) => {
+      list.addEventListener('dragstart', function (e) {
         draggedEl = e.target.closest('.eb-selected-row');
         if (draggedEl) draggedEl.classList.add('eb-dragging');
       });
-      list.addEventListener('dragend', () => {
+      list.addEventListener('dragend', function () {
         if (draggedEl) draggedEl.classList.remove('eb-dragging');
         draggedEl = null;
         persistOrder();
       });
-      list.addEventListener('dragover', (e) => {
+      list.addEventListener('dragover', function (e) {
         e.preventDefault();
-        const target = e.target.closest('.eb-selected-row');
+        var target = e.target.closest('.eb-selected-row');
         if (!target || target === draggedEl) return;
-        const rect = target.getBoundingClientRect();
-        const before = (e.clientY - rect.top) < rect.height / 2;
+        var rect = target.getBoundingClientRect();
+        var before = (e.clientY - rect.top) < rect.height / 2;
         list.insertBefore(draggedEl, before ? target : target.nextSibling);
       });
 
       function persistOrder() {
-        const ids = Array.from(list.querySelectorAll('.eb-selected-row')).map(r => r.dataset.questionId);
-        list.querySelectorAll('.eb-order-num').forEach((el, i) => el.textContent = i + 1);
+        var ids = Array.from(list.querySelectorAll('.eb-selected-row')).map(function (r) {
+          return r.dataset.questionId;
+        });
+        list.querySelectorAll('.eb-order-num').forEach(function (el, i) {
+          el.textContent = i + 1;
+        });
         fetch(REORDER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
           body: JSON.stringify({ question_ids: ids })
-        }).catch(() => {});
+        }).catch(function () {});
       }
+    })();
+
+    (function setupSectionConfig() {
+      var totalEl = document.getElementById('sectionsTotal');
+      var form = document.getElementById('createPaperForm');
+      if (!document.getElementById('numSections')) return;
+
+      function getNumSections() {
+        var checked = document.querySelector('input.eb-num-sections:checked');
+        if (checked) return parseInt(checked.value, 10) || 1;
+        return 1;
+      }
+
+      function visibleSectionRows() {
+        var n = getNumSections();
+        return Array.from(document.querySelectorAll('.eb-section-row')).filter(function (row) {
+          return parseInt(row.dataset.section, 10) <= n;
+        });
+      }
+
+      function selectedGlobalTypes() {
+        return Array.from(document.querySelectorAll('input.eb-global-type:checked')).map(function (el) {
+          return el.value;
+        });
+      }
+
+      function syncTypeRowsVisibility() {
+        var selected = selectedGlobalTypes();
+        document.querySelectorAll('.eb-type-grid').forEach(function (grid) {
+          grid.querySelectorAll('.eb-type-field').forEach(function (field) {
+            var input = field.querySelector('.eb-sec-type-count');
+            if (!input) return;
+            var typeKey = (input.name || '').split('_type_')[1] || '';
+            var show = !selected.length || selected.indexOf(typeKey) !== -1;
+            field.style.display = show ? '' : 'none';
+            if (!show) {
+              input.value = 0;
+              var counter = field.querySelector('.eb-counter');
+              if (counter) refreshCounterButtons(counter);
+            }
+          });
+        });
+        updateTotal();
+      }
+
+      function sectionTypeTotal(sectionIdx) {
+        var total = 0;
+        document.querySelectorAll('.eb-sec-type-count[data-section="' + sectionIdx + '"]').forEach(function (input) {
+          var field = input.closest('.eb-type-field');
+          if (field && field.style.display === 'none') return;
+          var v = parseInt(input.value, 10);
+          if (!isNaN(v) && v > 0) total += v;
+        });
+        var countEl = document.querySelector('.eb-sec-count[data-section="' + sectionIdx + '"]');
+        if (countEl) countEl.value = total;
+        return total;
+      }
+
+      function updateTotal() {
+        var total = 0;
+        visibleSectionRows().forEach(function (row) {
+          total += sectionTypeTotal(row.dataset.section);
+        });
+        if (totalEl) totalEl.textContent = String(total);
+        return total;
+      }
+
+      function updateSectionVisibility() {
+        var n = getNumSections();
+        document.querySelectorAll('.eb-section-row').forEach(function (row) {
+          var idx = parseInt(row.dataset.section, 10);
+          row.style.display = idx <= n ? '' : 'none';
+        });
+        updateTotal();
+      }
+
+      function toggleTypeFilter(sectionIdx) {
+        var box = document.getElementById('section' + sectionIdx + 'Difficulty');
+        var panel = document.getElementById('section' + sectionIdx + 'TypeFilter');
+        if (!box || !panel) return;
+        var hasSelection = box.querySelectorAll('input.eb-sec-diff-input:checked').length > 0;
+        var hasTypeCount = false;
+        document.querySelectorAll('.eb-sec-type-count[data-section="' + sectionIdx + '"]').forEach(function (input) {
+          var v = parseInt(input.value, 10);
+          if (!isNaN(v) && v > 0) hasTypeCount = true;
+        });
+        if (hasSelection || hasTypeCount || box.dataset.touched === '1') {
+          panel.classList.add('eb-type-filter-open');
+        }
+      }
+
+      document.querySelectorAll('.eb-sec-diff-input').forEach(function (input) {
+        input.addEventListener('change', function () {
+          var box = document.getElementById('section' + input.dataset.section + 'Difficulty');
+          if (box) box.dataset.touched = '1';
+          toggleTypeFilter(input.dataset.section);
+        });
+      });
+
+      function clampTypeInput(input) {
+        var min = parseInt(input.min, 10);
+        var max = parseInt(input.max, 10);
+        if (isNaN(min)) min = 0;
+        if (isNaN(max)) max = 100;
+        var v = parseInt(input.value, 10);
+        if (isNaN(v)) v = 0;
+        if (v < min) v = min;
+        if (v > max) v = max;
+        input.value = v;
+        return v;
+      }
+
+      function refreshCounterButtons(counter) {
+        var input = counter.querySelector('.eb-sec-type-count');
+        if (!input) return;
+        var v = clampTypeInput(input);
+        var min = parseInt(input.min, 10); if (isNaN(min)) min = 0;
+        var max = parseInt(input.max, 10); if (isNaN(max)) max = 100;
+        var minus = counter.querySelector('.eb-counter-minus');
+        var plus = counter.querySelector('.eb-counter-plus');
+        if (minus) minus.disabled = v <= min;
+        if (plus) plus.disabled = v >= max;
+        var field = counter.closest('.eb-type-field');
+        if (field) {
+          if (v > 0) field.classList.add('is-active');
+          else field.classList.remove('is-active');
+        }
+      }
+
+      function setupCounters() {
+        document.querySelectorAll('.eb-counter').forEach(function (counter) {
+          var input = counter.querySelector('.eb-sec-type-count');
+          if (!input) return;
+
+          counter.querySelectorAll('.eb-counter-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var delta = btn.classList.contains('eb-counter-plus') ? 1 : -1;
+              var v = parseInt(input.value, 10);
+              if (isNaN(v)) v = 0;
+              input.value = v + delta;
+              clampTypeInput(input);
+              refreshCounterButtons(counter);
+              updateTotal();
+            });
+          });
+
+          input.addEventListener('input', function () {
+            updateTotal();
+            refreshCounterButtons(counter);
+          });
+          input.addEventListener('change', function () {
+            clampTypeInput(input);
+            refreshCounterButtons(counter);
+            updateTotal();
+          });
+          input.addEventListener('blur', function () {
+            clampTypeInput(input);
+            refreshCounterButtons(counter);
+            updateTotal();
+          });
+
+          refreshCounterButtons(counter);
+        });
+      }
+
+      document.querySelectorAll('input.eb-num-sections').forEach(function (radio) {
+        radio.addEventListener('change', updateSectionVisibility);
+      });
+      document.querySelectorAll('input.eb-global-type').forEach(function (cb) {
+        cb.addEventListener('change', syncTypeRowsVisibility);
+      });
+
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          if (document.querySelectorAll('input[name="category"]:checked').length < 1) {
+            e.preventDefault();
+            alert('Please select at least one category.');
+            return;
+          }
+          document.querySelectorAll('.eb-sec-type-count').forEach(clampTypeInput);
+          if (updateTotal() < 1) {
+            e.preventDefault();
+            alert('Please set at least one question in the section configuration.');
+          }
+        });
+      }
+
+      document.querySelectorAll('.eb-section-row').forEach(function (row) {
+        toggleTypeFilter(row.dataset.section);
+      });
+      setupCounters();
+      updateSectionVisibility();
+      syncTypeRowsVisibility();
     })();
   </script>
 {% endblock %}

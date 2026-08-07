@@ -214,5 +214,19 @@ def sanitize_html(value: str | None) -> str:
 
 
 def safe_html(value: str | None):
-    """Sanitize then mark_safe for Django templates."""
-    return mark_safe(sanitize_html(value))
+    """Sanitize + size equation images to match text (1.25em)."""
+    from courses.equation_display import wrap_equation_images
+
+    html = sanitize_html(value)
+    html = wrap_equation_images(html)
+    return mark_safe(html)
+
+
+def safe_html_stem(value: str | None):
+    """Question stem — same equation size as body text."""
+    return safe_html(value)
+
+
+def safe_html_option(value: str | None):
+    """MCQ option — same equation size as body text (not larger/smaller)."""
+    return safe_html(value)

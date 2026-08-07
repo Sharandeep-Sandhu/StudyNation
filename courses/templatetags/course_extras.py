@@ -1,7 +1,7 @@
 from django import template
 
 from courses.math_content import render_chat_math, sanitize_math_content
-from courses.html_sanitize import safe_html
+from courses.html_sanitize import safe_html, safe_html_stem, safe_html_option
 
 register = template.Library()
 
@@ -22,6 +22,18 @@ def sanitize_math(value):
 def safe_html_filter(value):
     """Render user/admin HTML with XSS allowlist (equation images, basic formatting)."""
     return safe_html(value)
+
+
+@register.filter(name="safe_html_stem")
+def safe_html_stem_filter(value):
+    """Question stem: equations sized to sit with body text."""
+    return safe_html_stem(value)
+
+
+@register.filter(name="safe_html_option")
+def safe_html_option_filter(value):
+    """MCQ option: pure-math options use a larger readable size."""
+    return safe_html_option(value)
 
 
 @register.filter
