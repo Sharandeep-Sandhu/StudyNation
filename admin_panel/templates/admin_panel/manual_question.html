@@ -265,16 +265,36 @@
         {% if not selected_bank %}
           <div class="card empty-state" id="emptyBankCard">
             <div class="icon">🗂️</div>
-            <div class="required-badge">Required field not filled</div>
-            <h3>Select or create a question bank</h3>
-            <p>
-              The <strong>Question Bank</strong> dropdown above is empty.
-              Choose an existing bank, or create a new one to start adding questions.
-            </p>
-            <div class="actions">
-              <button type="button" class="btn btn-primary" onclick="openCreateBankModal()">+ Create Question Bank</button>
-              <button type="button" class="btn btn-outline" onclick="focusBankSelect()">Select Existing Bank</button>
-            </div>
+            {% if question_banks %}
+              <h3>Select a question bank</h3>
+              <p>
+                You have <strong>{{ question_banks|length }}</strong> saved question bank{{ question_banks|length|pluralize }}.
+                Choose one from the dropdown above to continue, or create another.
+              </p>
+              <div class="actions">
+                <button type="button" class="btn btn-primary" onclick="focusBankSelect()">Select Existing Bank</button>
+                <button type="button" class="btn btn-outline" onclick="openCreateBankModal()">+ Create Question Bank</button>
+              </div>
+              <ul style="text-align:left; max-width:420px; margin:20px auto 0; padding:0; list-style:none;">
+                {% for qb in question_banks %}
+                  <li style="margin:6px 0;">
+                    <a href="?question_bank={{ qb.id }}" style="color:#667eea; font-weight:600; text-decoration:none;">
+                      {{ qb.title }} <span style="color:#888; font-weight:500;">({{ qb.course.title }})</span>
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="required-badge">No question banks yet</div>
+              <h3>Create your first question bank</h3>
+              <p>
+                Question banks are saved permanently. Create one to start adding questions —
+                it will still be here after you log out and log back in.
+              </p>
+              <div class="actions">
+                <button type="button" class="btn btn-primary" onclick="openCreateBankModal()">+ Create Question Bank</button>
+              </div>
+            {% endif %}
           </div>
         {% else %}
           <div class="card">
@@ -561,6 +581,12 @@
           </div>
 
           <div class="form-row">
+            <div class="q-field-label">Video solution link <em style="font-weight:500;color:#888;">(optional)</em></div>
+            <input type="url" id="videoSolutionField" style="width:100%;" placeholder="https://youtube.com/... or any video URL" />
+            <small style="color:#888;display:block;margin-top:4px;">Optional. Shown as a “Video Solution” button to students.</small>
+          </div>
+
+          <div class="form-row">
             <div class="q-field-label">Tags</div>
             <div class="tags-box" id="tagsBox" onclick="document.getElementById('tagInput').focus()">
               <input type="text" id="tagInput" placeholder="Type a tag and press Enter" onkeydown="onTagKeydown(event)" />
@@ -818,6 +844,7 @@
         document.getElementById('questionField').innerHTML = q.question_text || '';
         document.getElementById('difficultyField').value = q.difficulty_level || '';
         document.getElementById('solutionField').value = q.explanation || '';
+        document.getElementById('videoSolutionField').value = q.video_solution_url || '';
         document.getElementById('passageField').value = q.passage || '';
         document.getElementById('passageWrap').style.display = type === 'comprehension' ? 'block' : 'none';
 
@@ -982,6 +1009,7 @@
           question_text: document.getElementById('questionField').innerHTML.trim(),
           difficulty_level: document.getElementById('difficultyField').value,
           explanation: document.getElementById('solutionField').value,
+          video_solution_url: (document.getElementById('videoSolutionField').value || '').trim(),
           passage: type === 'comprehension' ? document.getElementById('passageField').value : '',
           answer_type: document.getElementById('answerTypeField').value,
           tags: tags,

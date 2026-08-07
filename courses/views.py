@@ -1302,6 +1302,19 @@ def student_delete_question_list(request, list_id):
     return redirect("courses:student_question_lists")
 
 
+def _clean_video_solution_url(raw: str | None) -> str:
+    """Normalize optional video solution links. Empty string when blank/invalid."""
+    url = (raw or "").strip()
+    if not url:
+        return ""
+    if not (url.startswith("http://") or url.startswith("https://")):
+        url = "https://" + url
+    # Light validation: must look like a URL host path
+    if not re.match(r"^https?://[^\s]+$", url, re.IGNORECASE):
+        return ""
+    return url[:500]
+
+
 # ==================== QUESTION FORM (DISCUSSION BOARDS) ====================
 class QuestionFormView(TemplateView):
     """Dedicated Question Form page: sidebar of topic boards + a feed of
@@ -1362,6 +1375,10 @@ def discussion_create_post(request):
         content = sanitize_math_content(request.POST.get("content", ""))
         board_id = request.POST.get("board", "").strip()
         image = request.FILES.get("image")
+        # Normal users may attach optional video solution links only on Question Form
+        video_solution_url = _clean_video_solution_url(
+            request.POST.get("video_solution_url")
+        )
 
         board = DiscussionBoard.objects.filter(pk=board_id).first() if board_id else None
 
@@ -1372,6 +1389,7 @@ def discussion_create_post(request):
                 title=title,
                 content=content,
                 image=image,
+                video_solution_url=video_solution_url,
             )
             messages.success(
                 request, "✅ Your question has been submitted!"
@@ -1418,13 +1436,22 @@ def discussion_add_reply(request, post_id):
     if request.method == "POST":
         content = sanitize_math_content(request.POST.get("content", ""))
         image = request.FILES.get("image")
-        if content or image:
+        video_solution_url = _clean_video_solution_url(
+            request.POST.get("video_solution_url")
+        )
+        if content or image or video_solution_url:
             DiscussionReply.objects.create(
-                post=post, user=request.user, content=content, image=image
+                post=post,
+                user=request.user,
+                content=content,
+                image=image,
+                video_solution_url=video_solution_url,
             )
             messages.success(request, "✅ Your reply has been added!")
         else:
-            messages.error(request, "Write something or attach an image to reply.")
+            messages.error(
+                request, "Write something, attach an image, or add a video solution link."
+            )
 
     return _question_form_redirect(post)
 
@@ -1445,17 +1472,19 @@ def discussion_edit_reply(request, reply_id):
     content = sanitize_math_content(request.POST.get("content", ""))
     image = request.FILES.get("image")
     clear_image = request.POST.get("clear_image") == "1"
+    video_solution_url = _clean_video_solution_url(
+        request.POST.get("video_solution_url")
+    )
 
-    if not content and not image and not reply.image:
-        messages.error(request, "Reply cannot be empty.")
-        return _question_form_redirect(post, f"reply-{reply.id}")
-
-    # Allow empty text only if an image remains or is newly uploaded
-    if not content and not image and (clear_image or not reply.image):
-        messages.error(request, "Write something or keep/attach an image.")
+    has_image = bool(image) or (bool(reply.image) and not clear_image)
+    if not content and not has_image and not video_solution_url:
+        messages.error(
+            request, "Write something, keep/attach an image, or add a video solution link."
+        )
         return _question_form_redirect(post, f"reply-{reply.id}")
 
     reply.content = content
+    reply.video_solution_url = video_solution_url
     if clear_image and reply.image:
         reply.image.delete(save=False)
         reply.image = None

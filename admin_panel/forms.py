@@ -625,6 +625,7 @@ class CSVUploadForm(forms.Form):
             "correct_answer": s("correct_answer"),
             "marks": marks,
             "explanation": s("explanation"),
+            "video_solution_url": s("video_solution_url"),
             "topic": s("topic"),
             "paper_code": s("paper_code"),
             "year": year,
@@ -665,6 +666,7 @@ class ManualQuestionForm(forms.ModelForm):
             "correct_answer",
             "marks",
             "explanation",
+            "video_solution_url",
         ]
         widgets = {
             "question_text": forms.Textarea(
@@ -700,6 +702,12 @@ class ManualQuestionForm(forms.ModelForm):
                     "class": "form-control",
                     "rows": 3,
                     "placeholder": "Explanation for the answer (optional)",
+                }
+            ),
+            "video_solution_url": forms.URLInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "https://… optional video solution link",
                 }
             ),
         }

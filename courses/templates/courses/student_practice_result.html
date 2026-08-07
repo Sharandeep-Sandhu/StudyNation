@@ -130,6 +130,11 @@
       {% if ans.question.explanation %}
         <div class="pr-review-answers" style="margin-top: 6px;"><div><strong>Explanation / Solution:</strong> {{ ans.question.explanation|safe_html }}</div></div>
       {% endif %}
+      {% if ans.question.video_solution_url %}
+        <div style="margin-top: 8px;">
+          {% include 'partials/video_solution_link.html' with url=ans.question.video_solution_url %}
+        </div>
+      {% endif %}
     </div>
   {% endfor %}
 </div>

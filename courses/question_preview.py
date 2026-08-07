@@ -31,6 +31,7 @@ def question_preview_map(questions: Iterable[Any]) -> dict[str, dict]:
             "text": q.question_text or "",
             "answer": q.correct_answer or "",
             "explanation": q.explanation or "",
+            "video_solution_url": getattr(q, "video_solution_url", None) or "",
             "type": q.question_type or "",
             "options": {
                 "A": q.option_a or "",

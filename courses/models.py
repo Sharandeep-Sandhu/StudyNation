@@ -118,7 +118,10 @@ class QuestionBank(models.Model):
     """Collection of questions for a course"""
 
     course = models.ForeignKey(
-        Course, on_delete=models.CASCADE, related_name="question_banks"
+        # PROTECT: deleting a course must not silently wipe all its banks/questions
+        Course,
+        on_delete=models.PROTECT,
+        related_name="question_banks",
     )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -205,6 +208,12 @@ class Question(models.Model):
     marks = models.IntegerField(default=1)
     explanation = models.TextField(
         blank=True, help_text="Shown to students as the question 'Solution'."
+    )
+    video_solution_url = models.URLField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Optional link to a video solution (YouTube, Vimeo, Drive, etc.).",
     )
 
     # ---- New Exam Builder wizard fields ----
@@ -676,6 +685,12 @@ class DiscussionPost(models.Model):
         null=True,
         help_text="Optional image attached to the question",
     )
+    video_solution_url = models.URLField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Optional link to a video solution for this question.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_resolved = models.BooleanField(
@@ -706,6 +721,12 @@ class DiscussionReply(models.Model):
         blank=True,
         null=True,
         help_text="Optional image attached to the reply",
+    )
+    video_solution_url = models.URLField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Optional link to a video solution for this answer.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

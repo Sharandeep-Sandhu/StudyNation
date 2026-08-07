@@ -395,6 +395,14 @@
         </div>
         <textarea id="editSolution" rows="3" data-eq-field data-eq-preview="1" placeholder="Detailed solution for students"></textarea>
       </div>
+
+      <div class="field">
+        <div class="field-label">
+          <span>Video solution link <em style="font-weight:500;color:#888;">(optional)</em></span>
+        </div>
+        <input type="url" id="editVideoSolution" placeholder="https://youtube.com/... or any video URL" />
+        <small style="color:#888;display:block;margin-top:4px;">Optional. Shown as a “Video Solution” button wherever this question appears.</small>
+      </div>
     </div>
     <div class="mq-foot">
       <button type="button" class="btn btn-danger" onclick="deleteCurrent()">🗑️ Delete</button>
@@ -481,6 +489,7 @@
     document.getElementById('editTitle').textContent = 'Edit Q#' + q.id + ' — ' + (q.question_type_label || q.question_type);
     document.getElementById('editQuestionText').value = stripHtml(q.question_text || '');
     document.getElementById('editSolution').value = q.explanation || '';
+    document.getElementById('editVideoSolution').value = q.video_solution_url || '';
     document.getElementById('editPassage').value = q.passage || '';
     document.getElementById('editDifficulty').value = q.difficulty_level || '';
     document.getElementById('editMarks').value = q.marks || 1;
@@ -604,6 +613,7 @@
     const payload = {
       question_text: document.getElementById('editQuestionText').value,
       explanation: document.getElementById('editSolution').value,
+      video_solution_url: document.getElementById('editVideoSolution').value.trim(),
       passage: document.getElementById('editPassage').value,
       difficulty_level: document.getElementById('editDifficulty').value,
       marks: parseInt(document.getElementById('editMarks').value || '1', 10),

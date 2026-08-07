@@ -139,6 +139,7 @@ class QuestionAdmin(admin.ModelAdmin):
                     "partial_marking",
                     "numeric_tolerance",
                     "explanation",
+                    "video_solution_url",
                 )
             },
         ),

@@ -245,6 +245,9 @@ def csv_upload(request):
                                 correct_answer=q_data.get("correct_answer", "") or "",
                                 marks=q_data.get("marks", 1) or 1,
                                 explanation=q_data.get("explanation", "") or "",
+                                video_solution_url=(
+                                    (q_data.get("video_solution_url") or "").strip()[:500]
+                                ),
                                 topic=q_data.get("topic", "") or "",
                                 paper_code=paper_code,
                                 year=q_data.get("year"),
@@ -328,6 +331,45 @@ def csv_upload(request):
     return render(request, "admin_panel/csv_upload.html", context)
 
 
+SESSION_LAST_QUESTION_BANK = "admin_last_question_bank_id"
+
+
+def _resolve_question_bank(request, bank_id=None):
+    """Pick a durable question bank: explicit id → session → most recent.
+
+    Question banks are permanent DB rows; they must never look "gone" after
+    logout/login just because the URL no longer has ?question_bank=.
+    """
+    question_banks = QuestionBank.objects.select_related("course").order_by(
+        "-created_at", "-id"
+    )
+    selected_bank = None
+
+    # 1) Explicit query param
+    if bank_id not in (None, ""):
+        selected_bank = question_banks.filter(pk=bank_id).first()
+
+    # 2) Last bank used in this browser session (survives navigation)
+    if selected_bank is None:
+        session_id = request.session.get(SESSION_LAST_QUESTION_BANK)
+        if session_id:
+            selected_bank = question_banks.filter(pk=session_id).first()
+
+    # 3) Fall back to newest bank so Add Question always shows existing data
+    if selected_bank is None:
+        selected_bank = question_banks.first()
+
+    if selected_bank is not None:
+        request.session[SESSION_LAST_QUESTION_BANK] = selected_bank.id
+        # Ensure session is saved even if only this key changed
+        request.session.modified = True
+    elif SESSION_LAST_QUESTION_BANK in request.session:
+        del request.session[SESSION_LAST_QUESTION_BANK]
+        request.session.modified = True
+
+    return question_banks, selected_bank
+
+
 # ==================== MANUAL QUESTION (Question Wizard) ====================
 @admin_required
 def manual_question(request):
@@ -339,14 +381,21 @@ def manual_question(request):
     mirrors a 'select type -> set count & marks -> edit each question'
     flow instead of one static form for a single question.
     """
-    selected_bank_id = request.GET.get("question_bank")
-    question_banks = QuestionBank.objects.select_related("course").all()
-    selected_bank = None
+    question_banks, selected_bank = _resolve_question_bank(
+        request, request.GET.get("question_bank")
+    )
+
+    # Canonical URL always includes the selected bank so refresh/share works
+    raw_id = request.GET.get("question_bank")
+    if selected_bank and str(selected_bank.id) != str(raw_id or ""):
+        return redirect(
+            f"{reverse('admin_panel:manual_question')}?question_bank={selected_bank.id}"
+        )
+
     bank_questions = []
     page_obj = None
     pag_extra = {}
-    if selected_bank_id:
-        selected_bank = get_object_or_404(QuestionBank, id=selected_bank_id)
+    if selected_bank:
         qs = selected_bank.questions.prefetch_related("options").order_by(
             "order", "id"
         )
@@ -417,6 +466,10 @@ def create_question_bank(request):
         return redirect("admin_panel:manual_question")
 
     bank = form.save()
+    # Remember selection so re-open / re-login (session) keeps this bank
+    request.session[SESSION_LAST_QUESTION_BANK] = bank.id
+    request.session.modified = True
+
     if wants_json:
         return JsonResponse(
             {
@@ -484,6 +537,7 @@ def _serialize_question(question):
         "negative_marks": str(question.negative_marks),
         "partial_marking": question.partial_marking,
         "explanation": question.explanation,
+        "video_solution_url": question.video_solution_url or "",
         "passage": question.passage,
         "correct_answer": question.correct_answer,
         "numeric_tolerance": (
@@ -594,6 +648,13 @@ def question_wizard_save(request, question_id):
     )
     question.difficulty_level = payload.get("difficulty_level") or ""
     question.explanation = payload.get("explanation", "")
+    # Optional video solution link (admin-only path)
+    video_url = (payload.get("video_solution_url") or "").strip()
+    if video_url and not (
+        video_url.startswith("http://") or video_url.startswith("https://")
+    ):
+        video_url = "https://" + video_url
+    question.video_solution_url = video_url[:500] if video_url else ""
     question.passage = payload.get("passage", "")
     question.marks = int(payload.get("marks") or question.marks or 1)
     question.negative_marks = payload.get("negative_marks") or 0
@@ -886,8 +947,20 @@ def edit_course(request, course_id):
 @admin_required
 @require_POST
 def delete_course(request, course_id):
+    from django.db.models import ProtectedError
+
     course = get_object_or_404(Course, id=course_id)
-    course.delete()
+    bank_count = course.question_banks.count()
+    try:
+        course.delete()
+    except ProtectedError:
+        messages.error(
+            request,
+            f'Cannot delete course "{course.title}" because it has '
+            f"{bank_count} question bank(s). Delete or reassign those banks first "
+            f"so your questions are not lost.",
+        )
+        return redirect("admin_panel:manage_courses")
     messages.success(request, "Course deleted successfully!")
     return redirect("admin_panel:manage_courses")
 

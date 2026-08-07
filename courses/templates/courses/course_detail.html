@@ -196,6 +196,9 @@
                       {% if question.explanation %}
                         <div style="margin-top: 0.5rem; color: #667eea; font-size: 0.95rem; line-height: 1.6;">💡 Explanation: {{ question.explanation|safe_html }}</div>
                       {% endif %}
+                      {% if question.video_solution_url %}
+                        {% include 'partials/video_solution_link.html' with url=question.video_solution_url %}
+                      {% endif %}
                     </div>
                   {% endfor %}
                 </div>

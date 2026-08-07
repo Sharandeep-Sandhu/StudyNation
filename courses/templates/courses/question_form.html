@@ -531,6 +531,38 @@
     }
     .pc-eq-btn:hover { color: #764ba2; }
 
+    .pc-video-field {
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+    .pc-video-field input[type="url"] {
+      width: 100%;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      box-sizing: border-box;
+      background: #fafafa;
+    }
+    .pc-video-field input[type="url"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102,126,234,.12);
+      background: #fff;
+    }
+    .pc-video-hint {
+      display: block;
+      color: #9ca3af;
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+    .pc-composer-box .pc-video-field {
+      border-top: 1px solid #f1f5f9;
+      padding-top: 8px;
+      margin-top: 6px;
+    }
+
     @media (max-width: 820px) {
       .pc-wrap {
         flex-direction: column;
@@ -600,6 +632,9 @@
               <img class="pc-attached-image" src="{{ post.image.url }}" alt="Attached image" />
             </a>
           {% endif %}
+          {% if post.video_solution_url %}
+            {% include 'partials/video_solution_link.html' with url=post.video_solution_url %}
+          {% endif %}
 
           <!-- Comments -->
           <div class="pc-comments">
@@ -617,6 +652,9 @@
                       <a href="{{ reply.image.url }}" target="_blank" rel="noopener">
                         <img class="pc-comment-image" src="{{ reply.image.url }}" alt="Attached image" />
                       </a>
+                    {% endif %}
+                    {% if reply.video_solution_url %}
+                      {% include 'partials/video_solution_link.html' with url=reply.video_solution_url %}
                     {% endif %}
                     {% if user.is_authenticated and user.id == reply.user_id %}
                       <div class="pc-comment-actions">
@@ -645,6 +683,10 @@
                         data-eq-field
                         data-eq-preview="0"
                       >{{ reply.content|sanitize_math }}</textarea>
+                      <div class="pc-video-field">
+                        <label class="pc-field-label" style="margin-bottom:4px;">Video solution link <em style="font-weight:500;color:#9ca3af;">(optional)</em></label>
+                        <input type="url" name="video_solution_url" value="{{ reply.video_solution_url }}" placeholder="https://youtube.com/... or any video URL" />
+                      </div>
                       <div class="pc-reply-edit-actions">
                         <label class="pc-attach-btn">
                           📎 {% if reply.image %}Replace image{% else %}Add image{% endif %}
@@ -690,6 +732,10 @@
                     placeholder="Write your answer... (∑ for equations)"
                     onfocus="this.rows=2"
                   ></textarea>
+                  <div class="pc-video-field">
+                    <input type="url" name="video_solution_url" placeholder="Video solution link (optional)" />
+                    <span class="pc-video-hint">Optional — YouTube, Drive, or any public video URL</span>
+                  </div>
                   <div class="pc-composer-actions">
                     <label class="pc-attach-btn">
                       📎 Add image
@@ -759,6 +805,10 @@
           <label class="pc-field-label">Image (optional)</label>
           <img id="pcModalImagePreview" class="pc-modal-image-preview" alt="Preview" />
           <input type="file" name="image" accept="image/*" class="pc-field" onchange="pcPreviewModalImage(this)" />
+
+          <label class="pc-field-label">Video solution link <em style="font-weight:500;color:#9ca3af;">(optional)</em></label>
+          <input type="url" name="video_solution_url" class="pc-field" placeholder="https://youtube.com/... or any video URL" />
+          <span class="pc-video-hint" style="margin-top:-10px;margin-bottom:14px;">Optional. Anyone can open this link to watch the video solution.</span>
 
           <button type="submit" class="pc-modal-submit">Submit Question <span style="font-size: 1.1rem;">→</span></button>
         </form>

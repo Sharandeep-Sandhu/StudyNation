@@ -127,6 +127,7 @@ class ManualQuestionForm(forms.ModelForm):
             "correct_answer",
             "marks",
             "explanation",
+            "video_solution_url",
         ]
         widgets = {
             "question_text": forms.Textarea(
@@ -162,6 +163,12 @@ class ManualQuestionForm(forms.ModelForm):
                     "class": "form-control",
                     "rows": 3,
                     "placeholder": "Explanation for the answer (optional)",
+                }
+            ),
+            "video_solution_url": forms.URLInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "https://… optional video solution link",
                 }
             ),
         }

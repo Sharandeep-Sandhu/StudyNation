@@ -1,0 +1,8 @@
+{% comment %}
+Optional video solution link. Pass `url` (string). Renders nothing if empty.
+{% endcomment %}
+{% if url %}
+  <a class="video-solution-link" href="{{ url }}" target="_blank" rel="noopener noreferrer">
+    <i class="fas fa-play-circle" aria-hidden="true"></i> Video Solution
+  </a>
+{% endif %}
