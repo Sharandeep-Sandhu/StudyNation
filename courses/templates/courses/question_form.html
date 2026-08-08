@@ -595,6 +595,11 @@
 
     <!-- ==================== MAIN FEED ==================== -->
     <div class="pc-main">
+      {% if qf_error %}
+        <div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:14px 16px;margin-bottom:16px;font-weight:600;">
+          {{ qf_error }}
+        </div>
+      {% endif %}
       <div class="pc-toolbar">
         <form method="get" style="display: flex; align-items: center; gap: 10px;">
           {% if active_board %}<input type="hidden" name="board" value="{{ active_board.slug }}" />{% endif %}
@@ -628,9 +633,13 @@
           <div class="pc-post-title">{{ post.title }}</div>
           <div class="pc-post-content">{{ post.content|chat_math }}</div>
           {% if post.image %}
-            <a href="{{ post.image.url }}" target="_blank" rel="noopener">
-              <img class="pc-attached-image" src="{{ post.image.url }}" alt="Attached image" />
-            </a>
+            {% with iurl=post.image|media_url %}
+              {% if iurl %}
+                <a href="{{ iurl }}" target="_blank" rel="noopener">
+                  <img class="pc-attached-image" src="{{ iurl }}" alt="Attached image" />
+                </a>
+              {% endif %}
+            {% endwith %}
           {% endif %}
           {% if post.video_solution_url %}
             {% include 'partials/video_solution_link.html' with url=post.video_solution_url %}
@@ -649,9 +658,13 @@
                   <div class="pc-reply-view" id="replyView{{ reply.id }}">
                     {% if reply.content %}<div class="pc-comment-text">{{ reply.content|chat_math }}</div>{% endif %}
                     {% if reply.image %}
-                      <a href="{{ reply.image.url }}" target="_blank" rel="noopener">
-                        <img class="pc-comment-image" src="{{ reply.image.url }}" alt="Attached image" />
-                      </a>
+                      {% with riurl=reply.image|media_url %}
+                        {% if riurl %}
+                          <a href="{{ riurl }}" target="_blank" rel="noopener">
+                            <img class="pc-comment-image" src="{{ riurl }}" alt="Attached image" />
+                          </a>
+                        {% endif %}
+                      {% endwith %}
                     {% endif %}
                     {% if reply.video_solution_url %}
                       {% include 'partials/video_solution_link.html' with url=reply.video_solution_url %}
@@ -758,12 +771,14 @@
         </div>
       {% empty %}
         <div class="pc-empty-state">
-          {% if active_board %}
+          {% if qf_error %}
+            Questions will load after the database update finishes. Please refresh shortly.
+          {% elif active_board %}
             No questions in {{ active_board.name }} yet.
           {% else %}
-            No questions yet.
+            No topics/questions yet.
           {% endif %}
-          {% if user.is_authenticated %}Be the first to ask a question!{% endif %}
+          {% if user.is_authenticated and not qf_error %}Be the first to ask a question!{% endif %}
         </div>
       {% endfor %}
 

@@ -1602,37 +1602,67 @@ class QuestionFormView(TemplateView):
     template_name = "courses/question_form.html"
 
     def get_context_data(self, **kwargs):
+        from django.db import DatabaseError
+
         context = super().get_context_data(**kwargs)
+        context["sort"] = "hot"
+        context["boards"] = []
+        context["active_board"] = None
+        context["posts"] = []
+        context["qf_error"] = None
 
-        boards = DiscussionBoard.objects.all()
-        context["boards"] = boards
+        try:
+            boards = list(DiscussionBoard.objects.all())
+            context["boards"] = boards
 
-        board_slug = self.request.GET.get("board", "").strip()
-        active_board = None
-        if board_slug:
-            active_board = boards.filter(slug=board_slug).first()
-        if not active_board:
-            active_board = boards.first()
-        context["active_board"] = active_board
+            board_slug = (self.request.GET.get("board") or "").strip()
+            active_board = None
+            if board_slug:
+                active_board = next(
+                    (b for b in boards if b.slug == board_slug), None
+                )
+            if not active_board and boards:
+                active_board = boards[0]
+            context["active_board"] = active_board
 
-        posts_qs = DiscussionPost.objects.select_related("user", "board").prefetch_related(
-            "replies__user"
-        )
-        if active_board:
-            posts_qs = posts_qs.filter(board=active_board)
+            posts_qs = DiscussionPost.objects.select_related(
+                "user", "board"
+            ).prefetch_related("replies__user")
+            if active_board:
+                posts_qs = posts_qs.filter(board=active_board)
 
-        sort = self.request.GET.get("view", "hot")
-        if sort == "new":
-            posts_qs = posts_qs.order_by("-created_at")
-        else:
-            sort = "hot"
-            # "Hot" = most replies first, then most recent
-            posts_qs = posts_qs.annotate(reply_count=Count("replies")).order_by(
-                "-reply_count", "-created_at"
+            sort = (self.request.GET.get("view") or "hot").strip()
+            if sort == "new":
+                posts_qs = posts_qs.order_by("-created_at")
+            else:
+                sort = "hot"
+                # "Hot" = most replies first, then most recent
+                posts_qs = posts_qs.annotate(
+                    reply_count=Count("replies")
+                ).order_by("-reply_count", "-created_at")
+
+            # Force evaluation here so template does not raise mid-render
+            context["posts"] = list(posts_qs[:100])
+            context["sort"] = sort
+        except DatabaseError:
+            logger.exception(
+                "Question Form DB error — run migrate / ensure_schema on Render"
             )
+            context["qf_error"] = (
+                "Question Form is updating. Please try again in a minute."
+            )
+            context["boards"] = []
+            context["active_board"] = None
+            context["posts"] = []
+        except Exception:
+            logger.exception("Question Form unexpected error")
+            context["qf_error"] = (
+                "Something went wrong loading questions. Please refresh."
+            )
+            context["boards"] = []
+            context["active_board"] = None
+            context["posts"] = []
 
-        context["posts"] = posts_qs
-        context["sort"] = sort
         return context
 
 

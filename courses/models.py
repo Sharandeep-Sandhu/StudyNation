@@ -869,9 +869,12 @@ class DiscussionReply(models.Model):
     @property
     def was_edited(self):
         """True if the reply was saved after creation (allowing small clock skew)."""
-        if not self.updated_at or not self.created_at:
+        try:
+            if not self.updated_at or not self.created_at:
+                return False
+            return (self.updated_at - self.created_at).total_seconds() > 2
+        except Exception:
             return False
-        return (self.updated_at - self.created_at).total_seconds() > 2
 
 
 class ContactMessage(models.Model):
