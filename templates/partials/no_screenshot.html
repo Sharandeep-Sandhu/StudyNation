@@ -1,0 +1,317 @@
+{# Anti-screenshot deterrents for protected resource pages.
+   Browsers cannot fully block OS screenshots; this makes capture useless/obvious. #}
+<style>
+  .no-screenshot-zone {
+    position: relative;
+  }
+
+  /* Repeating watermark that appears in any capture */
+  .no-screenshot-zone .rd-viewer,
+  .no-screenshot-zone .rd-doc-body,
+  .no-screenshot-zone .rd-pdf-wrap,
+  .no-screenshot-zone .rd-img-wrap,
+  .no-screenshot-zone .rl-card,
+  .no-screenshot-shield {
+    position: relative;
+  }
+
+  .ns-watermark {
+    pointer-events: none !important;
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    overflow: hidden;
+    background-image: repeating-linear-gradient(
+      -28deg,
+      transparent 0,
+      transparent 46px,
+      rgba(79, 70, 229, 0.035) 46px,
+      rgba(79, 70, 229, 0.035) 92px
+    );
+  }
+
+  .ns-watermark-text {
+    position: absolute;
+    inset: -20%;
+    width: 140%;
+    height: 140%;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: space-around;
+    justify-content: space-around;
+    gap: 28px 40px;
+    transform: rotate(-24deg);
+    opacity: 0.14;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #312e81;
+    text-transform: uppercase;
+    user-select: none !important;
+  }
+
+  .ns-watermark-text span {
+    white-space: nowrap;
+    padding: 6px 10px;
+  }
+
+  /* Full-screen shield while capture is suspected / window not focused */
+  .ns-capture-shield {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #0f172a;
+    color: #e2e8f0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+    padding: 24px;
+    font-family: Inter, system-ui, sans-serif;
+  }
+
+  .ns-capture-shield.is-on {
+    display: flex;
+  }
+
+  .ns-capture-shield strong {
+    font-size: 1.25rem;
+    color: #fff;
+  }
+
+  .ns-capture-shield span {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    max-width: 420px;
+    line-height: 1.5;
+  }
+
+  body.ns-blur-content .no-screenshot-zone .rd-viewer,
+  body.ns-blur-content .no-screenshot-zone .rd-doc-body,
+  body.ns-blur-content .no-screenshot-zone .rd-pdf-wrap,
+  body.ns-blur-content .no-screenshot-zone .rd-img-wrap,
+  body.ns-blur-content .no-screenshot-zone .rl-grid {
+    filter: blur(18px) brightness(0.55);
+    transition: filter 0.08s linear;
+  }
+
+  .ns-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 100000;
+    background: #7f1d1d;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 12px 18px;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    max-width: 90vw;
+    text-align: center;
+  }
+
+  .ns-toast.is-on {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+
+<div class="ns-capture-shield" id="nsCaptureShield" aria-hidden="true">
+  <strong>Screenshots are not allowed</strong>
+  <span>This resource is protected. Content is hidden while the page is not active or when a capture shortcut is detected.</span>
+</div>
+<div class="ns-toast" id="nsToast" role="status"></div>
+
+<script>
+(function () {
+  if (window.__noScreenshotBound) return;
+  window.__noScreenshotBound = true;
+
+  var MARK = 'Study Nation · Protected · No Screenshot';
+  try {
+    var root = document.querySelector('[data-ns-mark]');
+    if (root && root.getAttribute('data-ns-mark')) {
+      MARK = root.getAttribute('data-ns-mark');
+    }
+  } catch (e) {}
+
+  var shield = document.getElementById('nsCaptureShield');
+  var toast = document.getElementById('nsToast');
+  var toastTimer = null;
+  var shieldTimer = null;
+
+  function showToast(msg) {
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('is-on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      toast.classList.remove('is-on');
+    }, 2800);
+  }
+
+  function flashShield(ms) {
+    if (!shield) return;
+    shield.classList.add('is-on');
+    shield.setAttribute('aria-hidden', 'false');
+    clearTimeout(shieldTimer);
+    shieldTimer = setTimeout(function () {
+      // Only auto-hide if window is focused / visible
+      if (!document.hidden && document.hasFocus()) {
+        shield.classList.remove('is-on');
+        shield.setAttribute('aria-hidden', 'true');
+      }
+    }, ms || 1600);
+  }
+
+  function setBlur(on) {
+    document.body.classList.toggle('ns-blur-content', !!on);
+  }
+
+  function updateVisibility() {
+    var inactive = document.hidden || !document.hasFocus();
+    setBlur(inactive);
+    if (shield) {
+      if (inactive) {
+        shield.classList.add('is-on');
+        shield.setAttribute('aria-hidden', 'false');
+      } else {
+        shield.classList.remove('is-on');
+        shield.setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+
+  function clearClipboard() {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText('');
+      }
+    } catch (e) {}
+    try {
+      // Older path
+      var ta = document.createElement('textarea');
+      ta.value = '';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e2) {}
+  }
+
+  function onCaptureAttempt() {
+    clearClipboard();
+    flashShield(2000);
+    setBlur(true);
+    showToast('Screenshots are not permitted on protected resources.');
+    setTimeout(function () {
+      if (!document.hidden && document.hasFocus()) setBlur(false);
+    }, 2000);
+  }
+
+  // Watermark overlays on protected viewers
+  function addWatermarks() {
+    var targets = document.querySelectorAll(
+      '.no-screenshot-zone .rd-viewer, .no-screenshot-zone .rd-doc-body, .no-screenshot-zone .rd-pdf-wrap, .no-screenshot-zone .rd-img-wrap'
+    );
+    targets.forEach(function (el) {
+      if (el.querySelector('.ns-watermark')) return;
+      var style = window.getComputedStyle(el);
+      if (style.position === 'static') el.style.position = 'relative';
+      var wm = document.createElement('div');
+      wm.className = 'ns-watermark';
+      wm.setAttribute('aria-hidden', 'true');
+      var inner = document.createElement('div');
+      inner.className = 'ns-watermark-text';
+      var stamp = MARK || 'PROTECTED · NO SCREENSHOT';
+      for (var i = 0; i < 36; i++) {
+        var s = document.createElement('span');
+        s.textContent = stamp;
+        inner.appendChild(s);
+      }
+      wm.appendChild(inner);
+      el.appendChild(wm);
+    });
+  }
+
+  // Keyboard: PrintScreen, Win+Shift+S (partial), Ctrl+Shift+S, etc.
+  document.addEventListener('keydown', function (e) {
+    var key = (e.key || '').toLowerCase();
+    var code = e.code || '';
+
+    // PrintScreen
+    if (key === 'printscreen' || code === 'PrintScreen') {
+      e.preventDefault();
+      e.stopPropagation();
+      onCaptureAttempt();
+      return false;
+    }
+
+    // Common capture combos (best-effort; OS may still capture)
+    if (e.metaKey && e.shiftKey && (key === '3' || key === '4' || key === '5')) {
+      // macOS screenshots
+      e.preventDefault();
+      onCaptureAttempt();
+      return false;
+    }
+    if (e.ctrlKey && e.shiftKey && (key === 's' || key === 'p' || key === '4')) {
+      e.preventDefault();
+      onCaptureAttempt();
+      return false;
+    }
+  }, true);
+
+  document.addEventListener('keyup', function (e) {
+    var key = (e.key || '').toLowerCase();
+    var code = e.code || '';
+    if (key === 'printscreen' || code === 'PrintScreen') {
+      onCaptureAttempt();
+    }
+  }, true);
+
+  // When user leaves the tab/window (often for Snipping Tool)
+  document.addEventListener('visibilitychange', updateVisibility);
+  window.addEventListener('blur', function () {
+    setBlur(true);
+    if (shield) {
+      shield.classList.add('is-on');
+      shield.setAttribute('aria-hidden', 'false');
+    }
+  });
+  window.addEventListener('focus', function () {
+    updateVisibility();
+  });
+
+  // Block page print (often used instead of screenshot)
+  window.addEventListener('beforeprint', function () {
+    onCaptureAttempt();
+  });
+  if (window.matchMedia) {
+    try {
+      window.matchMedia('print').addListener(function (m) {
+        if (m.matches) onCaptureAttempt();
+      });
+    } catch (e) {}
+  }
+
+  function boot() {
+    addWatermarks();
+    updateVisibility();
+    // Re-apply watermark if PDF canvas re-renders
+    setInterval(addWatermarks, 2500);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>

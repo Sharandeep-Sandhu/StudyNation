@@ -420,7 +420,25 @@ class Blog(models.Model):
 class Resource(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    file = models.FileField(upload_to="resources/")
+    file = models.FileField(
+        upload_to="resources/",
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=[
+                    "pdf",
+                    "doc",
+                    "docx",
+                    "txt",
+                    "png",
+                    "jpg",
+                    "jpeg",
+                    "gif",
+                    "webp",
+                ]
+            )
+        ],
+        help_text="PDF, Word (.doc/.docx), text, or image. View-only for students (no download).",
+    )
     author = models.CharField(max_length=100, blank=True)
     resource_type = models.CharField(
         max_length=20,
@@ -439,6 +457,14 @@ class Resource(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def file_extension(self):
+        from pathlib import Path
+
+        if not self.file:
+            return ""
+        return Path(self.file.name).suffix.lower()
 
 
 class PastPaper(models.Model):
@@ -485,7 +511,14 @@ class PastPaper(models.Model):
     pdf = models.FileField(
         upload_to="past_papers/",
         validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
-        help_text="Full exam paper PDF",
+        help_text="Full exam question paper PDF",
+    )
+    answer_pdf = models.FileField(
+        upload_to="past_papers/answers/",
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
+        help_text="Optional mark scheme / answer sheet PDF linked to this question paper",
     )
     description = models.TextField(blank=True)
     is_published = models.BooleanField(
@@ -510,6 +543,10 @@ class PastPaper(models.Model):
         if self.season:
             return f"{self.title}"
         return self.title
+
+    @property
+    def has_answer_sheet(self):
+        return bool(self.answer_pdf)
 
 
 # ==================== EXAM BUILDER ====================

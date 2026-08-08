@@ -100,6 +100,43 @@ class ResourceDetailView(DetailView):
     template_name = "courses/resource_detail.html"
     context_object_name = "resource"
 
+    def get_context_data(self, **kwargs):
+        from django.urls import reverse
+        from .resource_protection import (
+            resource_preview_kind,
+            docx_to_protected_html,
+            text_file_to_protected_html,
+        )
+
+        context = super().get_context_data(**kwargs)
+        resource = self.object
+        kind = resource_preview_kind(resource)
+        context["preview_kind"] = kind
+        context["preview_html"] = ""
+        context["stream_url"] = ""
+        if resource.file:
+            context["stream_url"] = reverse(
+                "courses:resource_file_stream", kwargs={"pk": resource.pk}
+            )
+        if kind == "docx":
+            context["preview_html"] = docx_to_protected_html(resource.file)
+        elif kind == "text":
+            context["preview_html"] = text_file_to_protected_html(resource.file)
+
+        # Watermark identity for anti-screenshot overlay
+        user = self.request.user
+        who = (
+            user.get_username()
+            if getattr(user, "is_authenticated", False)
+            else "guest"
+        )
+        from django.utils import timezone
+
+        context["ns_mark"] = (
+            f"Study Nation · {who} · {timezone.localtime().strftime('%Y-%m-%d %H:%M')} · No Screenshot"
+        )
+        return context
+
 
 class ResourcesListView(ListView):
     model = Resource
@@ -122,6 +159,67 @@ class ResourcesListView(ListView):
             queryset = queryset.filter(is_paid=True)
 
         return queryset
+
+    def get_context_data(self, **kwargs):
+        from .resource_protection import resource_preview_kind
+
+        context = super().get_context_data(**kwargs)
+        # List page: never embed raw files (avoids browser download UI)
+        for r in context["resources"]:
+            r.preview_kind = resource_preview_kind(r)
+        return context
+
+
+def resource_file_stream(request, pk):
+    """
+    Stream a resource file for the protected on-page viewer only.
+    Blocks top-level navigation / Save-as style access.
+    Never used as a public download URL.
+    """
+    from django.http import FileResponse, Http404
+    from .resource_protection import (
+        is_top_level_file_navigation,
+        forbidden_download_response,
+        guess_content_type,
+        resource_file_ext,
+        PDF_EXTS,
+        IMAGE_EXTS,
+    )
+
+    resource = get_object_or_404(Resource, pk=pk)
+    if not resource.file:
+        raise Http404("File not found")
+
+    # Always reject clear download / new-tab navigation
+    if is_top_level_file_navigation(request):
+        return forbidden_download_response()
+
+    # PDF.js and image tags load with Sec-Fetch-Dest empty/image — allowed.
+    # Extra guard: reject query flag that looks like forced download
+    if request.GET.get("download") in ("1", "true", "yes"):
+        return forbidden_download_response()
+
+    try:
+        fh = resource.file.open("rb")
+    except Exception as exc:
+        raise Http404(str(exc)) from exc
+
+    name = resource.file.name or "resource"
+    content_type = guess_content_type(name)
+    ext = resource_file_ext(resource)
+    if ext in PDF_EXTS:
+        content_type = "application/pdf"
+    elif ext in IMAGE_EXTS and content_type == "application/octet-stream":
+        content_type = "image/jpeg"
+
+    response = FileResponse(fh, content_type=content_type)
+    # Generic filename — do not advertise original download name
+    response["Content-Disposition"] = 'inline; filename="view-only"'
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store, no-cache, must-revalidate"
+    response["X-Robots-Tag"] = "noindex, noarchive, nosnippet"
+    response["X-Frame-Options"] = "SAMEORIGIN"
+    return response
 
 
 # ==================== BLOG ====================
@@ -228,8 +326,13 @@ class PastPapersView(TemplateView):
             "category"
         )
 
-        # All categories available for the filter dropdown
-        categories = CourseCategory.objects.order_by("name")
+        # All DB categories for the browse strip + filter dropdown
+        categories = CourseCategory.objects.order_by("name").annotate(
+            paper_count=Count(
+                "past_papers",
+                filter=Q(past_papers__is_published=True),
+            )
+        )
 
         subjects = (
             published.exclude(subject="")
@@ -243,6 +346,9 @@ class PastPapersView(TemplateView):
         subject = (request.GET.get("subject") or "").strip()
         year = (request.GET.get("year") or "").strip()
         paper_id = (request.GET.get("paper") or "").strip()
+        view_mode = (request.GET.get("view") or "question").strip().lower()
+        if view_mode not in ("question", "answer"):
+            view_mode = "question"
 
         papers = published
         if category_id.isdigit():
@@ -266,17 +372,27 @@ class PastPapersView(TemplateView):
             # After applying filters, auto-select first paper for convenience
             selected_paper = papers.first()
 
+        # Fall back to question PDF if answer sheet requested but missing
+        if (
+            selected_paper
+            and view_mode == "answer"
+            and not selected_paper.answer_pdf
+        ):
+            view_mode = "question"
+
         context.update(
             {
                 "categories": categories,
                 "subjects": list(subjects),
                 "years": list(years),
                 "papers": papers,
+                "total_papers": published.count(),
                 "selected_paper": selected_paper,
                 "filter_category": category_id,
                 "filter_subject": subject,
                 "filter_year": year,
-                "has_filters": bool(category_id or subject or year),
+                "view_mode": view_mode,
+                "has_filters": bool(category_id or subject or year or paper_id),
             }
         )
         return context

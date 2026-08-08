@@ -10,6 +10,7 @@ from .views import (
     BlogDetailView,
     ResourcesListView,
     ResourceDetailView,
+    resource_file_stream,
     QuestionFormView,
     PublicChatView,
     student_signup,
@@ -45,6 +46,11 @@ urlpatterns = [
     path("blogs/<slug:slug>/", BlogDetailView.as_view(), name="blog_detail"),
     path("resources/", ResourcesListView.as_view(), name="resources_list"),
     path("resources/<int:pk>/", ResourceDetailView.as_view(), name="resource_detail"),
+    path(
+        "resources/<int:pk>/stream/",
+        resource_file_stream,
+        name="resource_file_stream",
+    ),
     # Question Form (topic boards for community Q&A)
     path("question-form/", QuestionFormView.as_view(), name="question_form"),
     # Legacy URL redirect target (same view; bookmarks still work)

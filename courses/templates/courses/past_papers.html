@@ -37,6 +37,162 @@
     max-width: 720px;
   }
 
+  /* All saved categories (between header and filters) */
+  .pp-cats {
+    background: #fff;
+    border: 1px solid #e8ecf4;
+    border-radius: 14px;
+    padding: 1rem 1.15rem 1.1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  }
+
+  .pp-cats-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.85rem;
+  }
+
+  .pp-cats-head h2 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+
+  .pp-cats-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+
+  .pp-cats-head span {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 500;
+  }
+
+  .pp-clear-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-weight: 650;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.35rem 0.7rem;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+
+  .pp-clear-btn:hover {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #b91c1c;
+  }
+
+  .pp-cats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .pp-cat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    text-decoration: none;
+    color: #1e293b;
+    background: linear-gradient(180deg, #fafbff 0%, #f5f7ff 100%);
+    border: 1.5px solid #e4e9f8;
+    border-radius: 12px;
+    padding: 0.55rem 0.9rem 0.55rem 0.65rem;
+    font-size: 0.9rem;
+    font-weight: 650;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background 0.15s;
+    max-width: 100%;
+  }
+
+  .pp-cat-chip:hover {
+    border-color: #a5b4fc;
+    background: #eef2ff;
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.12);
+    transform: translateY(-1px);
+    color: #3730a3;
+  }
+
+  .pp-cat-chip.is-active {
+    border-color: transparent;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.28);
+  }
+
+  .pp-cat-chip.pp-cat-all {
+    border-style: dashed;
+  }
+
+  .pp-cat-chip.pp-cat-all.is-active {
+    border-style: solid;
+  }
+
+  .pp-cat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: linear-gradient(145deg, #eef2ff, #e0e7ff);
+    color: #4f46e5;
+    font-size: 0.85rem;
+  }
+
+  .pp-cat-chip.is-active .pp-cat-icon {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+
+  .pp-cat-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+  }
+
+  .pp-cat-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  .pp-cat-count {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-top: 1px;
+  }
+
+  .pp-cat-chip.is-active .pp-cat-count {
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .pp-cats-empty {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    padding: 0.35rem 0;
+  }
+
   .pp-filters {
     background: #f5f7ff;
     border: 1px solid #e4e9f8;
@@ -224,6 +380,93 @@
     background: #e0e7ff;
   }
 
+  .pp-download.is-answer {
+    color: #0f766e;
+    border-color: #99f6e4;
+    background: #f0fdfa;
+  }
+
+  .pp-download.is-answer:hover {
+    background: #ccfbf1;
+  }
+
+  .pp-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .pp-view-toggle a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 650;
+    color: #64748b;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    transition: background 0.12s, color 0.12s;
+  }
+
+  .pp-view-toggle a:hover {
+    color: #4338ca;
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  .pp-view-toggle a.is-active {
+    background: #fff;
+    color: #4f46e5;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  }
+
+  .pp-view-toggle a.is-active.is-answer {
+    color: #0f766e;
+  }
+
+  .pp-view-toggle a.is-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  .pp-item-badges {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .pp-mini-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+  }
+
+  .pp-mini-badge.q {
+    background: #eef2ff;
+    color: #4338ca;
+  }
+
+  .pp-mini-badge.a {
+    background: #ccfbf1;
+    color: #0f766e;
+  }
+
+  .pp-viewer-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+
   .pp-frame-wrap {
     flex: 1;
     min-height: 0;
@@ -294,6 +537,9 @@
     .pp-filters {
       grid-template-columns: 1fr;
     }
+    .pp-cat-name {
+      max-width: 140px;
+    }
   }
 </style>
 {% endblock %}
@@ -307,6 +553,64 @@
       The full exam PDF appears on the right.
     </p>
   </div>
+
+  <section class="pp-cats" aria-label="Categories">
+    <div class="pp-cats-head">
+      <h2>Categories</h2>
+      <div class="pp-cats-head-actions">
+        <span>
+          {% if categories %}
+            {{ categories|length }} saved categor{{ categories|length|pluralize:"y,ies" }}
+          {% else %}
+            No categories yet
+          {% endif %}
+        </span>
+        {% if has_filters or filter_category %}
+          <a class="pp-clear-btn" href="{% url 'courses:past_papers' %}" title="Clear all filters and selection">
+            <i class="fas fa-times"></i> Clear selection
+          </a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="pp-cats-grid">
+      <a
+        class="pp-cat-chip pp-cat-all {% if not filter_category %}is-active{% endif %}"
+        href="{% url 'courses:past_papers' %}"
+        title="Show all past papers"
+      >
+        <span class="pp-cat-icon" aria-hidden="true">
+          <i class="fas fa-layer-group"></i>
+        </span>
+        <span class="pp-cat-meta">
+          <span class="pp-cat-name">All</span>
+          <span class="pp-cat-count">
+            {{ total_papers }} paper{{ total_papers|pluralize }}
+          </span>
+        </span>
+      </a>
+      {% for cat in categories %}
+        <a
+          class="pp-cat-chip {% if filter_category == cat.id|stringformat:'s' %}is-active{% endif %}"
+          href="?category={{ cat.id }}"
+          title="{{ cat.name }}{% if cat.description %} — {{ cat.description }}{% endif %}"
+        >
+          <span class="pp-cat-icon" aria-hidden="true">
+            <i class="fas fa-{% if cat.icon %}{{ cat.icon }}{% else %}folder{% endif %}"></i>
+          </span>
+          <span class="pp-cat-meta">
+            <span class="pp-cat-name">{{ cat.name }}</span>
+            <span class="pp-cat-count">
+              {{ cat.paper_count }} paper{{ cat.paper_count|pluralize }}
+            </span>
+          </span>
+        </a>
+      {% empty %}
+        <div class="pp-cats-empty">
+          No categories in the database yet. Admins can add them under Course Categories.
+        </div>
+      {% endfor %}
+    </div>
+  </section>
 
   <form class="pp-filters" method="get" action="{% url 'courses:past_papers' %}">
     <div class="pp-field">
@@ -356,13 +660,19 @@
         {% for paper in papers %}
           <a
             class="pp-item {% if selected_paper and selected_paper.id == paper.id %}is-active{% endif %}"
-            href="?category={{ filter_category }}&subject={{ filter_subject|urlencode }}&year={{ filter_year }}&paper={{ paper.id }}"
+            href="?category={{ filter_category }}&subject={{ filter_subject|urlencode }}&year={{ filter_year }}&paper={{ paper.id }}&view=question"
           >
             <div class="pp-item-title">
               {% if paper.paper_code %}{{ paper.paper_code }} · {% endif %}{{ paper.title }}
             </div>
             <div class="pp-item-meta">
               {{ paper.subject }} · {{ paper.year }}{% if paper.season %} · {{ paper.get_season_display }}{% endif %}
+            </div>
+            <div class="pp-item-badges">
+              <span class="pp-mini-badge q">Question</span>
+              {% if paper.answer_pdf %}
+                <span class="pp-mini-badge a">Answer sheet</span>
+              {% endif %}
             </div>
           </a>
         {% empty %}
@@ -382,21 +692,63 @@
       {% if selected_paper and selected_paper.pdf %}
         <div class="pp-viewer-head">
           <div>
-            <div class="pp-viewer-title">{{ selected_paper.title }}</div>
+            <div class="pp-viewer-title">
+              {{ selected_paper.title }}
+              {% if view_mode == 'answer' and selected_paper.answer_pdf %}
+                <span style="color:#0f766e;font-weight:700;font-size:0.85rem;"> · Answer sheet</span>
+              {% else %}
+                <span style="color:#6366f1;font-weight:700;font-size:0.85rem;"> · Question paper</span>
+              {% endif %}
+            </div>
             <div class="pp-viewer-sub">
               {{ selected_paper.category.name }} · {{ selected_paper.subject }} · {{ selected_paper.year }}
               {% if selected_paper.season %} · {{ selected_paper.get_season_display }}{% endif %}
             </div>
           </div>
-          <a class="pp-download" href="{{ selected_paper.pdf.url }}" target="_blank" rel="noopener">
-            <i class="fas fa-download"></i> Download PDF
-          </a>
+          <div class="pp-viewer-actions">
+            <div class="pp-view-toggle" role="group" aria-label="Paper type">
+              <a
+                class="{% if view_mode != 'answer' %}is-active{% endif %}"
+                href="?category={{ filter_category }}&subject={{ filter_subject|urlencode }}&year={{ filter_year }}&paper={{ selected_paper.id }}&view=question"
+              >
+                <i class="fas fa-file-alt"></i> Question
+              </a>
+              {% if selected_paper.answer_pdf %}
+                <a
+                  class="is-answer {% if view_mode == 'answer' %}is-active{% endif %}"
+                  href="?category={{ filter_category }}&subject={{ filter_subject|urlencode }}&year={{ filter_year }}&paper={{ selected_paper.id }}&view=answer"
+                >
+                  <i class="fas fa-check-circle"></i> Answer sheet
+                </a>
+              {% else %}
+                <a class="is-disabled" href="#" title="No answer sheet uploaded for this paper" aria-disabled="true">
+                  <i class="fas fa-check-circle"></i> Answer sheet
+                </a>
+              {% endif %}
+            </div>
+            {% if view_mode == 'answer' and selected_paper.answer_pdf %}
+              <a class="pp-download is-answer" href="{{ selected_paper.answer_pdf.url }}" target="_blank" rel="noopener">
+                <i class="fas fa-download"></i> Download answer
+              </a>
+            {% else %}
+              <a class="pp-download" href="{{ selected_paper.pdf.url }}" target="_blank" rel="noopener">
+                <i class="fas fa-download"></i> Download PDF
+              </a>
+            {% endif %}
+          </div>
         </div>
         <div class="pp-frame-wrap">
-          <iframe
-            title="{{ selected_paper.title }}"
-            src="{{ selected_paper.pdf.url }}#view=FitH"
-          ></iframe>
+          {% if view_mode == 'answer' and selected_paper.answer_pdf %}
+            <iframe
+              title="{{ selected_paper.title }} — Answer sheet"
+              src="{{ selected_paper.answer_pdf.url }}#view=FitH"
+            ></iframe>
+          {% else %}
+            <iframe
+              title="{{ selected_paper.title }} — Question paper"
+              src="{{ selected_paper.pdf.url }}#view=FitH"
+            ></iframe>
+          {% endif %}
         </div>
       {% else %}
         <div class="pp-placeholder">
@@ -404,7 +756,8 @@
           <strong>Select a past paper</strong>
           <span>
             {% if papers %}
-              Choose a paper from the list on the left to view the full exam PDF here.
+              Choose a paper from the list on the left to view the question paper PDF.
+              If an answer sheet is linked, use the <strong>Answer sheet</strong> switch.
             {% else %}
               Use the filters above, then pick a paper to open its PDF.
             {% endif %}

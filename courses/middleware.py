@@ -8,6 +8,8 @@ class InlineMediaMiddleware:
     - Prefer Content-Disposition: inline for media (view, not Save As attachment)
     - Block direct browser navigation to Office files (.ppt/.pptx/etc.) which
       would otherwise auto-download because browsers cannot display them.
+    - For /media/resources/: also block top-level PDF/file opens so users
+      cannot download by opening the raw media URL in a new tab.
     """
 
     PROTECTED_PREFIXES = (
@@ -22,29 +24,57 @@ class InlineMediaMiddleware:
     # Opening these as a top-level document forces a download in browsers.
     OFFICE_EXTS = (".ppt", ".pptx", ".pps", ".ppsx", ".doc", ".docx", ".xls", ".xlsx")
 
+    # Resource files that must only be embedded (iframe), never top-level download.
+    RESOURCE_BLOCK_EXTS = OFFICE_EXTS + (".pdf", ".zip", ".rar", ".7z", ".epub")
+
     def __init__(self, get_response):
         self.get_response = get_response
+
+    def _is_top_level_navigation(self, request):
+        fetch_dest = (request.headers.get("Sec-Fetch-Dest") or "").lower()
+        fetch_mode = (request.headers.get("Sec-Fetch-Mode") or "").lower()
+        # iframe / embed / object / empty (range requests from PDF viewer) = allow
+        if fetch_dest in ("iframe", "embed", "object", "image", "video", "audio", "empty"):
+            return False
+        if fetch_mode in ("no-cors", "cors", "same-origin") and fetch_dest == "":
+            # Subresource / PDF stream from embedded viewer
+            return False
+        is_navigation = fetch_dest in ("document",) or fetch_mode == "navigate"
+        if not fetch_dest and not fetch_mode and request.method == "GET":
+            accept = (request.headers.get("Accept") or "").lower()
+            if "text/html" in accept:
+                is_navigation = True
+        return is_navigation
 
     def __call__(self, request):
         path = (request.path or "").lower()
 
         if any(path.startswith(p) for p in self.PROTECTED_PREFIXES):
-            # Block top-level navigation to Office files (prevents auto-download UI)
-            if path.endswith(self.OFFICE_EXTS):
-                fetch_dest = (request.headers.get("Sec-Fetch-Dest") or "").lower()
-                fetch_mode = (request.headers.get("Sec-Fetch-Mode") or "").lower()
-                # "document" / navigate = user opened URL in a tab
-                # Empty Sec-Fetch-* on older browsers: treat GET without range as navigate
-                is_navigation = fetch_dest in ("document",) or fetch_mode == "navigate"
-                if not fetch_dest and not fetch_mode and request.method == "GET":
-                    # Heuristic: Accept prefers HTML → likely address-bar navigation
-                    accept = (request.headers.get("Accept") or "").lower()
-                    if "text/html" in accept:
-                        is_navigation = True
-                if is_navigation:
+            # Resources: block ANY top-level open of raw media files
+            # (students must use protected viewer routes, not /media/resources/...)
+            if path.startswith("/media/resources/"):
+                if self._is_top_level_navigation(request):
                     return HttpResponse(
                         "Downloading this file is not allowed. "
-                        "Open the blog or resources page to view content online.",
+                        "Open the Resources page to view content online only.",
+                        status=403,
+                        content_type="text/plain; charset=utf-8",
+                    )
+                # Also block non-embedded fetches that look like Save-As
+                fetch_dest = (request.headers.get("Sec-Fetch-Dest") or "").lower()
+                if fetch_dest in ("document",):
+                    return HttpResponse(
+                        "Downloading this file is not allowed.",
+                        status=403,
+                        content_type="text/plain; charset=utf-8",
+                    )
+
+            block_exts = self.OFFICE_EXTS
+            if path.endswith(block_exts) and not path.startswith("/media/resources/"):
+                if self._is_top_level_navigation(request):
+                    return HttpResponse(
+                        "Downloading this file is not allowed. "
+                        "Open the Resources page to view content online only.",
                         status=403,
                         content_type="text/plain; charset=utf-8",
                     )
@@ -52,11 +82,16 @@ class InlineMediaMiddleware:
         response = self.get_response(request)
 
         if any((request.path or "").startswith(p) for p in self.PROTECTED_PREFIXES):
+            # Never suggest "Save As" attachment
             response["Content-Disposition"] = "inline"
             response["X-Content-Type-Options"] = "nosniff"
             response["X-Frame-Options"] = "SAMEORIGIN"
             # Discourage caching of sensitive media by shared proxies
             if "Cache-Control" not in response:
                 response["Cache-Control"] = "private, max-age=3600"
+            if (request.path or "").lower().startswith("/media/resources/"):
+                # Extra hint to browsers/proxies not to offer offline save
+                response["X-Robots-Tag"] = "noindex, noarchive, nosnippet"
+                response["Cache-Control"] = "private, no-store"
 
         return response

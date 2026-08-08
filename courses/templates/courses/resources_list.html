@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 {% include 'partials/no_download_media.html' %}
+{% include 'partials/no_screenshot.html' %}
 <style>
   .rl-wrap { max-width: 1100px; margin: 0 auto; }
   .rl-hero {
@@ -90,7 +91,9 @@
     <p>Browse free and premium e-books & notes — view online only.</p>
   </div>
 
-  <p class="rl-note">Files can be viewed on this site only. Direct download is disabled.</p>
+  <p class="rl-note">
+    <strong>View only.</strong> Download, copy, print, and screenshots are restricted on Resources.
+  </p>
 
   <div class="rl-filters">
     <form method="get">
@@ -116,9 +119,9 @@
     </form>
   </div>
 
-  <div class="rl-grid">
+  <div class="rl-grid no-copy-zone no-screenshot-zone" data-ns-mark="Study Nation · Protected · No Screenshot">
     {% for resource in resources %}
-      <div class="rl-card no-dl-zone">
+      <div class="rl-card no-dl-zone no-copy-zone">
         <div class="rl-card-body">
           <h3>{{ resource.title }}</h3>
           <div class="meta">{{ resource.author|default:"Unknown Author" }}</div>
@@ -129,7 +132,7 @@
               <span class="rl-badge free">FREE</span>
             {% endif %}
             <span class="rl-badge">{{ resource.get_resource_type_display }}</span>
-            <span class="rl-badge">View only</span>
+            <span class="rl-badge">View only · No copy</span>
           </div>
           {% if resource.description %}
             <p class="rl-desc">{{ resource.description|truncatewords:25 }}</p>
@@ -140,17 +143,21 @@
         </div>
 
         {% if resource.file %}
-          <div class="rl-viewer no-dl-media">
-            <iframe
-              src="{{ resource.file.url }}#toolbar=0&navpanes=0&scrollbar=1"
-              title="{{ resource.title }} preview"
-              oncontextmenu="return false;"
-            ></iframe>
+          <div class="rl-viewer" style="padding:0.85rem 1.1rem; background:#f8fafc;">
+            <div style="font-size:0.82rem; color:#64748b; line-height:1.45;">
+              <strong style="color:#334155;">Protected document</strong><br />
+              {% if resource.preview_kind == 'pdf' %}PDF ·
+              {% elif resource.preview_kind == 'docx' or resource.preview_kind == 'doc' %}Word ·
+              {% elif resource.preview_kind == 'image' %}Image ·
+              {% elif resource.preview_kind == 'text' %}Text ·
+              {% endif %}
+              View online only — download &amp; copy disabled.
+            </div>
           </div>
         {% endif %}
 
         <div class="rl-actions">
-          <a href="{% url 'courses:resource_detail' resource.id %}">Open full view</a>
+          <a href="{% url 'courses:resource_detail' resource.id %}">Open protected view</a>
         </div>
       </div>
     {% empty %}

@@ -1,18 +1,36 @@
-{# View-only media: discourage saving / downloading of images, video, embeds. #}
+{# View-only media: block download UI, drag/save, and copy of protected content. #}
 <style>
   .no-dl-media,
   .no-dl-media img,
   .no-dl-media video,
-  .no-dl-media iframe {
+  .no-dl-media iframe,
+  .no-dl-zone,
+  .no-copy-zone {
     -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
     user-select: none !important;
     -webkit-user-drag: none !important;
     user-drag: none !important;
+    -webkit-touch-callout: none !important;
   }
+
   .no-dl-media img,
   .no-dl-media video {
     pointer-events: auto;
   }
+
+  /* Allow typing only in form fields inside protected zones */
+  .no-dl-zone input,
+  .no-dl-zone textarea,
+  .no-dl-zone select,
+  .no-copy-zone input,
+  .no-copy-zone textarea,
+  .no-copy-zone select {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+  }
+
   /* Hide download UI where browsers respect it */
   video::-internal-media-controls-download-button,
   video::-webkit-media-controls-enclosure {
@@ -21,6 +39,12 @@
   video::-webkit-media-controls-panel {
     width: calc(100% + 30px);
   }
+
+  /* Soft watermark cue on resource viewers */
+  .no-copy-zone .rl-viewer,
+  .no-copy-zone .rd-viewer {
+    position: relative;
+  }
 </style>
 <script>
 (function () {
@@ -28,53 +52,107 @@
   window.__noDlMediaBound = true;
 
   function isProtected(el) {
-    return el && el.closest && el.closest('.no-dl-media, .no-dl-zone');
+    return el && el.closest && el.closest('.no-dl-media, .no-dl-zone, .no-copy-zone');
   }
 
+  function isEditable(el) {
+    if (!el) return false;
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    if (el.isContentEditable) return true;
+    return false;
+  }
+
+  // Right-click / context menu
   document.addEventListener('contextmenu', function (e) {
-    if (isProtected(e.target)) {
+    if (isProtected(e.target) && !isEditable(e.target)) {
       e.preventDefault();
       return false;
     }
   }, true);
 
+  // Drag (save image / select text drag)
   document.addEventListener('dragstart', function (e) {
-    if (isProtected(e.target)) {
+    if (isProtected(e.target) && !isEditable(e.target)) {
       e.preventDefault();
       return false;
     }
   }, true);
 
-  // Block common save shortcuts when focus is on protected media
+  // Copy / cut / select-all from protected content
+  document.addEventListener('copy', function (e) {
+    if (isProtected(e.target) && !isEditable(e.target)) {
+      e.preventDefault();
+      try {
+        e.clipboardData && e.clipboardData.setData('text/plain', '');
+      } catch (err) {}
+      return false;
+    }
+  }, true);
+
+  document.addEventListener('cut', function (e) {
+    if (isProtected(e.target) && !isEditable(e.target)) {
+      e.preventDefault();
+      return false;
+    }
+  }, true);
+
+  document.addEventListener('selectstart', function (e) {
+    if (isProtected(e.target) && !isEditable(e.target)) {
+      e.preventDefault();
+      return false;
+    }
+  }, true);
+
+  // Keyboard shortcuts: save, view-source, print, copy, cut, select-all
   document.addEventListener('keydown', function (e) {
     var key = (e.key || '').toLowerCase();
-    if (!(e.ctrlKey || e.metaKey)) return;
-    if (key === 's' || key === 'u') {
-      var t = document.activeElement;
-      if (isProtected(t) || isProtected(e.target)) {
+    var inProtected = isProtected(e.target) || isProtected(document.activeElement);
+    if (!inProtected) return;
+    if (isEditable(e.target) || isEditable(document.activeElement)) return;
+
+    // Ctrl/Cmd + S / U / P / C / X / A
+    if (e.ctrlKey || e.metaKey) {
+      if (key === 's' || key === 'u' || key === 'p' || key === 'c' || key === 'x' || key === 'a') {
         e.preventDefault();
+        e.stopPropagation();
+        return false;
       }
+    }
+    // PrintScr is not reliably blockable; block F12 lightly (devtools still possible)
+    if (key === 'printscreen') {
+      e.preventDefault();
     }
   }, true);
 
-  // Harden all videos inside protected zones
-  function hardenVideos(root) {
-    (root || document).querySelectorAll('.no-dl-media video, .no-dl-zone video').forEach(function (v) {
-      v.setAttribute('controlsList', 'nodownload noremoteplayback');
+  // Harden media elements inside protected zones
+  function hardenMedia(root) {
+    (root || document).querySelectorAll('.no-dl-media video, .no-dl-zone video, .no-copy-zone video').forEach(function (v) {
+      v.setAttribute('controlsList', 'nodownload noremoteplayback noplaybackrate');
       v.setAttribute('disablePictureInPicture', '');
       v.setAttribute('oncontextmenu', 'return false');
       try { v.controlsList && v.controlsList.add && v.controlsList.add('nodownload'); } catch (err) {}
     });
-    (root || document).querySelectorAll('.no-dl-media img, .no-dl-zone img').forEach(function (img) {
+    (root || document).querySelectorAll('.no-dl-media img, .no-dl-zone img, .no-copy-zone img').forEach(function (img) {
       img.setAttribute('draggable', 'false');
       img.setAttribute('oncontextmenu', 'return false');
+    });
+    (root || document).querySelectorAll('.no-dl-media iframe, .no-dl-zone iframe, .no-copy-zone iframe').forEach(function (frame) {
+      frame.setAttribute('oncontextmenu', 'return false');
+      // Prefer no download toolbar fragments when src is set later
+      try {
+        var src = frame.getAttribute('src') || '';
+        if (src && src.indexOf('.pdf') !== -1 && src.indexOf('toolbar=0') === -1) {
+          frame.setAttribute('src', src + (src.indexOf('#') === -1 ? '#' : '&') + 'toolbar=0&navpanes=0');
+        }
+      } catch (err) {}
     });
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { hardenVideos(); });
+    document.addEventListener('DOMContentLoaded', function () { hardenMedia(); });
   } else {
-    hardenVideos();
+    hardenMedia();
   }
 })();
 </script>

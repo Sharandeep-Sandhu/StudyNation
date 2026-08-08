@@ -23,6 +23,7 @@ from .forms import (
     ResourceForm,
     ExamForm,
     PastPaperForm,
+    PastPaperAnswerForm,
 )
 from .models import AdminUser, CSVUpload, ManualQuestionLog
 from courses.models import (
@@ -178,6 +179,24 @@ def download_sample_blog_pptx(request):
 def download_sample_blog_docx(request):
     """Sample Word doc for blog-related attachments (optional reference)."""
     return _serve_sample_file("sample_blog.docx")
+
+
+@admin_required
+def download_sample_past_paper_question(request):
+    """Sample question-paper PDF for Past Papers upload."""
+    return _serve_sample_file(
+        "sample_past_paper_question.pdf",
+        download_name="sample_past_paper_question.pdf",
+    )
+
+
+@admin_required
+def download_sample_past_paper_answer(request):
+    """Sample answer / mark-scheme PDF for Past Papers upload."""
+    return _serve_sample_file(
+        "sample_past_paper_answer.pdf",
+        download_name="sample_past_paper_answer.pdf",
+    )
 
 
 @admin_required
@@ -1091,7 +1110,13 @@ def delete_resource(request, resource_id):
 
 
 # ==================== PAST PAPERS (PDF browser) ====================
-def _past_papers_page_context(form, action="Upload", paper=None):
+def _past_papers_page_context(
+    form=None,
+    action="Upload",
+    paper=None,
+    mode="question",
+    answer_form=None,
+):
     papers = PastPaper.objects.select_related("category").order_by(
         "-year", "subject", "title"
     )
@@ -1101,22 +1126,31 @@ def _past_papers_page_context(form, action="Upload", paper=None):
         .distinct()
         .order_by("subject")
     )
+    if form is None:
+        form = PastPaperForm()
+    if answer_form is None:
+        answer_form = PastPaperAnswerForm()
     return {
         "form": form,
+        "answer_form": answer_form,
         "papers": papers,
         "paper": paper,
         "action": action,
+        "mode": mode,
         "existing_subjects": list(existing_subjects),
     }
 
 
 @admin_required
 def manage_past_papers(request):
-    """Admin page to upload past question paper PDFs (Category / Subject / Year)."""
+    """Admin Past Papers hub: upload question paper or link answer sheet."""
+    mode = (request.GET.get("mode") or "question").strip().lower()
+    if mode not in ("question", "answer"):
+        mode = "question"
     return render(
         request,
         "admin_panel/manage_past_papers.html",
-        _past_papers_page_context(PastPaperForm(), "Upload"),
+        _past_papers_page_context(mode=mode),
     )
 
 
@@ -1126,9 +1160,10 @@ def create_past_paper(request):
         form = PastPaperForm(request.POST, request.FILES)
         if form.is_valid():
             paper = form.save()
+            answer_note = " with answer sheet" if paper.answer_pdf else ""
             messages.success(
                 request,
-                f'Past paper "{paper.title}" uploaded '
+                f'Question paper "{paper.title}" uploaded{answer_note} '
                 f"({paper.category.name} · {paper.subject} · {paper.year}).",
             )
             return redirect("admin_panel:manage_past_papers")
@@ -1138,7 +1173,41 @@ def create_past_paper(request):
     return render(
         request,
         "admin_panel/manage_past_papers.html",
-        _past_papers_page_context(form, "Upload"),
+        _past_papers_page_context(form=form, action="Upload", mode="question"),
+    )
+
+
+@admin_required
+def upload_past_paper_answer(request):
+    """Upload / replace answer sheet PDF linked to an existing question paper."""
+    if request.method == "POST":
+        answer_form = PastPaperAnswerForm(request.POST, request.FILES)
+        if answer_form.is_valid():
+            paper = answer_form.cleaned_data["past_paper"]
+            new_file = answer_form.cleaned_data["answer_pdf"]
+            if answer_form.cleaned_data.get("clear_existing") and paper.answer_pdf:
+                paper.answer_pdf.delete(save=False)
+            elif paper.answer_pdf:
+                paper.answer_pdf.delete(save=False)
+            paper.answer_pdf = new_file
+            paper.save(update_fields=["answer_pdf", "updated_at"])
+            messages.success(
+                request,
+                f'Answer paper linked to "{paper.title}" '
+                f"({paper.category.name} · {paper.subject} · {paper.year}).",
+            )
+            return redirect(
+                reverse("admin_panel:manage_past_papers") + "?mode=answer"
+            )
+        messages.error(request, "Please fix the errors below and try again.")
+    else:
+        answer_form = PastPaperAnswerForm()
+    return render(
+        request,
+        "admin_panel/manage_past_papers.html",
+        _past_papers_page_context(
+            answer_form=answer_form, action="Upload", mode="answer"
+        ),
     )
 
 
@@ -1157,7 +1226,9 @@ def edit_past_paper(request, paper_id):
     return render(
         request,
         "admin_panel/manage_past_papers.html",
-        _past_papers_page_context(form, "Edit", paper=paper),
+        _past_papers_page_context(
+            form=form, action="Edit", paper=paper, mode="question"
+        ),
     )
 
 
@@ -1167,9 +1238,26 @@ def delete_past_paper(request, paper_id):
     paper = get_object_or_404(PastPaper, id=paper_id)
     if paper.pdf:
         paper.pdf.delete(save=False)
+    if paper.answer_pdf:
+        paper.answer_pdf.delete(save=False)
     paper.delete()
     messages.success(request, "Past paper deleted successfully!")
     return redirect("admin_panel:manage_past_papers")
+
+
+@admin_required
+@require_POST
+def clear_past_paper_answer(request, paper_id):
+    """Remove only the answer sheet from a past paper (keep question PDF)."""
+    paper = get_object_or_404(PastPaper, id=paper_id)
+    if paper.answer_pdf:
+        paper.answer_pdf.delete(save=False)
+        paper.answer_pdf = None
+        paper.save(update_fields=["answer_pdf", "updated_at"])
+        messages.success(request, f'Answer sheet removed from "{paper.title}".')
+    else:
+        messages.info(request, "This paper has no answer sheet linked.")
+    return redirect(reverse("admin_panel:manage_past_papers") + "?mode=answer")
 
 
 # ==================== EXAM BUILDER ====================

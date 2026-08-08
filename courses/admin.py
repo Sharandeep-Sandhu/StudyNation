@@ -222,6 +222,7 @@ class PastPaperAdmin(admin.ModelAdmin):
         "year",
         "season",
         "paper_code",
+        "has_answer",
         "is_published",
         "created_at",
     ]
@@ -229,6 +230,25 @@ class PastPaperAdmin(admin.ModelAdmin):
     search_fields = ["title", "subject", "paper_code", "description"]
     ordering = ["-year", "subject", "title"]
     list_editable = ["is_published"]
+    fields = [
+        "title",
+        "category",
+        "subject",
+        "year",
+        "season",
+        "paper_code",
+        "pdf",
+        "answer_pdf",
+        "description",
+        "is_published",
+        "created_at",
+        "updated_at",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+
+    @admin.display(boolean=True, description="Answer")
+    def has_answer(self, obj):
+        return bool(obj.answer_pdf)
 
 
 # ==================== QUESTION FORM (TOPIC BOARDS) ====================

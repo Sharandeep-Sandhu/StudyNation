@@ -961,7 +961,11 @@ class ResourceForm(forms.ModelForm):
                 }
             ),
             "file": forms.FileInput(
-                attrs={"class": "form-control", "accept": ".pdf,.doc,.docx,image/*"}
+                attrs={
+                    "class": "form-control",
+                    "accept": ".pdf,.doc,.docx,.txt,image/*",
+                    "title": "Students can only view online (no download)",
+                }
             ),
             "author": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Author / Teacher Name"}
@@ -972,10 +976,10 @@ class ResourceForm(forms.ModelForm):
 
 # ==================== PAST PAPERS (PDF) ====================
 class PastPaperForm(forms.ModelForm):
-    """Upload / edit full previous-year exam PDFs for the public Past Papers page.
+    """Upload / edit previous-year question paper PDFs (+ optional answer sheet).
 
-    Required: Category, Subject, Year, Title, PDF.
-    Optional: season, paper code, description.
+    Required: Category, Subject, Year, Title, Question PDF.
+    Optional: answer PDF, season, paper code, description.
     """
 
     class Meta:
@@ -986,6 +990,7 @@ class PastPaperForm(forms.ModelForm):
             "year",
             "title",
             "pdf",
+            "answer_pdf",
             "season",
             "paper_code",
             "description",
@@ -997,6 +1002,7 @@ class PastPaperForm(forms.ModelForm):
             "year": "Year of exam",
             "title": "Paper title",
             "pdf": "Question paper (PDF)",
+            "answer_pdf": "Answer paper / mark scheme (PDF)",
             "season": "Season / session",
             "paper_code": "Paper code",
             "description": "Description",
@@ -1007,7 +1013,8 @@ class PastPaperForm(forms.ModelForm):
             "subject": "Required. e.g. Mathematics, Physics, Chemistry.",
             "year": "Required. Exam year (e.g. 2024).",
             "title": "Required. Display name shown in the paper list.",
-            "pdf": "Required for new uploads. Full exam paper as PDF only.",
+            "pdf": "Required for new uploads. Full exam question paper as PDF only.",
+            "answer_pdf": "Optional. Upload the answer sheet / mark scheme and link it to this paper.",
             "season": "Optional. Summer / Winter / Specimen, etc.",
             "paper_code": "Optional. e.g. 0606/23",
             "description": "Optional notes for admins.",
@@ -1048,6 +1055,9 @@ class PastPaperForm(forms.ModelForm):
             "pdf": forms.FileInput(
                 attrs={"class": "form-control", "accept": "application/pdf,.pdf"}
             ),
+            "answer_pdf": forms.FileInput(
+                attrs={"class": "form-control", "accept": "application/pdf,.pdf"}
+            ),
             "description": forms.Textarea(
                 attrs={
                     "class": "form-control",
@@ -1075,6 +1085,7 @@ class PastPaperForm(forms.ModelForm):
         else:
             self.fields["pdf"].required = True
 
+        self.fields["answer_pdf"].required = False
         self.fields["season"].required = False
         self.fields["paper_code"].required = False
         self.fields["description"].required = False
@@ -1092,6 +1103,49 @@ class PastPaperForm(forms.ModelForm):
         if year < 1990 or year > 2100:
             raise forms.ValidationError("Enter a valid exam year.")
         return year
+
+
+class PastPaperAnswerForm(forms.Form):
+    """Link an answer sheet / mark scheme PDF to an existing question paper."""
+
+    past_paper = forms.ModelChoiceField(
+        queryset=PastPaper.objects.none(),
+        empty_label="-- Select question paper --",
+        label="Link to question paper",
+        help_text="Choose the question paper this answer sheet belongs to.",
+        widget=forms.Select(attrs={"class": "form-control", "required": True}),
+    )
+    answer_pdf = forms.FileField(
+        label="Answer paper (PDF)",
+        help_text="Mark scheme / answer sheet PDF only.",
+        widget=forms.FileInput(
+            attrs={"class": "form-control", "accept": "application/pdf,.pdf", "required": True}
+        ),
+    )
+    clear_existing = forms.BooleanField(
+        required=False,
+        label="Remove existing answer sheet (if any) before upload",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["past_paper"].queryset = PastPaper.objects.select_related(
+            "category"
+        ).order_by("-year", "subject", "title")
+        self.fields["past_paper"].label_from_instance = (
+            lambda p: f"{p.title} · {p.category.name} · {p.subject} · {p.year}"
+            + (" ✓ answer" if p.answer_pdf else "")
+        )
+
+    def clean_answer_pdf(self):
+        f = self.cleaned_data.get("answer_pdf")
+        if not f:
+            raise forms.ValidationError("Please choose an answer paper PDF.")
+        name = (getattr(f, "name", "") or "").lower()
+        if not name.endswith(".pdf"):
+            raise forms.ValidationError("Only PDF files are allowed.")
+        return f
 
     def clean_pdf(self):
         pdf = self.cleaned_data.get("pdf")

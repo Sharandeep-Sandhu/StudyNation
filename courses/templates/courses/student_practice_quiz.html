@@ -8,213 +8,956 @@
 {% block extra_css %}
   {% include 'partials/mathjax.html' %}
   <style>
-    .pq-wrap { max-width: 1200px; }
-    .pq-header {
-      background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    /* ===== Cool premium practice console ===== */
+    :root {
+      --pq-ink: #0b1220;
+      --pq-ink-2: #334155;
+      --pq-muted: #64748b;
+      --pq-line: #e2e8f0;
+      --pq-line-2: #f1f5f9;
+      --pq-surface: #ffffff;
+      --pq-canvas: #eef2ff;
+      --pq-brand: #3730a3;
+      --pq-brand-soft: #eef2ff;
+      --pq-brand-mid: #4f46e5;
+      --pq-brand-hot: #7c3aed;
+      --pq-ok: #0f766e;
+      --pq-ok-bg: #f0fdfa;
+      --pq-ok-line: #99f6e4;
+      --pq-warn: #b45309;
+      --pq-danger: #b91c1c;
+      --pq-radius: 14px;
+      --pq-shadow: 0 4px 24px rgba(79, 70, 229, 0.08);
+      --pq-shadow-lg: 0 18px 50px rgba(15, 23, 42, 0.1);
+      --pq-glow: 0 0 0 4px rgba(99, 102, 241, 0.15);
     }
-    .pq-header h1 { font-size: 1.15rem; color: #333; margin: 0; }
+
+    @keyframes pq-pulse-live {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+      50% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+    }
+    @keyframes pq-shine {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes pq-float-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    body { background: var(--pq-canvas) !important; }
+    main { padding: 0 !important; background: transparent !important; }
+    main > .container { max-width: 100% !important; padding: 0 !important; }
+    footer { display: none !important; }
+
+    .pq-shell {
+      min-height: calc(100vh - 64px);
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(1200px 500px at 8% -10%, rgba(129, 140, 248, 0.28), transparent 55%),
+        radial-gradient(900px 420px at 92% 0%, rgba(167, 139, 250, 0.22), transparent 50%),
+        radial-gradient(700px 380px at 50% 100%, rgba(45, 212, 191, 0.1), transparent 55%),
+        linear-gradient(180deg, #eef2ff 0%, #f8fafc 42%, #f1f5f9 100%);
+      color: var(--pq-ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Status strip */
+    .pq-status-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 0.5rem 1.5rem;
+      background: linear-gradient(90deg, #0f172a 0%, #1e1b4b 45%, #312e81 100%);
+      color: #c7d2fe;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid rgba(129, 140, 248, 0.25);
+    }
+    .pq-status-strip strong {
+      color: #fff; font-weight: 700;
+      background: linear-gradient(90deg, #fff, #c4b5fd);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .pq-status-strip .sep { opacity: 0.35; margin: 0 0.4rem; }
+    .pq-status-live {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: #6ee7b7; font-weight: 700;
+      padding: 4px 10px; border-radius: 999px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.28);
+    }
+    .pq-status-live::before {
+      content: ""; width: 7px; height: 7px; border-radius: 50%;
+      background: #34d399;
+      animation: pq-pulse-live 1.6s ease-out infinite;
+    }
+
+    /* Top bar — glass */
+    .pq-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      padding: 0.9rem 1.5rem;
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+      position: sticky;
+      top: 64px;
+      z-index: 40;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.05);
+    }
+    .pq-topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .pq-exam-chip {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(145deg, #4f46e5 0%, #7c3aed 55%, #a855f7 100%);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.78rem; flex-shrink: 0;
+      letter-spacing: 0.04em;
+      box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+    .pq-topbar h1 {
+      margin: 0; font-size: 1.06rem; font-weight: 700; color: var(--pq-ink);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: min(48vw, 480px); letter-spacing: -0.02em;
+    }
+    .pq-topbar-sub {
+      margin: 4px 0 0; font-size: 0.78rem; color: var(--pq-muted); font-weight: 500;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .pq-topbar-sub .dot { width: 4px; height: 4px; border-radius: 50%; background: #a5b4fc; }
+    .pq-topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .pq-meta-pills { display: flex; gap: 8px; align-items: center; }
+    .pq-meta-pill {
+      display: inline-flex; flex-direction: column; align-items: flex-start;
+      background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+      border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 7px 14px; min-width: 92px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    .pq-meta-pill label {
+      font-size: 0.6rem; font-weight: 700; color: #818cf8;
+      text-transform: uppercase; letter-spacing: 0.08em; margin: 0;
+    }
+    .pq-meta-pill b {
+      font-size: 0.95rem; font-weight: 700; color: var(--pq-ink); margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
     .pq-timer {
-      font-family: 'Courier New', monospace; font-size: 1.15rem; font-weight: 700; color: #5b6fd8;
-      background: #eef0fd; padding: 6px 16px; border-radius: 6px;
+      font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+      font-size: 1.08rem !important; font-weight: 700 !important; letter-spacing: 0.05em;
+      background: linear-gradient(90deg, #4f46e5, #7c3aed);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-    .pq-progress { font-size: 0.85rem; color: #777; }
 
-    .pq-workspace { display: grid; grid-template-columns: 260px 1fr; gap: 1rem; align-items: start; }
-    .pq-qlist {
-      background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-height: 70vh;
-      overflow-y: auto; padding: 8px;
+    .pq-calc-toggle {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; color: var(--pq-ink-2);
+      border: 1px solid #c7d2fe; border-radius: 12px;
+      padding: 9px 16px; height: 44px;
+      font-size: 0.84rem; font-weight: 650; cursor: pointer; font-family: inherit;
+      box-shadow: 0 2px 10px rgba(79, 70, 229, 0.08);
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
     }
-    .pq-qlist-item {
-      display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 6px;
-      cursor: pointer; font-size: 0.85rem; color: #444; margin-bottom: 2px;
+    .pq-calc-toggle:hover {
+      background: #f5f3ff; border-color: #a5b4fc;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.14);
     }
-    .pq-qlist-item:hover { background: #f5f6fd; }
-    .pq-qlist-item.pq-current { background: #eef0fd; font-weight: 700; color: #4a5bc4; }
-    .pq-qnum-badge {
-      width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      font-size: 0.75rem; background: #e4e6f5; color: #666; flex-shrink: 0;
+    .pq-calc-toggle.is-open {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff; border-color: transparent;
+      box-shadow: 0 8px 22px rgba(79, 70, 229, 0.35);
     }
-    .pq-qlist-item.pq-answered .pq-qnum-badge { background: #d4f4dd; color: #2f8a4e; }
 
-    .pq-panel { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem; min-height: 60vh; display: flex; flex-direction: column; }
-    .pq-question-block { flex: 1; }
-    .pq-topic { font-size: 0.8rem; color: #a33; margin-bottom: 10px; }
+    /* Progress — animated gradient */
+    .pq-progress-track {
+      height: 4px; background: rgba(226, 232, 240, 0.9); width: 100%;
+      position: relative; overflow: hidden;
+    }
+    .pq-progress-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #34d399, #6366f1, #a855f7, #f472b6);
+      background-size: 220% 100%;
+      animation: pq-shine 3.5s ease infinite;
+      transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.45);
+    }
+
+    /* Body grid */
+    .pq-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 0;
+      min-height: 0;
+      max-width: 1360px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .pq-main {
+      padding: 1.4rem 1.5rem 1.85rem;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pq-panel {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      border-radius: 18px;
+      box-shadow: var(--pq-shadow-lg), 0 0 0 1px rgba(255,255,255,0.6) inset;
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 230px);
+      overflow: hidden;
+      animation: pq-float-in 0.35s ease-out;
+    }
+
+    .pq-q-meta {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 0.95rem 1.4rem; flex-wrap: wrap;
+      border-bottom: 1px solid #eef2ff;
+      background: linear-gradient(180deg, #fafaff 0%, #fff 100%);
+    }
+    .pq-q-title {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.92rem; font-weight: 600; color: var(--pq-ink);
+    }
+    .pq-q-title .pill {
+      background: linear-gradient(135deg, #eef2ff, #f5f3ff);
+      color: #4338ca;
+      border: 1px solid #c7d2fe; border-radius: 999px;
+      padding: 5px 14px; font-size: 0.78rem; font-weight: 700;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
+    }
+    .pq-q-title .muted {
+      color: var(--pq-muted); font-weight: 550; font-size: 0.82rem;
+    }
+    .pq-marks-badges { display: flex; gap: 8px; align-items: center; }
+    .pq-mark-plus {
+      background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
+      color: var(--pq-ok); font-weight: 700; font-size: 0.74rem;
+      border-radius: 999px; padding: 5px 12px; border: 1px solid #99f6e4;
+      box-shadow: 0 2px 8px rgba(13, 148, 136, 0.1);
+    }
+    .pq-mark-minus {
+      background: #fef2f2; color: var(--pq-danger); font-weight: 650; font-size: 0.74rem;
+      border-radius: 999px; padding: 5px 12px; border: 1px solid #fecaca;
+    }
+
+    .pq-question-block {
+      flex: 1;
+      padding: 1.6rem 1.85rem 1.35rem;
+      overflow-y: auto;
+      background:
+        radial-gradient(600px 200px at 0% 0%, rgba(238, 242, 255, 0.7), transparent 60%),
+        #fff;
+    }
+    .pq-topic {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; font-weight: 650; color: #6366f1;
+      background: linear-gradient(135deg, #eef2ff, #faf5ff);
+      border: 1px solid #ddd6fe; border-radius: 999px;
+      padding: 4px 12px; margin-bottom: 16px;
+    }
     .pq-question-text {
-      font-size: 1.05rem; color: #222; line-height: 1.75; margin-bottom: 18px;
-      word-wrap: break-word; overflow-wrap: anywhere;
+      font-size: 1.08rem; color: #0f172a; line-height: 1.82; margin-bottom: 1.5rem;
+      word-wrap: break-word; overflow-wrap: anywhere; font-weight: 450;
+      max-width: 780px;
+      letter-spacing: -0.01em;
     }
-    .pq-marks { font-size: 0.8rem; color: #888; margin-bottom: 18px; }
+    .pq-marks { display: none; }
 
-    .pq-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+    .pq-options-label {
+      font-size: 0.7rem; font-weight: 750; color: #818cf8;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin: 0 0 14px;
+    }
+    .pq-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 8px;
+      max-width: 780px;
+    }
+    .pq-options[data-mode="multi"] { grid-template-columns: 1fr 1fr; }
+    .pq-options.pq-opts-stack {
+      grid-template-columns: 1fr;
+      max-width: 560px;
+    }
     .pq-option {
-      display: flex; align-items: center; gap: 12px; border: 1.5px solid #e0e3f5; border-radius: 8px;
-      padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s;
+      display: flex; align-items: flex-start; gap: 12px;
+      border: 1.5px solid #e2e8f0; border-radius: 14px;
+      padding: 15px 16px; cursor: pointer;
+      transition: border-color .18s, background .18s, box-shadow .18s, transform .16s;
+      background: linear-gradient(180deg, #fff 0%, #fafbff 100%);
+      min-height: 68px;
+      position: relative;
+      overflow: hidden;
     }
-    .pq-option:hover { border-color: #b9c0f0; }
-    .pq-option.pq-selected { border-color: #5b6fd8; background: #f2f4ff; }
+    .pq-option::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(99,102,241,0.06), transparent 50%);
+      opacity: 0; transition: opacity 0.18s; pointer-events: none;
+    }
+    .pq-option:hover {
+      border-color: #a5b4fc; background: #fafaff;
+      box-shadow: 0 10px 24px rgba(79, 70, 229, 0.1);
+      transform: translateY(-2px);
+    }
+    .pq-option:hover::after { opacity: 1; }
+    .pq-option.pq-selected {
+      border-color: #6366f1;
+      background: linear-gradient(145deg, #eef2ff 0%, #f5f3ff 55%, #faf5ff 100%);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14), 0 12px 28px rgba(79, 70, 229, 0.14);
+      transform: translateY(-1px);
+    }
+    .pq-option.pq-selected::after { opacity: 1; }
     .pq-option .pq-option-letter {
-      width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid #ccc; display: flex; align-items: center;
-      justify-content: center; font-size: 0.8rem; font-weight: 700; color: #666; flex-shrink: 0;
+      width: 32px; height: 32px; border-radius: 10px;
+      border: 1.5px solid #cbd5e1; display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 800; color: #475569; flex-shrink: 0;
+      background: #fff; margin-top: 1px;
+      transition: all 0.16s;
     }
-    .pq-option.pq-selected .pq-option-letter { border-color: #5b6fd8; background: #5b6fd8; color: white; }
+    .pq-option.pq-selected .pq-option-letter {
+      border-color: transparent;
+      background: linear-gradient(145deg, #4f46e5, #7c3aed);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
     .pq-option-text {
-      font-size: 1.05rem; color: #333; line-height: 1.75;
+      font-size: 0.97rem; color: #1e293b; line-height: 1.65; padding-top: 4px; flex: 1;
+      min-width: 0; font-weight: 500;
     }
-    /* Natural size after glyph-normalized PNGs (same letter size always) */
+
     .pq-question-text img,
     .pq-option-text img,
     .pq-option img,
     .pq-equation-images img {
-      height: auto !important;
-      max-height: 48px !important;
-      min-height: 0 !important;
-      width: auto !important;
-      max-width: min(96vw, 720px) !important;
-      vertical-align: middle !important;
-      object-fit: contain !important;
-      display: inline-block !important;
-      margin: 2px 4px !important;
-      padding: 0 !important;
-      border: none !important;
-      background: transparent !important;
+      height: auto !important; max-height: 48px !important; width: auto !important;
+      max-width: min(96vw, 720px) !important; vertical-align: middle !important;
+      object-fit: contain !important; display: inline-block !important;
+      margin: 2px 4px !important; border: none !important; background: transparent !important;
     }
-    .pq-question-text span.eq-math,
-    .pq-option-text span.eq-math {
-      display: inline !important;
-      height: auto !important;
-      max-height: none !important;
-      margin: 0 !important;
-    }
-    .pq-question-text .katex,
-    .pq-option-text .katex {
-      font-size: 1.05em !important;
-    }
+    .pq-question-text .katex, .pq-option-text .katex { font-size: 1.05em !important; }
 
     .pq-text-answer textarea {
-      width: 100%; min-height: 90px; padding: 10px 12px; border-radius: 8px; border: 1.5px solid #e0e3f5;
-      font-size: 0.92rem; font-family: inherit; resize: vertical;
+      width: 100%; min-height: 110px; padding: 14px 16px; border-radius: 14px;
+      border: 1.5px solid #e2e8f0; font-size: 0.95rem; font-family: inherit; resize: vertical;
+      background: linear-gradient(180deg, #fff, #fafbff); color: var(--pq-ink);
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .pq-text-answer textarea:focus { outline: none; border-color: #5b6fd8; }
-    .pq-hint { font-size: 0.78rem; color: #999; margin-top: 6px; }
+    .pq-text-answer textarea:focus {
+      outline: none; border-color: #818cf8;
+      box-shadow: var(--pq-glow);
+    }
+    .pq-hint { font-size: 0.76rem; color: #94a3b8; margin-top: 8px; }
 
-    .pq-nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee; }
+    .pq-nav-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 1rem 1.4rem;
+      border-top: 1px solid #eef2ff;
+      background: linear-gradient(180deg, #fafaff 0%, #f8fafc 100%);
+    }
     .pq-nav-btn {
-      background: #f0f1f8; color: #444; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer;
-      font-size: 0.85rem; font-weight: 600;
+      background: #fff; color: var(--pq-ink-2); border: 1.5px solid #e2e8f0;
+      padding: 10px 20px; min-width: 118px;
+      border-radius: 12px; cursor: pointer; font-size: 0.86rem; font-weight: 650; font-family: inherit;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+      transition: background .14s, border-color .14s, transform .14s, box-shadow .14s;
     }
-    .pq-nav-btn:hover { background: #e4e6f5; }
-    .pq-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pq-nav-btn:hover:not(:disabled) {
+      background: #f5f3ff; border-color: #a5b4fc; color: #4338ca;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.12);
+    }
+    .pq-nav-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+    .pq-nav-center { display: flex; gap: 10px; align-items: center; }
     .pq-submit-btn {
-      background: #4caf7d; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer;
-      font-size: 0.9rem; font-weight: 700;
+      background: linear-gradient(135deg, #0d9488 0%, #059669 50%, #10b981 100%);
+      color: white; border: none;
+      padding: 11px 26px; border-radius: 12px; cursor: pointer;
+      font-size: 0.88rem; font-weight: 700; font-family: inherit;
+      letter-spacing: 0.01em;
+      box-shadow: 0 8px 22px rgba(16, 185, 129, 0.32);
+      transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
     }
-    .pq-submit-btn:hover { background: #3d9968; }
+    .pq-submit-btn:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(16, 185, 129, 0.4);
+    }
 
-    @media (max-width: 900px) {
-      .pq-workspace { grid-template-columns: 1fr; }
-      .pq-qlist { max-height: 240px; }
+    /* Right sidebar */
+    .pq-side {
+      border-left: 1px solid rgba(226, 232, 240, 0.8);
+      background: transparent;
+      padding: 1.25rem 1.05rem 1.5rem;
+      position: sticky;
+      top: 172px;
+      align-self: start;
+      max-height: calc(100vh - 180px);
+      overflow-y: auto;
+    }
+    .pq-side-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      border-radius: 16px;
+      padding: 15px;
+      margin-bottom: 12px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+      transition: transform 0.18s, box-shadow 0.18s;
+    }
+    .pq-side-card:hover {
+      box-shadow: 0 12px 30px rgba(79, 70, 229, 0.08);
+    }
+    .pq-side-card h3 {
+      margin: 0 0 12px; font-size: 0.68rem; font-weight: 800; color: #818cf8;
+      text-transform: uppercase; letter-spacing: 0.09em;
+    }
+
+    /* Summary hero card */
+    .pq-side-card.pq-summary-card {
+      background:
+        radial-gradient(120px 80px at 100% 0%, rgba(244, 114, 182, 0.35), transparent 60%),
+        radial-gradient(100px 70px at 0% 100%, rgba(52, 211, 191, 0.28), transparent 55%),
+        linear-gradient(155deg, #4338ca 0%, #4f46e5 35%, #7c3aed 72%, #a855f7 100%);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #fff;
+      box-shadow: 0 16px 40px rgba(79, 70, 229, 0.38), inset 0 1px 0 rgba(255,255,255,0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .pq-side-card.pq-summary-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 48px rgba(79, 70, 229, 0.45), inset 0 1px 0 rgba(255,255,255,0.22);
+    }
+    .pq-side-card.pq-summary-card::before {
+      content: "";
+      position: absolute;
+      width: 140px; height: 140px; border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      top: -48px; right: -36px;
+      pointer-events: none;
+    }
+    .pq-side-card.pq-summary-card::after {
+      content: "";
+      position: absolute;
+      width: 90px; height: 90px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      bottom: -28px; left: -18px;
+      pointer-events: none;
+    }
+    .pq-side-card.pq-summary-card h3 {
+      color: rgba(255,255,255,0.9);
+      position: relative; z-index: 1;
+      letter-spacing: 0.1em;
+    }
+    .pq-side-card.pq-summary-card .pq-stat-grid {
+      position: relative; z-index: 1;
+    }
+    .pq-stat-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .pq-stat {
+      border-radius: 12px; padding: 12px 8px; text-align: center;
+      border: 1px solid var(--pq-line); background: #f8fafc;
+    }
+    .pq-summary-card .pq-stat {
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.22);
+      backdrop-filter: blur(8px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .pq-stat b {
+      display: block; font-size: 1.28rem; font-weight: 800; color: var(--pq-ink);
+      font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+    }
+    .pq-stat span {
+      font-size: 0.6rem; font-weight: 700; color: #64748b;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .pq-summary-card .pq-stat b { color: #fff; }
+    .pq-summary-card .pq-stat span { color: rgba(255,255,255,0.78); }
+    .pq-stat.ok b { color: #0d9488; }
+    .pq-stat.muted b { color: #64748b; }
+    .pq-summary-card .pq-stat.ok {
+      background: rgba(45, 212, 191, 0.26);
+      border-color: rgba(94, 234, 212, 0.4);
+    }
+    .pq-summary-card .pq-stat.ok b { color: #ccfbf1; text-shadow: 0 0 18px rgba(45, 212, 191, 0.5); }
+    .pq-summary-card .pq-stat.muted {
+      background: rgba(255,255,255,0.1);
+    }
+    .pq-summary-card .pq-stat.muted b { color: #e2e8f0; }
+    .pq-summary-card .pq-stat.stat-total {
+      background: rgba(251, 191, 36, 0.22);
+      border-color: rgba(252, 211, 77, 0.4);
+    }
+    .pq-summary-card .pq-stat.stat-total b { color: #fef3c7; }
+    .pq-summary-card .pq-stat.stat-marks {
+      background: rgba(244, 114, 182, 0.22);
+      border-color: rgba(249, 168, 212, 0.4);
+    }
+    .pq-summary-card .pq-stat.stat-marks b { color: #fce7f3; }
+
+    .pq-completion {
+      margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.18);
+      position: relative; z-index: 1;
+    }
+    .pq-completion-head {
+      display: flex; justify-content: space-between; font-size: 0.75rem;
+      color: rgba(255,255,255,0.82); margin-bottom: 8px; font-weight: 600;
+    }
+    .pq-completion-head strong {
+      color: #fff; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .pq-completion-bar {
+      height: 9px; border-radius: 99px; background: rgba(15,23,42,0.25); overflow: hidden;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .pq-completion-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #34d399 0%, #a3e635 35%, #fbbf24 70%, #f472b6 100%);
+      background-size: 200% 100%;
+      animation: pq-shine 2.8s ease infinite;
+      border-radius: 99px;
+      transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      box-shadow: 0 0 14px rgba(52, 211, 153, 0.55);
+    }
+
+    .pq-legend { display: flex; flex-direction: column; gap: 9px; }
+    .pq-legend-row {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 0.78rem; color: #475569; font-weight: 550;
+    }
+    .pq-dot {
+      width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0;
+      border: 1px solid transparent;
+    }
+    .pq-dot.answered { background: linear-gradient(135deg, #99f6e4, #5eead4); border-color: #2dd4bf; }
+    .pq-dot.current { background: linear-gradient(135deg, #a5b4fc, #818cf8); border-color: #6366f1; }
+    .pq-dot.todo { background: #f1f5f9; border-color: #cbd5e1; }
+    .pq-dot.review { background: linear-gradient(135deg, #fde68a, #fbbf24); border-color: #f59e0b; }
+
+    .pq-palette {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .pq-qlist-item {
+      aspect-ratio: 1;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px; border: 1.5px solid #e2e8f0;
+      background: linear-gradient(180deg, #fff, #f8fafc);
+      color: #334155; font-weight: 700; font-size: 0.8rem;
+      cursor: pointer;
+      transition: border-color 0.14s, background 0.14s, color 0.14s, transform 0.14s, box-shadow 0.14s;
+      user-select: none;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    .pq-qlist-item:hover {
+      border-color: #818cf8; background: #eef2ff; color: #4338ca;
+      transform: scale(1.06);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+    }
+    .pq-qlist-item.pq-current {
+      background: linear-gradient(145deg, #4f46e5, #7c3aed);
+      color: #fff; border-color: transparent;
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+    }
+    .pq-qlist-item.pq-answered {
+      background: linear-gradient(145deg, #ccfbf1, #f0fdfa);
+      color: #0f766e; border-color: #5eead4;
+    }
+    .pq-qlist-item.pq-answered.pq-current {
+      background: linear-gradient(145deg, #0f766e, #14b8a6);
+      color: #fff; border-color: transparent;
+      box-shadow: 0 6px 16px rgba(13, 148, 136, 0.4);
+    }
+    .pq-qlist-item.pq-review {
+      background: linear-gradient(145deg, #fffbeb, #fef3c7);
+      color: #b45309; border-color: #fcd34d;
+    }
+    .pq-qlist-item .pq-qnum-badge { display: none; }
+
+    .pq-side-actions {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .pq-side-btn {
+      width: 100%; border: 1.5px solid #e2e8f0;
+      background: linear-gradient(180deg, #fff, #f8fafc);
+      color: #334155;
+      border-radius: 12px; padding: 10px 12px; font-size: 0.8rem; font-weight: 650;
+      cursor: pointer; font-family: inherit; text-align: left;
+      transition: background 0.14s, border-color 0.14s, transform 0.14s, box-shadow 0.14s;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+    }
+    .pq-side-btn:hover {
+      background: #f5f3ff; border-color: #a5b4fc; color: #4338ca;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(79, 70, 229, 0.1);
+    }
+    .pq-side-btn.is-on {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border-color: #fbbf24; color: #92400e;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18);
+    }
+    .pq-kbd-hint {
+      margin-top: 6px; font-size: 0.7rem; color: #94a3b8; line-height: 1.5;
+    }
+    .pq-kbd-hint kbd {
+      display: inline-block; padding: 2px 6px; border: 1px solid #e2e8f0;
+      border-radius: 6px; background: linear-gradient(180deg, #fff, #f1f5f9);
+      font-size: 0.68rem; color: #64748b;
+      font-family: ui-monospace, monospace;
+      box-shadow: 0 1px 0 #e2e8f0;
+    }
+
+    /* Calculator */
+    .pq-calc {
+      position: fixed; right: 20px; bottom: 20px; width: 320px; z-index: 1200;
+      background: #1e1e2e; color: #fff; border-radius: 18px;
+      box-shadow: 0 20px 56px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08);
+      overflow: hidden; display: none; user-select: none;
+    }
+    .pq-calc.is-open { display: block; animation: pq-float-in 0.22s ease-out; }
+    .pq-calc-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 14px;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%);
+      cursor: move;
+    }
+    .pq-calc-head strong { font-size: 0.88rem; font-weight: 700; }
+    .pq-calc-head-actions { display: flex; gap: 6px; }
+    .pq-calc-icon-btn {
+      width: 28px; height: 28px; border: none; border-radius: 8px;
+      background: rgba(255,255,255,0.18); color: #fff; cursor: pointer; font-weight: 700;
+    }
+    .pq-calc-icon-btn:hover { background: rgba(255,255,255,0.28); }
+    .pq-calc-display { padding: 12px 14px 10px; background: #161622; min-height: 78px; text-align: right; }
+    .pq-calc-expr { min-height: 1.2em; font-size: 0.82rem; color: #a0a3b8; word-break: break-all; margin-bottom: 4px; }
+    .pq-calc-result { font-size: 1.65rem; font-weight: 700; color: #fff; word-break: break-all; font-variant-numeric: tabular-nums; }
+    .pq-calc-result.is-error { color: #f87171; font-size: 1.05rem; }
+    .pq-calc-keys { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 10px; background: #1e1e2e; }
+    .pq-calc-keys button {
+      border: none; border-radius: 10px; min-height: 42px; font-size: 0.88rem; font-weight: 650;
+      cursor: pointer; font-family: inherit; color: #eef0ff; background: #2a2a3d;
+      transition: transform 0.1s, background 0.12s;
+    }
+    .pq-calc-keys button:hover { background: #35354d; transform: scale(1.03); }
+    .pq-calc-keys button.fn { background: #25253a; color: #b8c0ff; font-size: 0.78rem; }
+    .pq-calc-keys button.op { background: #3b3b5c; }
+    .pq-calc-keys button.eq { background: linear-gradient(135deg, #4f46e5, #7c3aed); grid-column: span 2; }
+    .pq-calc-keys button.danger { background: #3a2430; color: #fca5a5; }
+    .pq-calc-hint { padding: 0 12px 10px; font-size: 0.7rem; color: #7c8098; text-align: center; }
+
+    @media (max-width: 980px) {
+      .pq-body { grid-template-columns: 1fr; }
+      .pq-side {
+        position: relative; top: 0; max-height: none; border-left: none;
+        border-top: 1px solid var(--pq-line); order: 2;
+        background: linear-gradient(180deg, #f8fafc, #eef2ff);
+      }
+      .pq-main { order: 1; }
+      .pq-panel { min-height: auto; }
+      .pq-palette { grid-template-columns: repeat(8, 1fr); }
+      .pq-options { grid-template-columns: 1fr 1fr; }
+      footer { display: block !important; }
+    }
+    @media (max-width: 640px) {
+      .pq-topbar { padding: 0.75rem 1rem; }
+      .pq-status-strip { padding: 0.4rem 1rem; }
+      .pq-main { padding: 0.85rem; }
+      .pq-palette { grid-template-columns: repeat(5, 1fr); }
+      .pq-meta-pills { width: 100%; justify-content: flex-end; }
+      .pq-options { grid-template-columns: 1fr; }
+      .pq-calc { right: 10px; left: 10px; bottom: 10px; width: auto; max-width: 360px; margin: 0 auto; }
     }
   </style>
 {% endblock %}
 
 {% block content %}
-<div class="pq-wrap" style="margin: 20px auto; padding: 0 20px;">
-  <div class="pq-header">
-    <h1>▶ Practicing: {{ exam.name }}</h1>
-    <div class="pq-progress"><span id="answeredCount">0</span> / {{ exam_questions|length }} answered</div>
-    <div class="pq-timer" id="pqTimer">00:00</div>
+<div class="pq-shell">
+  <div class="pq-status-strip">
+    <div>
+      <strong>Study Nation Assessment</strong>
+      <span class="sep">|</span>
+      Practice mode
+      <span class="sep">|</span>
+      Focus session
+    </div>
+    <div class="pq-status-live">Live</div>
+  </div>
+
+  <div class="pq-topbar">
+    <div class="pq-topbar-left">
+      <div class="pq-exam-chip" aria-hidden="true">SN</div>
+      <div>
+        <h1 title="{{ exam.name }}">{{ exam.name }}</h1>
+        <div class="pq-topbar-sub">
+          <span>Practice assessment</span>
+          <span class="dot"></span>
+          <span><span id="answeredCount">0</span> of {{ exam_questions|length }} answered</span>
+          <span class="dot"></span>
+          <span>{{ exam_questions|length }} questions</span>
+        </div>
+      </div>
+    </div>
+    <div class="pq-topbar-right">
+      <button type="button" class="pq-calc-toggle" id="pqCalcToggle" onclick="togglePracticeCalculator()">
+        <span aria-hidden="true">⌨</span> Calculator
+      </button>
+      <div class="pq-meta-pills">
+        <div class="pq-meta-pill">
+          <label>Answered</label>
+          <b><span id="topAnswered">0</span>/{{ exam_questions|length }}</b>
+        </div>
+        <div class="pq-meta-pill">
+          <label>Elapsed</label>
+          <b class="pq-timer" id="pqTimer">00:00</b>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pq-progress-track" aria-hidden="true">
+    <div class="pq-progress-fill" id="pqProgressFill"></div>
+  </div>
+
+  <!-- Full scientific calculator -->
+  <div class="pq-calc" id="pqCalculator" aria-label="Scientific calculator" role="dialog">
+    <div class="pq-calc-head" id="pqCalcDragHandle">
+      <strong>Full Calculator</strong>
+      <div class="pq-calc-head-actions">
+        <button type="button" class="pq-calc-icon-btn" onclick="calcClearAll()" title="Clear all">C</button>
+        <button type="button" class="pq-calc-icon-btn" onclick="togglePracticeCalculator(false)" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="pq-calc-display">
+      <div class="pq-calc-expr" id="pqCalcExpr"></div>
+      <div class="pq-calc-result" id="pqCalcResult">0</div>
+    </div>
+    <div class="pq-calc-keys" id="pqCalcKeys">
+      <button type="button" class="fn" data-fn="sin">sin</button>
+      <button type="button" class="fn" data-fn="cos">cos</button>
+      <button type="button" class="fn" data-fn="tan">tan</button>
+      <button type="button" class="fn" data-fn="log">log</button>
+      <button type="button" class="fn" data-fn="ln">ln</button>
+      <button type="button" class="fn" data-fn="asin">sin⁻¹</button>
+      <button type="button" class="fn" data-fn="acos">cos⁻¹</button>
+      <button type="button" class="fn" data-fn="atan">tan⁻¹</button>
+      <button type="button" class="fn" data-fn="sqrt">√</button>
+      <button type="button" class="fn" data-fn="square">x²</button>
+      <button type="button" class="fn" data-fn="pow">xʸ</button>
+      <button type="button" class="fn" data-fn="inv">1/x</button>
+      <button type="button" class="fn" data-fn="fact">n!</button>
+      <button type="button" class="fn" data-fn="abs">|x|</button>
+      <button type="button" class="fn" data-fn="exp">eˣ</button>
+      <button type="button" class="fn" data-const="pi">π</button>
+      <button type="button" class="fn" data-const="e">e</button>
+      <button type="button" class="op" data-key="(">(</button>
+      <button type="button" class="op" data-key=")">)</button>
+      <button type="button" class="danger" data-action="back">⌫</button>
+      <button type="button" data-key="7">7</button>
+      <button type="button" data-key="8">8</button>
+      <button type="button" data-key="9">9</button>
+      <button type="button" class="op" data-key="/">÷</button>
+      <button type="button" class="danger" data-action="ac">AC</button>
+      <button type="button" data-key="4">4</button>
+      <button type="button" data-key="5">5</button>
+      <button type="button" data-key="6">6</button>
+      <button type="button" class="op" data-key="*">×</button>
+      <button type="button" class="op" data-key="%">%</button>
+      <button type="button" data-key="1">1</button>
+      <button type="button" data-key="2">2</button>
+      <button type="button" data-key="3">3</button>
+      <button type="button" class="op" data-key="-">−</button>
+      <button type="button" class="fn" data-fn="neg">±</button>
+      <button type="button" data-key="0">0</button>
+      <button type="button" data-key=".">.</button>
+      <button type="button" class="op" data-key="+">+</button>
+      <button type="button" class="eq" data-action="eq">=</button>
+    </div>
+    <div class="pq-calc-hint">Scientific mode · Degrees · Drag header to move</div>
   </div>
 
   <form id="practiceForm" method="post" action="{% url 'courses:student_practice_submit' exam.id %}">
     {% csrf_token %}
     <input type="hidden" name="started_at" value="{{ started_at_iso }}" />
 
-    <div class="pq-workspace">
-      <div class="pq-qlist" id="pqList">
-        {% for eq in exam_questions %}
-          <div class="pq-qlist-item {% if forloop.first %}pq-current{% endif %}" data-index="{{ forloop.counter0 }}" onclick="goToQuestion({{ forloop.counter0 }})">
-            <span>Q{{ forloop.counter }}</span>
-            <span class="pq-qnum-badge">{{ forloop.counter }}</span>
+    <div class="pq-body">
+      <div class="pq-main">
+        <div class="pq-panel">
+          <div class="pq-q-meta">
+            <div class="pq-q-title">
+              <span class="pill" id="pqCurrentLabel">Question 1</span>
+              <span class="muted" id="pqProgressLabel">1 of {{ exam_questions|length }}</span>
+            </div>
+            <div class="pq-marks-badges">
+              <span class="pq-mark-plus" id="pqMarksPlus">Marks: 1</span>
+            </div>
           </div>
-        {% endfor %}
-      </div>
 
-      <div class="pq-panel">
-        <div class="pq-question-block" id="pqQuestionBlock">
-          {% for eq in exam_questions %}
-            {% with q=eq.question %}
-              <div class="pq-question" data-index="{{ forloop.counter0 }}" style="{% if not forloop.first %}display:none;{% endif %}">
-                {% if q.topic %}<div class="pq-topic"><strong>Topic(s):</strong> {{ q.topic }}</div>{% endif %}
-                <div class="pq-question-text">{{ q.question_text|safe_html_stem }}</div>
-                {% if q.equation_image_list and '<img' not in q.question_text %}
-                  <div class="pq-equation-images">
-                    <div class="pq-hint" style="margin-bottom:6px;">Embedded formulas from the original document:</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; align-items:center;">
-                      {% for img in q.equation_image_list %}
-                        <img src="{{ img }}" alt="" class="eq-math-img" style="height:auto!important;max-height:48px!important;width:auto!important;vertical-align:middle;object-fit:contain;" decoding="async" />
-                      {% endfor %}
-                    </div>
-                  </div>
-                {% endif %}
-                <div class="pq-marks">[{{ q.marks }} mark{{ q.marks|pluralize }}]</div>
-
-                {% with dyn_opts=q.options.all %}
-                  {% if q.question_type == 'multiple_choice' or q.answer_type == 'multiple' %}
-                    <div class="pq-options" data-qid="{{ q.id }}" data-mode="multi">
-                      {% if dyn_opts %}
-                        {% for opt in dyn_opts %}
-                          <div class="pq-option" data-letter-index="{{ forloop.counter0 }}" onclick="toggleMultiOption(this)">
-                            <span class="pq-option-letter"></span>
-                            <span class="pq-option-text">{{ opt.text|safe_html_option }}</span>
-                          </div>
+          <div class="pq-question-block" id="pqQuestionBlock">
+            {% for eq in exam_questions %}
+              {% with q=eq.question %}
+                <div class="pq-question" data-index="{{ forloop.counter0 }}" data-marks="{{ q.marks|default:1 }}" style="{% if not forloop.first %}display:none;{% endif %}">
+                  {% if q.topic %}<div class="pq-topic">Topic · {{ q.topic }}</div>{% endif %}
+                  <div class="pq-question-text">{{ q.question_text|safe_html_stem }}</div>
+                  {% if q.equation_image_list and '<img' not in q.question_text %}
+                    <div class="pq-equation-images">
+                      <div class="pq-hint" style="margin-bottom:6px;">Embedded formulas from the original document:</div>
+                      <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; align-items:center;">
+                        {% for img in q.equation_image_list %}
+                          <img src="{{ img }}" alt="" class="eq-math-img" style="height:auto!important;max-height:48px!important;width:auto!important;vertical-align:middle;object-fit:contain;" decoding="async" />
                         {% endfor %}
-                      {% else %}
-                        {% if q.option_a %}<div class="pq-option" data-value="A" onclick="toggleMultiOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
-                        {% if q.option_b %}<div class="pq-option" data-value="B" onclick="toggleMultiOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
-                        {% if q.option_c %}<div class="pq-option" data-value="C" onclick="toggleMultiOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
-                        {% if q.option_d %}<div class="pq-option" data-value="D" onclick="toggleMultiOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
-                      {% endif %}
-                    </div>
-                    <div class="pq-hint">Select all that apply.</div>
-                  {% elif q.option_a or q.option_b or q.option_c or q.option_d or dyn_opts or q.question_type == 'single_choice' or q.question_type == 'true_false' or q.question_type == 'mcq' or q.question_type == 'comprehension' %}
-                    <div class="pq-options" data-qid="{{ q.id }}" data-mode="single">
-                      {% if dyn_opts %}
-                        {% for opt in dyn_opts %}
-                          <div class="pq-option" data-letter-index="{{ forloop.counter0 }}" onclick="selectOption(this)">
-                            <span class="pq-option-letter"></span>
-                            <span class="pq-option-text">{{ opt.text|safe_html_option }}</span>
-                          </div>
-                        {% endfor %}
-                      {% else %}
-                        {% if q.option_a %}<div class="pq-option" data-value="A" onclick="selectOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
-                        {% if q.option_b %}<div class="pq-option" data-value="B" onclick="selectOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
-                        {% if q.option_c %}<div class="pq-option" data-value="C" onclick="selectOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
-                        {% if q.option_d %}<div class="pq-option" data-value="D" onclick="selectOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
-                      {% endif %}
-                    </div>
-                  {% else %}
-                    <div class="pq-text-answer">
-                      <textarea data-qid="{{ q.id }}" placeholder="Type your answer..." oninput="onTextAnswerInput(this)"></textarea>
-                    </div>
-                    <div class="pq-hint">
-                      {% if q.question_type == 'numerical' or q.question_type == 'integer' %}Enter a number.{% else %}Free-text answers are matched against the answer key as a best-effort check.{% endif %}
+                      </div>
                     </div>
                   {% endif %}
-                {% endwith %}
 
-                <input type="hidden" name="answer_{{ q.id }}" id="answerField_{{ q.id }}" value="" />
-              </div>
-            {% endwith %}
-          {% endfor %}
-        </div>
+                  {% with dyn_opts=q.options.all %}
+                    {% if q.question_type == 'multiple_choice' or q.answer_type == 'multiple' %}
+                      <div class="pq-options-label">Select all that apply</div>
+                      <div class="pq-options" data-qid="{{ q.id }}" data-mode="multi">
+                        {% if dyn_opts %}
+                          {% for opt in dyn_opts %}
+                            <div class="pq-option" data-letter-index="{{ forloop.counter0 }}" onclick="toggleMultiOption(this)">
+                              <span class="pq-option-letter"></span>
+                              <span class="pq-option-text">{{ opt.text|safe_html_option }}</span>
+                            </div>
+                          {% endfor %}
+                        {% else %}
+                          {% if q.option_a %}<div class="pq-option" data-value="A" onclick="toggleMultiOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
+                          {% if q.option_b %}<div class="pq-option" data-value="B" onclick="toggleMultiOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
+                          {% if q.option_c %}<div class="pq-option" data-value="C" onclick="toggleMultiOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
+                          {% if q.option_d %}<div class="pq-option" data-value="D" onclick="toggleMultiOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
+                        {% endif %}
+                      </div>
+                    {% elif q.option_a or q.option_b or q.option_c or q.option_d or dyn_opts or q.question_type == 'single_choice' or q.question_type == 'true_false' or q.question_type == 'mcq' or q.question_type == 'comprehension' %}
+                      <div class="pq-options-label">Choose the correct option</div>
+                      <div class="pq-options" data-qid="{{ q.id }}" data-mode="single">
+                        {% if dyn_opts %}
+                          {% for opt in dyn_opts %}
+                            <div class="pq-option" data-letter-index="{{ forloop.counter0 }}" onclick="selectOption(this)">
+                              <span class="pq-option-letter"></span>
+                              <span class="pq-option-text">{{ opt.text|safe_html_option }}</span>
+                            </div>
+                          {% endfor %}
+                        {% else %}
+                          {% if q.option_a %}<div class="pq-option" data-value="A" onclick="selectOption(this)"><span class="pq-option-letter">A</span><span class="pq-option-text">{{ q.option_a|safe_html_option }}</span></div>{% endif %}
+                          {% if q.option_b %}<div class="pq-option" data-value="B" onclick="selectOption(this)"><span class="pq-option-letter">B</span><span class="pq-option-text">{{ q.option_b|safe_html_option }}</span></div>{% endif %}
+                          {% if q.option_c %}<div class="pq-option" data-value="C" onclick="selectOption(this)"><span class="pq-option-letter">C</span><span class="pq-option-text">{{ q.option_c|safe_html_option }}</span></div>{% endif %}
+                          {% if q.option_d %}<div class="pq-option" data-value="D" onclick="selectOption(this)"><span class="pq-option-letter">D</span><span class="pq-option-text">{{ q.option_d|safe_html_option }}</span></div>{% endif %}
+                        {% endif %}
+                      </div>
+                    {% else %}
+                      <div class="pq-text-answer">
+                        <textarea data-qid="{{ q.id }}" placeholder="Type your answer..." oninput="onTextAnswerInput(this)"></textarea>
+                      </div>
+                      <div class="pq-hint">
+                        {% if q.question_type == 'numerical' or q.question_type == 'integer' %}Enter a number.{% else %}Free-text answers are matched against the answer key as a best-effort check.{% endif %}
+                      </div>
+                    {% endif %}
+                  {% endwith %}
 
-        <div class="pq-nav-row">
-          <button type="button" class="pq-nav-btn" id="pqPrevBtn" onclick="navQuestion(-1)" disabled>← Previous</button>
-          <button type="button" class="pq-nav-btn" id="pqNextBtn" onclick="navQuestion(1)">Next →</button>
-          <button type="button" class="pq-submit-btn" onclick="confirmSubmit()">✓ Submit Practice</button>
+                  <input type="hidden" name="answer_{{ q.id }}" id="answerField_{{ q.id }}" value="" />
+                </div>
+              {% endwith %}
+            {% endfor %}
+          </div>
+
+          <div class="pq-nav-row">
+            <button type="button" class="pq-nav-btn" id="pqPrevBtn" onclick="navQuestion(-1)" disabled>← Previous</button>
+            <div class="pq-nav-center">
+              <button type="button" class="pq-submit-btn" onclick="confirmSubmit()">Submit assessment</button>
+            </div>
+            <button type="button" class="pq-nav-btn" id="pqNextBtn" onclick="navQuestion(1)">Next →</button>
+          </div>
         </div>
       </div>
+
+      <aside class="pq-side">
+        <div class="pq-side-card pq-summary-card">
+          <h3>Your progress</h3>
+          <div class="pq-stat-grid">
+            <div class="pq-stat ok"><b id="sideAnswered">0</b><span>Answered</span></div>
+            <div class="pq-stat muted"><b id="sideLeft">{{ exam_questions|length }}</b><span>Remaining</span></div>
+            <div class="pq-stat stat-total"><b>{{ exam_questions|length }}</b><span>Total</span></div>
+            <div class="pq-stat stat-marks"><b id="sideMarks">1</b><span>Q marks</span></div>
+          </div>
+          <div class="pq-completion">
+            <div class="pq-completion-head">
+              <span>Completion</span>
+              <strong id="sidePct">0%</strong>
+            </div>
+            <div class="pq-completion-bar">
+              <div class="pq-completion-fill" id="sidePctFill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pq-side-card">
+          <h3>Question map</h3>
+          <div class="pq-palette" id="pqList">
+            {% for eq in exam_questions %}
+              <div
+                class="pq-qlist-item {% if forloop.first %}pq-current{% endif %}"
+                data-index="{{ forloop.counter0 }}"
+                onclick="goToQuestion({{ forloop.counter0 }})"
+                title="Question {{ forloop.counter }}"
+                role="button"
+                tabindex="0"
+              >
+                {{ forloop.counter }}
+                <span class="pq-qnum-badge">{{ forloop.counter }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="pq-side-card">
+          <h3>Status key</h3>
+          <div class="pq-legend">
+            <div class="pq-legend-row"><span class="pq-dot current"></span> Current</div>
+            <div class="pq-legend-row"><span class="pq-dot answered"></span> Answered</div>
+            <div class="pq-legend-row"><span class="pq-dot review"></span> Marked for review</div>
+            <div class="pq-legend-row"><span class="pq-dot todo"></span> Not answered</div>
+          </div>
+        </div>
+
+        <div class="pq-side-card">
+          <h3>Actions</h3>
+          <div class="pq-side-actions">
+            <button type="button" class="pq-side-btn" id="pqReviewBtn" onclick="toggleMarkReview()">
+              Mark for review
+            </button>
+            <button type="button" class="pq-side-btn" onclick="clearCurrentAnswer()">
+              Clear response
+            </button>
+          </div>
+          <div class="pq-kbd-hint">
+            Shortcuts: <kbd>←</kbd> <kbd>→</kbd> navigate · <kbd>A</kbd>–<kbd>D</kbd> select · <kbd>R</kbd> review
+          </div>
+        </div>
+      </aside>
     </div>
   </form>
 </div>
@@ -223,15 +966,22 @@
   const TOTAL_QUESTIONS = {{ exam_questions|length }};
   let currentIndex = 0;
   const answeredIds = new Set();
+  const reviewIds = new Set(); // question indices marked for review
 
   function letterFromIndex(i) {
     return String.fromCharCode(65 + (parseInt(i, 10) || 0));
   }
 
-  // Assign A/B/C… for dynamic options that only have data-letter-index
   function labelOptionLetters() {
     document.querySelectorAll('.pq-options').forEach(function (group) {
-      group.querySelectorAll('.pq-option').forEach(function (opt, idx) {
+      var opts = group.querySelectorAll('.pq-option');
+      // 3 or fewer options: stack in one column; 4+ use 2×2 grid
+      if (opts.length > 0 && opts.length <= 2) {
+        group.classList.add('pq-opts-stack');
+      } else {
+        group.classList.remove('pq-opts-stack');
+      }
+      opts.forEach(function (opt, idx) {
         var letter = opt.dataset.value;
         if (!letter && opt.dataset.letterIndex !== undefined) {
           letter = letterFromIndex(opt.dataset.letterIndex);
@@ -245,8 +995,69 @@
   }
 
   function updateAnsweredCount() {
-    document.getElementById('answeredCount').textContent = answeredIds.size;
+    var n = answeredIds.size;
+    var pct = TOTAL_QUESTIONS ? Math.round((100 * n) / TOTAL_QUESTIONS) : 0;
+    var el = document.getElementById('answeredCount');
+    if (el) el.textContent = n;
+    var topA = document.getElementById('topAnswered');
+    if (topA) topA.textContent = n;
+    var sideA = document.getElementById('sideAnswered');
+    var sideL = document.getElementById('sideLeft');
+    if (sideA) sideA.textContent = n;
+    if (sideL) sideL.textContent = Math.max(0, TOTAL_QUESTIONS - n);
+    var sidePct = document.getElementById('sidePct');
+    var sideFill = document.getElementById('sidePctFill');
+    var topFill = document.getElementById('pqProgressFill');
+    if (sidePct) sidePct.textContent = pct + '%';
+    if (sideFill) sideFill.style.width = pct + '%';
+    if (topFill) topFill.style.width = pct + '%';
   }
+
+  function updateMeta(index) {
+    var qEl = document.querySelector('.pq-question[data-index="' + index + '"]');
+    var marks = qEl ? (qEl.dataset.marks || '1') : '1';
+    var label = document.getElementById('pqCurrentLabel');
+    var prog = document.getElementById('pqProgressLabel');
+    var plus = document.getElementById('pqMarksPlus');
+    if (label) label.textContent = 'Question ' + (index + 1);
+    if (prog) prog.textContent = (index + 1) + ' of ' + TOTAL_QUESTIONS;
+    if (plus) plus.textContent = 'Marks: ' + marks;
+    var sideM = document.getElementById('sideMarks');
+    if (sideM) sideM.textContent = marks;
+    var revBtn = document.getElementById('pqReviewBtn');
+    if (revBtn) {
+      var on = reviewIds.has(String(index));
+      revBtn.classList.toggle('is-on', on);
+      revBtn.textContent = on ? 'Remove review mark' : 'Mark for review';
+    }
+  }
+
+  function syncReviewClass(index) {
+    var item = document.querySelector('.pq-qlist-item[data-index="' + index + '"]');
+    if (!item) return;
+    item.classList.toggle('pq-review', reviewIds.has(String(index)));
+  }
+
+  window.toggleMarkReview = function () {
+    var key = String(currentIndex);
+    if (reviewIds.has(key)) reviewIds.delete(key);
+    else reviewIds.add(key);
+    syncReviewClass(currentIndex);
+    updateMeta(currentIndex);
+  };
+
+  window.clearCurrentAnswer = function () {
+    var qEl = document.querySelector('.pq-question[data-index="' + currentIndex + '"]');
+    if (!qEl) return;
+    var hidden = qEl.querySelector('input[type="hidden"][id^="answerField_"]');
+    if (!hidden) return;
+    var qid = hidden.id.replace('answerField_', '');
+    hidden.value = '';
+    qEl.querySelectorAll('.pq-option').forEach(function (o) { o.classList.remove('pq-selected'); });
+    var ta = qEl.querySelector('textarea');
+    if (ta) ta.value = '';
+    unmarkAnswered(qid);
+  };
 
   function selectOption(el) {
     const group = el.parentElement;
@@ -273,9 +1084,8 @@
   }
 
   function markAnswered(qid) {
-    answeredIds.add(qid);
+    answeredIds.add(String(qid));
     updateAnsweredCount();
-    const item = document.querySelector(`.pq-qlist-item[data-index]`);
     document.querySelectorAll('.pq-question').forEach(q => {
       if (q.querySelector(`[data-qid="${qid}"]`) || q.querySelector(`#answerField_${qid}`)) {
         const idx = q.dataset.index;
@@ -286,7 +1096,7 @@
   }
 
   function unmarkAnswered(qid) {
-    answeredIds.delete(qid);
+    answeredIds.delete(String(qid));
     updateAnsweredCount();
     document.querySelectorAll('.pq-question').forEach(q => {
       if (q.querySelector(`#answerField_${qid}`)) {
@@ -307,6 +1117,7 @@
     currentIndex = index;
     document.getElementById('pqPrevBtn').disabled = (index === 0);
     document.getElementById('pqNextBtn').disabled = (index === TOTAL_QUESTIONS - 1);
+    updateMeta(index);
     if (window.MathJax && window.MathJax.typesetPromise) {
       window.MathJax.typesetPromise([document.getElementById('pqQuestionBlock')]);
     }
@@ -322,15 +1133,43 @@
 
   function confirmSubmit() {
     const unanswered = TOTAL_QUESTIONS - answeredIds.size;
-    const msg = unanswered > 0
-      ? `You have ${unanswered} unanswered question(s). Submit anyway?`
-      : 'Submit your answers now?';
+    const reviewCount = reviewIds.size;
+    var msg = 'Submit this assessment now?';
+    if (unanswered > 0 || reviewCount > 0) {
+      msg = 'You have ' + unanswered + ' unanswered question(s)';
+      if (reviewCount > 0) msg += ' and ' + reviewCount + ' marked for review';
+      msg += '. Submit anyway?';
+    }
     if (confirm(msg)) {
       document.getElementById('practiceForm').submit();
     }
   }
 
-  // Timer — counts up from page load.
+  // Keyboard shortcuts (skip when typing / calculator open)
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+    var calc = document.getElementById('pqCalculator');
+    if (calc && calc.classList.contains('is-open')) return;
+
+    if (e.key === 'ArrowLeft') { e.preventDefault(); navQuestion(-1); return; }
+    if (e.key === 'ArrowRight') { e.preventDefault(); navQuestion(1); return; }
+    if (e.key === 'r' || e.key === 'R') { e.preventDefault(); toggleMarkReview(); return; }
+
+    var letter = e.key.toUpperCase();
+    if (letter >= 'A' && letter <= 'D') {
+      var qEl = document.querySelector('.pq-question[data-index="' + currentIndex + '"]');
+      if (!qEl) return;
+      var group = qEl.querySelector('.pq-options');
+      if (!group) return;
+      var opt = group.querySelector('.pq-option[data-value="' + letter + '"]');
+      if (!opt) return;
+      e.preventDefault();
+      if (group.dataset.mode === 'multi') toggleMultiOption(opt);
+      else selectOption(opt);
+    }
+  });
+
   let elapsedSeconds = 0;
   setInterval(() => {
     elapsedSeconds++;
@@ -340,6 +1179,8 @@
   }, 1000);
 
   labelOptionLetters();
+  updateMeta(0);
+  updateAnsweredCount();
 
   if (window.MathJax && window.MathJax.typesetPromise) {
     window.MathJax.typesetPromise();
@@ -347,5 +1188,205 @@
   if (typeof window.eqSizeInlineImages === 'function') {
     window.eqSizeInlineImages(document.getElementById('pqQuestionBlock'));
   }
+
+  // ==================== FULL CALCULATOR ====================
+  (function initPracticeCalculator() {
+    var panel = document.getElementById('pqCalculator');
+    var exprEl = document.getElementById('pqCalcExpr');
+    var resultEl = document.getElementById('pqCalcResult');
+    var toggleBtn = document.getElementById('pqCalcToggle');
+    var keys = document.getElementById('pqCalcKeys');
+    if (!panel || !exprEl || !resultEl || !keys) return;
+
+    var expr = '';
+    var justEvaluated = false;
+
+    function deg2rad(d) { return d * Math.PI / 180; }
+    function rad2deg(r) { return r * 180 / Math.PI; }
+
+    function factorial(n) {
+      if (n < 0 || !Number.isFinite(n) || Math.floor(n) !== n) throw new Error('n! needs whole ≥ 0');
+      if (n > 170) throw new Error('Overflow');
+      var r = 1;
+      for (var i = 2; i <= n; i++) r *= i;
+      return r;
+    }
+
+    function formatNumber(n) {
+      if (!Number.isFinite(n)) return String(n);
+      if (Math.abs(n) !== 0 && (Math.abs(n) >= 1e10 || Math.abs(n) < 1e-8)) {
+        return n.toExponential(8).replace(/\.?0+e/, 'e');
+      }
+      return Number(n.toPrecision(12)).toString();
+    }
+
+    function evaluateExpression(raw) {
+      var s = String(raw || '').trim();
+      if (!s) return 0;
+      s = s.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/π/g, 'pi').replace(/\^/g, '**');
+      s = s.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+      var check = s.replace(/\*\*/g, '*');
+      if (!/^[0-9+\-*/().,\sA-Za-z_]+$/.test(check)) throw new Error('Invalid characters');
+
+      var fns = {
+        sin: function (x) { return Math.sin(deg2rad(x)); },
+        cos: function (x) { return Math.cos(deg2rad(x)); },
+        tan: function (x) { return Math.tan(deg2rad(x)); },
+        asin: function (x) { return rad2deg(Math.asin(x)); },
+        acos: function (x) { return rad2deg(Math.acos(x)); },
+        atan: function (x) { return rad2deg(Math.atan(x)); },
+        log: function (x) { return Math.log10(x); },
+        ln: function (x) { return Math.log(x); },
+        sqrt: function (x) { return Math.sqrt(x); },
+        abs: function (x) { return Math.abs(x); },
+        exp: function (x) { return Math.exp(x); },
+        pow: function (a, b) { return Math.pow(a, b); },
+        fact: factorial,
+        pi: Math.PI,
+        e: Math.E
+      };
+
+      var code = s;
+      if (/\b(window|document|Function|eval|globalThis|constructor|prototype|__proto__|import|require)\b/i.test(code)) {
+        throw new Error('Invalid expression');
+      }
+      var allowed = /^(sin|cos|tan|asin|acos|atan|log|ln|sqrt|abs|exp|pow|fact|pi|e)$/;
+      var ids = code.match(/[A-Za-z_]+/g) || [];
+      for (var i = 0; i < ids.length; i++) {
+        if (!allowed.test(ids[i])) throw new Error('Unknown: ' + ids[i]);
+      }
+
+      var fn = new Function(
+        'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'log', 'ln', 'sqrt', 'abs', 'exp', 'pow', 'fact', 'pi', 'e',
+        'return (' + code + ');'
+      );
+      var val = fn(
+        fns.sin, fns.cos, fns.tan, fns.asin, fns.acos, fns.atan,
+        fns.log, fns.ln, fns.sqrt, fns.abs, fns.exp, fns.pow, fns.fact, fns.pi, fns.e
+      );
+      if (typeof val !== 'number' || !Number.isFinite(val)) throw new Error('Math error');
+      return val;
+    }
+
+    function render() {
+      exprEl.textContent = expr || '';
+      resultEl.classList.remove('is-error');
+      if (!expr) { resultEl.textContent = '0'; return; }
+      try {
+        resultEl.textContent = formatNumber(evaluateExpression(expr));
+      } catch (e) {
+        if (justEvaluated) {
+          resultEl.textContent = 'Error';
+          resultEl.classList.add('is-error');
+        }
+      }
+    }
+
+    function appendKey(k) {
+      if (justEvaluated && /[0-9.]/.test(k)) expr = '';
+      justEvaluated = false;
+      expr += k;
+      render();
+    }
+
+    function applyUnary(name) {
+      justEvaluated = false;
+      if (name === 'square') expr = expr ? '(' + expr + ')**2' : '';
+      else if (name === 'inv') expr = expr ? '1/(' + expr + ')' : '';
+      else if (name === 'neg') expr = expr ? '-(' + expr + ')' : '-';
+      else if (name === 'pow') expr = (expr || '') + '**';
+      else if (name === 'fact') expr = expr ? 'fact(' + expr + ')' : 'fact(';
+      else if (expr && /[0-9).]$/.test(expr)) expr = name + '(' + expr + ')';
+      else expr = (expr || '') + name + '(';
+      render();
+    }
+
+    window.calcClearAll = function () {
+      expr = '';
+      justEvaluated = false;
+      resultEl.classList.remove('is-error');
+      resultEl.textContent = '0';
+      exprEl.textContent = '';
+    };
+
+    function backspace() {
+      justEvaluated = false;
+      expr = expr.slice(0, -1);
+      render();
+    }
+
+    function equals() {
+      try {
+        var val = evaluateExpression(expr);
+        exprEl.textContent = expr + ' =';
+        resultEl.classList.remove('is-error');
+        resultEl.textContent = formatNumber(val);
+        expr = String(val);
+        justEvaluated = true;
+      } catch (e) {
+        resultEl.textContent = e.message || 'Error';
+        resultEl.classList.add('is-error');
+        justEvaluated = true;
+      }
+    }
+
+    keys.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      e.preventDefault();
+      if (btn.dataset.key !== undefined) { appendKey(btn.dataset.key); return; }
+      if (btn.dataset.const === 'pi') { appendKey('pi'); return; }
+      if (btn.dataset.const === 'e') { appendKey('e'); return; }
+      if (btn.dataset.fn) { applyUnary(btn.dataset.fn); return; }
+      if (btn.dataset.action === 'ac') { calcClearAll(); return; }
+      if (btn.dataset.action === 'back') { backspace(); return; }
+      if (btn.dataset.action === 'eq') { equals(); return; }
+    });
+
+    window.togglePracticeCalculator = function (force) {
+      var open = typeof force === 'boolean' ? force : !panel.classList.contains('is-open');
+      panel.classList.toggle('is-open', open);
+      if (toggleBtn) toggleBtn.classList.toggle('is-open', open);
+      if (open) render();
+    };
+
+    var handle = document.getElementById('pqCalcDragHandle');
+    var dragging = false, startX = 0, startY = 0, origLeft = 0, origTop = 0;
+    if (handle) {
+      handle.addEventListener('mousedown', function (e) {
+        if (e.target.closest('button')) return;
+        dragging = true;
+        var rect = panel.getBoundingClientRect();
+        panel.style.left = rect.left + 'px';
+        panel.style.top = rect.top + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        startX = e.clientX; startY = e.clientY;
+        origLeft = rect.left; origTop = rect.top;
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        var nx = origLeft + (e.clientX - startX);
+        var ny = origTop + (e.clientY - startY);
+        var maxX = window.innerWidth - panel.offsetWidth - 8;
+        var maxY = window.innerHeight - panel.offsetHeight - 8;
+        panel.style.left = Math.max(8, Math.min(maxX, nx)) + 'px';
+        panel.style.top = Math.max(8, Math.min(maxY, ny)) + 'px';
+      });
+      document.addEventListener('mouseup', function () { dragging = false; });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (!panel.classList.contains('is-open')) return;
+      var tag = (e.target && e.target.tagName) || '';
+      if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+      if (e.key === 'Escape') { togglePracticeCalculator(false); return; }
+      if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); equals(); return; }
+      if (e.key === 'Backspace') { e.preventDefault(); backspace(); return; }
+      if (e.key === 'Delete') { e.preventDefault(); calcClearAll(); return; }
+      if (/^[0-9+\-*/().%]$/.test(e.key)) { e.preventDefault(); appendKey(e.key); }
+    });
+  })();
 </script>
 {% endblock %}

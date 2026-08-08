@@ -6,6 +6,7 @@
 
 {% block extra_css %}
 {% include 'partials/no_download_media.html' %}
+{% include 'partials/no_screenshot.html' %}
 <style>
   .rd-wrap { max-width: 1000px; margin: 0 auto; }
   .rd-back {
@@ -32,13 +33,7 @@
   }
   .rd-viewer {
     padding: 0 1rem 1.25rem;
-  }
-  .rd-viewer iframe {
-    width: 100%;
-    min-height: 75vh;
-    border: 1px solid #e6e9f5;
-    border-radius: 12px;
-    background: #fafbff;
+    position: relative;
   }
   .rd-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.75rem; }
   .rd-badge {
@@ -48,14 +43,139 @@
   }
   .rd-badge.free { background: #e8f5e9; color: #2e7d32; }
   .rd-badge.paid { background: #fff8e1; color: #b26a00; }
+  .rd-badge.lock { background: #fef2f2; color: #b91c1c; }
+
+  /* Protected HTML / Word / text body */
+  .rd-doc-body {
+    background: #fff;
+    border: 1px solid #e6e9f5;
+    border-radius: 12px;
+    min-height: 50vh;
+    max-height: 78vh;
+    overflow: auto;
+    padding: 1.75rem 2rem;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+  .rd-doc-body .rd-heading {
+    color: #1e293b;
+    margin: 1rem 0 0.5rem;
+    font-weight: 800;
+  }
+  .rd-doc-body .rd-para {
+    color: #1e293b;
+    line-height: 1.7;
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+  }
+  .rd-para-spacer { height: 0.55rem; }
+  .rd-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.92rem;
+  }
+  .rd-table td {
+    border: 1px solid #e2e8f0;
+    padding: 8px 10px;
+    color: #334155;
+  }
+  .rd-pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #1e293b;
+    margin: 0;
+  }
+  .rd-preview-error { color: #b45309; }
+
+  /* PDF.js canvas viewer — no native PDF chrome, no text layer */
+  .rd-pdf-wrap {
+    background: #f1f5f9;
+    border: 1px solid #e6e9f5;
+    border-radius: 12px;
+    min-height: 70vh;
+    max-height: 78vh;
+    overflow: auto;
+    padding: 12px;
+    text-align: center;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+  .rd-pdf-wrap canvas {
+    display: block;
+    margin: 0 auto 14px;
+    max-width: 100%;
+    height: auto !important;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
+    background: #fff;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+  .rd-pdf-status {
+    color: #64748b;
+    font-size: 0.9rem;
+    padding: 2rem;
+  }
+  .rd-pdf-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .rd-pdf-toolbar button {
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #4338ca;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .rd-pdf-toolbar button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .rd-pdf-toolbar span { font-size: 0.85rem; color: #475569; font-weight: 600; }
+
+  .rd-img-wrap {
+    text-align: center;
+    background: #f8fafc;
+    border: 1px solid #e6e9f5;
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .rd-img-wrap img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+
+  .rd-blocked {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+  }
+  .rd-blocked strong { display: block; color: #334155; margin-bottom: 0.4rem; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="rd-wrap">
-  <a class="rd-back" href="{% url 'courses:resources' %}">← Back to Resources</a>
+<div
+  class="rd-wrap no-copy-zone no-screenshot-zone"
+  data-ns-mark="{{ ns_mark|default:'Study Nation · Protected · No Screenshot'|escape }}"
+>
+  <a class="rd-back" href="{% url 'courses:resources_list' %}">← Back to Resources</a>
 
-  <div class="rd-card no-dl-zone">
+  <div class="rd-card no-dl-zone no-copy-zone" oncontextmenu="return false;">
     <div class="rd-head">
       <h1>{{ resource.title }}</h1>
       {% if resource.author %}
@@ -68,27 +188,189 @@
           <span class="rd-badge free">FREE</span>
         {% endif %}
         <span class="rd-badge">{{ resource.get_resource_type_display }}</span>
-        <span class="rd-badge">View only</span>
+        <span class="rd-badge lock">Protected · No download · No copy · No screenshot</span>
       </div>
       {% if resource.description %}
         <p class="rd-desc">{{ resource.description }}</p>
       {% endif %}
     </div>
 
-    <p class="rd-note">View only — downloading this file is not available.</p>
+    <p class="rd-note">
+      <strong>View only.</strong>
+      Download, copy, print, and screenshots are not allowed.
+      Content is hidden if you switch apps or use capture shortcuts, and a watermark identifies the session.
+    </p>
 
-    {% if resource.file %}
-      <div class="rd-viewer no-dl-media">
-        {# toolbar=0 hides PDF download UI in most browsers' built-in viewers #}
-        <iframe
-          src="{{ resource.file.url }}#toolbar=0&navpanes=0&scrollbar=1&view=FitH"
-          title="{{ resource.title }} viewer"
-          oncontextmenu="return false;"
-        ></iframe>
-      </div>
-    {% else %}
-      <div style="padding:1.5rem 1.75rem; color:#b26a00;">Resource file not found.</div>
-    {% endif %}
+    <div class="rd-viewer no-dl-media">
+      {% if preview_kind == 'pdf' and stream_url %}
+        <div class="rd-pdf-toolbar">
+          <button type="button" id="rdPdfPrev" disabled>← Prev</button>
+          <span id="rdPdfPageLabel">Page —</span>
+          <button type="button" id="rdPdfNext" disabled>Next →</button>
+          <button type="button" id="rdPdfZoomOut">−</button>
+          <button type="button" id="rdPdfZoomIn">+</button>
+        </div>
+        <div class="rd-pdf-wrap" id="rdPdfWrap" data-pdf-url="{{ stream_url }}">
+          <div class="rd-pdf-status" id="rdPdfStatus">Loading protected PDF…</div>
+        </div>
+
+      {% elif preview_kind == 'docx' or preview_kind == 'text' %}
+        <div class="rd-doc-body" oncopy="return false;" oncut="return false;" onselectstart="return false;">
+          {{ preview_html|safe }}
+        </div>
+
+      {% elif preview_kind == 'doc' %}
+        <div class="rd-blocked">
+          <strong>Word .doc (legacy) protected</strong>
+          Legacy .doc files are not opened for download.
+          Please re-upload as <strong>.docx</strong> or <strong>PDF</strong> so students can view the content in the protected reader.
+        </div>
+
+      {% elif preview_kind == 'image' and stream_url %}
+        <div class="rd-img-wrap">
+          <img
+            src="{{ stream_url }}"
+            alt="{{ resource.title }}"
+            draggable="false"
+            oncontextmenu="return false;"
+          />
+        </div>
+
+      {% elif preview_kind == 'none' %}
+        <div class="rd-blocked">
+          <strong>Resource file not found</strong>
+          No file is attached to this resource.
+        </div>
+
+      {% else %}
+        <div class="rd-blocked">
+          <strong>Protected file</strong>
+          This format cannot be previewed inline. Download is disabled for all resources.
+        </div>
+      {% endif %}
+    </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if preview_kind == 'pdf' and stream_url %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function () {
+  var wrap = document.getElementById('rdPdfWrap');
+  if (!wrap || !window.pdfjsLib) return;
+
+  var url = wrap.getAttribute('data-pdf-url');
+  var statusEl = document.getElementById('rdPdfStatus');
+  var pageLabel = document.getElementById('rdPdfPageLabel');
+  var btnPrev = document.getElementById('rdPdfPrev');
+  var btnNext = document.getElementById('rdPdfNext');
+  var btnIn = document.getElementById('rdPdfZoomIn');
+  var btnOut = document.getElementById('rdPdfZoomOut');
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  var pdfDoc = null;
+  var pageNum = 1;
+  var scale = 1.15;
+  var rendering = false;
+  var pending = null;
+
+  function setStatus(msg) {
+    if (statusEl) statusEl.textContent = msg || '';
+  }
+
+  function updateButtons() {
+    if (!pdfDoc) return;
+    btnPrev.disabled = pageNum <= 1;
+    btnNext.disabled = pageNum >= pdfDoc.numPages;
+    pageLabel.textContent = 'Page ' + pageNum + ' / ' + pdfDoc.numPages;
+  }
+
+  function renderPage(num) {
+    rendering = true;
+    pdfDoc.getPage(num).then(function (page) {
+      var viewport = page.getViewport({ scale: scale });
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      canvas.setAttribute('draggable', 'false');
+
+      // Clear previous canvases
+      wrap.querySelectorAll('canvas').forEach(function (c) { c.remove(); });
+      if (statusEl) statusEl.style.display = 'none';
+      wrap.appendChild(canvas);
+
+      var task = page.render({
+        canvasContext: ctx,
+        viewport: viewport,
+        // No text / annotation layers → harder to select/copy
+      });
+      return task.promise.then(function () {
+        rendering = false;
+        updateButtons();
+        if (pending !== null) {
+          var p = pending;
+          pending = null;
+          renderPage(p);
+        }
+      });
+    }).catch(function (err) {
+      rendering = false;
+      setStatus('Could not render this page.');
+      console.error(err);
+    });
+  }
+
+  function queueRender(num) {
+    if (rendering) {
+      pending = num;
+    } else {
+      renderPage(num);
+    }
+  }
+
+  function go(delta) {
+    if (!pdfDoc) return;
+    var next = pageNum + delta;
+    if (next < 1 || next > pdfDoc.numPages) return;
+    pageNum = next;
+    queueRender(pageNum);
+  }
+
+  btnPrev && btnPrev.addEventListener('click', function () { go(-1); });
+  btnNext && btnNext.addEventListener('click', function () { go(1); });
+  btnIn && btnIn.addEventListener('click', function () {
+    scale = Math.min(2.4, scale + 0.15);
+    queueRender(pageNum);
+  });
+  btnOut && btnOut.addEventListener('click', function () {
+    scale = Math.max(0.6, scale - 0.15);
+    queueRender(pageNum);
+  });
+
+  // Block context menu / drag on PDF area
+  wrap.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  wrap.addEventListener('dragstart', function (e) { e.preventDefault(); });
+
+  pdfjsLib.getDocument({
+    url: url,
+    // Discourage caching of protected content
+    disableAutoFetch: false,
+    disableStream: false,
+  }).promise.then(function (doc) {
+    pdfDoc = doc;
+    setStatus('');
+    updateButtons();
+    renderPage(pageNum);
+  }).catch(function (err) {
+    setStatus('Protected PDF could not be loaded. Download is disabled.');
+    console.error(err);
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

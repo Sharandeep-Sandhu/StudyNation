@@ -120,9 +120,29 @@ urlpatterns = [
         name="create_past_paper",
     ),
     path(
+        "manage-past-papers/upload-answer/",
+        views.upload_past_paper_answer,
+        name="upload_past_paper_answer",
+    ),
+    path(
+        "manage-past-papers/sample-question-pdf/",
+        views.download_sample_past_paper_question,
+        name="download_sample_past_paper_question",
+    ),
+    path(
+        "manage-past-papers/sample-answer-pdf/",
+        views.download_sample_past_paper_answer,
+        name="download_sample_past_paper_answer",
+    ),
+    path(
         "manage-past-papers/<int:paper_id>/edit/",
         views.edit_past_paper,
         name="edit_past_paper",
+    ),
+    path(
+        "manage-past-papers/<int:paper_id>/clear-answer/",
+        views.clear_past_paper_answer,
+        name="clear_past_paper_answer",
     ),
     path(
         "manage-past-papers/<int:paper_id>/delete/",
