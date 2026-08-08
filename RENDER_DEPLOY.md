@@ -4,14 +4,14 @@ This project is configured for **Render** (native Python web service + PostgreSQ
 
 ## What was prepared
 
-| File | Purpose |
-|------|---------|
-| `config/settings.py` | Env-based `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, Postgres via `DATABASE_URL`, WhiteNoise, HTTPS/proxy headers |
-| `build.sh` | Install deps, `collectstatic`, `migrate` |
-| `render.yaml` | Blueprint: web service + Postgres |
-| `Procfile` | Start command for Render/Heroku-style deploys |
-| `Dockerfile` / `docker-entrypoint.sh` | Optional Docker deploy (uses `$PORT`) |
-| `.gitignore` | Keeps `venv/`, secrets, and local DB out of git |
+| File                                  | Purpose                                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `config/settings.py`                  | Env-based`SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, Postgres via `DATABASE_URL`, WhiteNoise, HTTPS/proxy headers |
+| `build.sh`                            | Install deps,`collectstatic`, `migrate`                                                                       |
+| `render.yaml`                         | Blueprint: web service + Postgres                                                                             |
+| `Procfile`                            | Start command for Render/Heroku-style deploys                                                                 |
+| `Dockerfile` / `docker-entrypoint.sh` | Optional Docker deploy (uses`$PORT`)                                                                          |
+| `.gitignore`                          | Keeps`venv/`, secrets, and local DB out of git                                                                |
 
 ## Option A — Blueprint (recommended)
 
@@ -55,18 +55,18 @@ Render injects:
 
 ### 3. Environment variables
 
-| Key | Value |
-|-----|--------|
-| `DEBUG` | `False` |
-| `SECRET_KEY` | Generate a long random string (Render can generate) |
-| `DATABASE_URL` | Link from the Postgres service (or paste Internal URL) |
-| `PYTHON_VERSION` | `3.11.11` (optional but recommended) |
+| Key              | Value                                                  |
+| ---------------- | ------------------------------------------------------ |
+| `DEBUG`          | `False`                                                |
+| `SECRET_KEY`     | Generate a long random string (Render can generate)    |
+| `DATABASE_URL`   | Link from the Postgres service (or paste Internal URL) |
+| `PYTHON_VERSION` | `3.11.11` (optional but recommended)                   |
 
 Optional (custom domain):
 
-| Key | Example |
-|-----|---------|
-| `ALLOWED_HOSTS` | `studynation.com,www.studynation.com,.onrender.com` |
+| Key                    | Example                                               |
+| ---------------------- | ----------------------------------------------------- |
+| `ALLOWED_HOSTS`        | `studynation.com,www.studynation.com,.onrender.com`   |
 | `CSRF_TRUSTED_ORIGINS` | `https://studynation.com,https://www.studynation.com` |
 
 You do **not** need to set `ALLOWED_HOSTS` for the default `*.onrender.com` URL; settings detect Render automatically.
@@ -89,11 +89,10 @@ python create_admin_user.py
 
 ## Option C — Docker on Render
 
-1. **New** → **Web Service** → same repo  
-2. **Environment:** Docker  
-3. Render builds the `Dockerfile` and sets `PORT`  
+1. **New** → **Web Service** → same repo
+2. **Environment:** Docker
+3. Render builds the `Dockerfile` and sets `PORT`
 4. Link a Postgres database and set:
-
    - `DEBUG=False`
    - `SECRET_KEY=...`
    - `DATABASE_URL` from the DB (Internal URL)
@@ -139,19 +138,19 @@ gunicorn config.wsgi:application --bind 0.0.0.0:8000
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| `DisallowedHost` | Ensure service redeployed with latest `settings.py`; or set `ALLOWED_HOSTS` to include your hostname |
-| CSRF verification failed | Set `CSRF_TRUSTED_ORIGINS=https://your-app.onrender.com` |
-| Database connection / SSL | Confirm `DATABASE_URL` is set; SSL is required automatically when `RENDER` is set |
-| Static files 404 | Confirm build ran `collectstatic`; WhiteNoise is enabled in middleware |
-| Build fails on `build.sh` | Ensure file has Unix line endings (`LF`) and is executable |
-| App works but uploads vanish | Attach a persistent disk or external media storage |
+| Problem                      | Fix                                                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------------------------------- |
+| `DisallowedHost`             | Ensure service redeployed with latest`settings.py`; or set `ALLOWED_HOSTS` to include your hostname |
+| CSRF verification failed     | Set`CSRF_TRUSTED_ORIGINS=https://your-app.onrender.com`                                             |
+| Database connection / SSL    | Confirm`DATABASE_URL` is set; SSL is required automatically when `RENDER` is set                    |
+| Static files 404             | Confirm build ran`collectstatic`; WhiteNoise is enabled in middleware                               |
+| Build fails on`build.sh`     | Ensure file has Unix line endings (`LF`) and is executable                                          |
+| App works but uploads vanish | Attach a persistent disk or external media storage                                                  |
 
 ## Custom domain
 
-1. Render service → **Settings** → **Custom Domains** → add domain  
-2. Point DNS as Render instructs  
+1. Render service → **Settings** → **Custom Domains** → add domain
+2. Point DNS as Render instructs
 3. Set:
 
    ```text
