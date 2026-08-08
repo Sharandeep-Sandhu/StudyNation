@@ -49,49 +49,51 @@ class InlineMediaMiddleware:
     def __call__(self, request):
         path = (request.path or "").lower()
 
-        if any(path.startswith(p) for p in self.PROTECTED_PREFIXES):
-            # Resources: block ANY top-level open of raw media files
-            # (students must use protected viewer routes, not /media/resources/...)
-            if path.startswith("/media/resources/"):
-                if self._is_top_level_navigation(request):
-                    return HttpResponse(
-                        "Downloading this file is not allowed. "
-                        "Open the Resources page to view content online only.",
-                        status=403,
-                        content_type="text/plain; charset=utf-8",
-                    )
-                # Also block non-embedded fetches that look like Save-As
-                fetch_dest = (request.headers.get("Sec-Fetch-Dest") or "").lower()
-                if fetch_dest in ("document",):
-                    return HttpResponse(
-                        "Downloading this file is not allowed.",
-                        status=403,
-                        content_type="text/plain; charset=utf-8",
-                    )
+        try:
+            if any(path.startswith(p) for p in self.PROTECTED_PREFIXES):
+                # Resources: block top-level open of raw media files
+                if path.startswith("/media/resources/"):
+                    if self._is_top_level_navigation(request):
+                        return HttpResponse(
+                            "Downloading this file is not allowed. "
+                            "Open the Resources page to view content online only.",
+                            status=403,
+                            content_type="text/plain; charset=utf-8",
+                        )
+                    fetch_dest = (request.headers.get("Sec-Fetch-Dest") or "").lower()
+                    if fetch_dest in ("document",):
+                        return HttpResponse(
+                            "Downloading this file is not allowed.",
+                            status=403,
+                            content_type="text/plain; charset=utf-8",
+                        )
 
-            block_exts = self.OFFICE_EXTS
-            if path.endswith(block_exts) and not path.startswith("/media/resources/"):
-                if self._is_top_level_navigation(request):
-                    return HttpResponse(
-                        "Downloading this file is not allowed. "
-                        "Open the Resources page to view content online only.",
-                        status=403,
-                        content_type="text/plain; charset=utf-8",
-                    )
+                if path.endswith(self.OFFICE_EXTS) and not path.startswith(
+                    "/media/resources/"
+                ):
+                    if self._is_top_level_navigation(request):
+                        return HttpResponse(
+                            "Downloading this file is not allowed. "
+                            "Open the Resources page to view content online only.",
+                            status=403,
+                            content_type="text/plain; charset=utf-8",
+                        )
+        except Exception:
+            pass  # fall through to normal response
 
         response = self.get_response(request)
 
-        if any((request.path or "").startswith(p) for p in self.PROTECTED_PREFIXES):
-            # Never suggest "Save As" attachment
-            response["Content-Disposition"] = "inline"
-            response["X-Content-Type-Options"] = "nosniff"
-            response["X-Frame-Options"] = "SAMEORIGIN"
-            # Discourage caching of sensitive media by shared proxies
-            if "Cache-Control" not in response:
-                response["Cache-Control"] = "private, max-age=3600"
-            if (request.path or "").lower().startswith("/media/resources/"):
-                # Extra hint to browsers/proxies not to offer offline save
-                response["X-Robots-Tag"] = "noindex, noarchive, nosnippet"
-                response["Cache-Control"] = "private, no-store"
+        try:
+            if any((request.path or "").startswith(p) for p in self.PROTECTED_PREFIXES):
+                response["Content-Disposition"] = "inline"
+                response["X-Content-Type-Options"] = "nosniff"
+                response["X-Frame-Options"] = "SAMEORIGIN"
+                if "Cache-Control" not in response:
+                    response["Cache-Control"] = "private, max-age=3600"
+                if (request.path or "").lower().startswith("/media/resources/"):
+                    response["X-Robots-Tag"] = "noindex, noarchive, nosnippet"
+                    response["Cache-Control"] = "private, no-store"
+        except Exception:
+            pass
 
         return response

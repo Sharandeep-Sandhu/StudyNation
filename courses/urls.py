@@ -39,12 +39,13 @@ urlpatterns = [
     path("", HomeView.as_view(), name="home"),
     path("courses/", CoursesListView.as_view(), name="courses_list"),
     path("courses/<int:course_id>/", CourseDetailView.as_view(), name="course_detail"),
-    path("resources/", ResourcesView.as_view(), name="resources"),
+    # Resources: list is the canonical page; keep legacy name for reverse()
+    path("resources/", ResourcesListView.as_view(), name="resources_list"),
+    path("resources/", ResourcesListView.as_view(), name="resources"),
     path("past-papers/", PastPapersView.as_view(), name="past_papers"),
     path("contact/", ContactView.as_view(), name="contact"),
     path("blogs/", BlogListView.as_view(), name="blog_list"),
     path("blogs/<slug:slug>/", BlogDetailView.as_view(), name="blog_detail"),
-    path("resources/", ResourcesListView.as_view(), name="resources_list"),
     path("resources/<int:pk>/", ResourceDetailView.as_view(), name="resource_detail"),
     path(
         "resources/<int:pk>/stream/",

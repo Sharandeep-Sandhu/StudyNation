@@ -110,18 +110,32 @@ class ResourceDetailView(DetailView):
 
         context = super().get_context_data(**kwargs)
         resource = self.object
-        kind = resource_preview_kind(resource)
+        try:
+            kind = resource_preview_kind(resource)
+        except Exception:
+            logger.exception("resource_preview_kind failed for resource %s", resource.pk)
+            kind = "unknown"
         context["preview_kind"] = kind
         context["preview_html"] = ""
         context["stream_url"] = ""
-        if resource.file:
-            context["stream_url"] = reverse(
-                "courses:resource_file_stream", kwargs={"pk": resource.pk}
+        try:
+            if resource.file and getattr(resource.file, "name", None):
+                context["stream_url"] = reverse(
+                    "courses:resource_file_stream", kwargs={"pk": resource.pk}
+                )
+        except (ValueError, OSError):
+            context["stream_url"] = ""
+        try:
+            if kind == "docx":
+                context["preview_html"] = docx_to_protected_html(resource.file)
+            elif kind == "text":
+                context["preview_html"] = text_file_to_protected_html(resource.file)
+        except Exception:
+            logger.exception("Protected preview failed for resource %s", resource.pk)
+            context["preview_html"] = (
+                "<p class='rd-preview-error'>Preview temporarily unavailable.</p>"
             )
-        if kind == "docx":
-            context["preview_html"] = docx_to_protected_html(resource.file)
-        elif kind == "text":
-            context["preview_html"] = text_file_to_protected_html(resource.file)
+            context["preview_kind"] = "unknown"
 
         # Watermark identity for anti-screenshot overlay
         user = self.request.user
@@ -130,8 +144,6 @@ class ResourceDetailView(DetailView):
             if getattr(user, "is_authenticated", False)
             else "guest"
         )
-        from django.utils import timezone
-
         context["ns_mark"] = (
             f"Study Nation · {who} · {timezone.localtime().strftime('%Y-%m-%d %H:%M')} · No Screenshot"
         )
@@ -319,20 +331,48 @@ class PastPapersView(TemplateView):
     template_name = "courses/past_papers.html"
 
     def get_context_data(self, **kwargs):
+        from django.db import DatabaseError
+
         context = super().get_context_data(**kwargs)
         request = self.request
 
-        published = PastPaper.objects.filter(is_published=True).select_related(
-            "category"
-        )
+        try:
+            published = PastPaper.objects.filter(is_published=True).select_related(
+                "category"
+            )
+            # Force evaluation early so missing migrations surface as empty
+            # state rather than mid-template 500s.
+            _ = published.count()
+        except DatabaseError:
+            logger.exception("PastPaper query failed (run migrations on Render)")
+            context.update(
+                {
+                    "categories": CourseCategory.objects.order_by("name"),
+                    "subjects": [],
+                    "years": [],
+                    "papers": PastPaper.objects.none(),
+                    "total_papers": 0,
+                    "selected_paper": None,
+                    "filter_category": "",
+                    "filter_subject": "",
+                    "filter_year": "",
+                    "view_mode": "question",
+                    "has_filters": False,
+                    "db_error": True,
+                }
+            )
+            return context
 
         # All DB categories for the browse strip + filter dropdown
-        categories = CourseCategory.objects.order_by("name").annotate(
-            paper_count=Count(
-                "past_papers",
-                filter=Q(past_papers__is_published=True),
+        try:
+            categories = CourseCategory.objects.order_by("name").annotate(
+                paper_count=Count(
+                    "past_papers",
+                    filter=Q(past_papers__is_published=True),
+                )
             )
-        )
+        except DatabaseError:
+            categories = CourseCategory.objects.order_by("name")
 
         subjects = (
             published.exclude(subject="")

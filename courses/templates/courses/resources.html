@@ -34,7 +34,9 @@
           <div class="card h-100 shadow-sm">
             <div class="card-body d-flex flex-column">
               <h5 class="card-title">{{ resource.title }}</h5>
-              <h5 class="card-title">{{ resource.course.title }}</h5>
+              {% if resource.course %}
+                <h5 class="card-title">{{ resource.course.title }}</h5>
+              {% endif %}
 
               <p class="text-muted small mb-2">{{ resource.author|default:'Unknown Author' }}</p>
 

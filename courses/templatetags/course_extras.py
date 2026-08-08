@@ -1,9 +1,28 @@
 from django import template
+from django.utils.safestring import mark_safe
 
 from courses.math_content import render_chat_math, sanitize_math_content
 from courses.html_sanitize import safe_html, safe_html_stem, safe_html_option
 
 register = template.Library()
+
+
+@register.filter(name="media_url")
+def media_url(file_field):
+    """
+    Safe FileField/ImageField .url for templates.
+    Returns '' instead of raising ValueError when no file is stored
+    (common cause of 500s on Render when optional media is blank).
+    """
+    if not file_field:
+        return ""
+    try:
+        name = getattr(file_field, "name", None)
+        if not name:
+            return ""
+        return file_field.url or ""
+    except (ValueError, OSError, AttributeError):
+        return ""
 
 
 @register.filter(name="chat_math")

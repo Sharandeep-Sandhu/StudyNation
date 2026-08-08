@@ -16,12 +16,26 @@ Including another URLconf
 """
 
 from django.contrib import admin
+from django.http import HttpResponse, JsonResponse
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
 
+
+def healthz(_request):
+    """Lightweight health check for Render (avoids heavy homepage DB work)."""
+    try:
+        from django.db import connection
+
+        connection.ensure_connection()
+        return JsonResponse({"status": "ok"})
+    except Exception as exc:
+        return JsonResponse({"status": "error", "detail": str(exc)[:200]}, status=500)
+
+
 urlpatterns = [
+    path("healthz/", healthz, name="healthz"),
     path("admin/", admin.site.urls),
     path("admin-panel/", include("admin_panel.urls")),
     path("api/", include("api.urls")),
