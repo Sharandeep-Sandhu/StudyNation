@@ -31,18 +31,23 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("1", "true", "yes", "on")
 
 # Render sets RENDER=true; always allow *.onrender.com there.
+# In production without an explicit ALLOWED_HOSTS, still allow local probes
+# so collectstatic/migrate/health tooling does not break during builds.
 _default_hosts = "127.0.0.1,localhost"
 ALLOWED_HOSTS = [
     h.strip()
     for h in os.environ.get("ALLOWED_HOSTS", _default_hosts).split(",")
     if h.strip()
 ]
-if os.environ.get("RENDER"):
+if os.environ.get("RENDER") or os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
     if ".onrender.com" not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(".onrender.com")
     render_host = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
     if render_host and render_host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(render_host)
+# Allow "*" only when explicitly requested (never default).
+if os.environ.get("ALLOWED_HOSTS", "").strip() == "*":
+    ALLOWED_HOSTS = ["*"]
 
 # CSRF trusted origins (required for HTTPS forms on Render)
 CSRF_TRUSTED_ORIGINS = [
@@ -230,12 +235,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 if not DEBUG:
+    # Render terminates TLS at the edge. Default SSL redirect ON for custom
+    # domains, but never redirect the health check (Render probes plain HTTP
+    # inside the private network — a 301 there marks the service unhealthy).
     SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True").lower() in (
         "1",
         "true",
         "yes",
         "on",
     )
+    SECURE_REDIRECT_EXEMPT = [r"^healthz/?$"]
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True

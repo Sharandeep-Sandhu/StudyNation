@@ -492,7 +492,7 @@ def _safe_next_url(request, next_url, *, is_admin=False, is_student=False):
     if path.startswith("/admin-panel") and not is_admin:
         return None
     # Student-only areas are open to admins as well (full-site admin access)
-    student_only = ("/my-exams",)
+    student_only = ("/my-exams", "/my-lists")
     if any(path.startswith(p) for p in student_only) and not (
         is_student or is_admin
     ):

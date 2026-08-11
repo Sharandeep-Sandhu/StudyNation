@@ -153,6 +153,18 @@ class Command(BaseCommand):
                 ):
                     added.append("courses_question.video_solution_url")
 
+            # Question bank subject_title (used by exam builder filters)
+            if _table_exists(cursor, "courses_questionbank"):
+                if _add_column(
+                    cursor,
+                    "courses_questionbank",
+                    "subject_title",
+                    "varchar(150) DEFAULT ''",
+                ):
+                    added.append("courses_questionbank.subject_title")
+
+            # Contact messages table is created by migrations; no column patch needed.
+
             # Seed boards if table empty
             if _table_exists(cursor, "courses_discussionboard"):
                 cursor.execute("SELECT COUNT(*) FROM courses_discussionboard")

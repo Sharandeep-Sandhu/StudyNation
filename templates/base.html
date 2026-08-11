@@ -586,35 +586,36 @@
   <body>
     <header class="site-header">
       <nav class="site-nav" id="siteNav" aria-label="Main navigation">
-        <a class="nav-brand" href="/">
-          <img src="/media/study_nation_logo.jpeg" alt="Study Nation" />
+        <a class="nav-brand" href="{% url 'courses:home' %}">
+          <img src="{% static 'images/study_nation_logo.jpeg' %}" alt="Study Nation" />
           <div class="nav-brand-text">
             <strong>Study Nation</strong>
           </div>
         </a>
 
         <div class="nav-center" id="navCenter">
-          <a href="/" class="nav-link {% if request.path == '/' %}is-active{% endif %}">Home</a>
-          <a href="/courses/" class="nav-link {% if '/courses/' in request.path %}is-active{% endif %}">Courses</a>
-          <a href="/past-papers/" class="nav-link {% if '/past-papers/' in request.path %}is-active{% endif %}">Past Papers</a>
+          <a href="{% url 'courses:home' %}" class="nav-link {% if request.path == '/' %}is-active{% endif %}">Home</a>
+          <a href="{% url 'courses:courses_list' %}" class="nav-link {% if '/courses/' in request.path %}is-active{% endif %}">Courses</a>
+          <a href="{% url 'courses:past_papers' %}" class="nav-link {% if '/past-papers/' in request.path %}is-active{% endif %}">Past Papers</a>
           {% if can_use_exam_builder %}
-            <a href="/my-exams/" class="nav-link {% if '/my-exams/' in request.path %}is-active{% endif %}">My Exams</a>
+            <a href="{% url 'courses:student_exams' %}" class="nav-link {% if '/my-exams/' in request.path %}is-active{% endif %}">My Exams</a>
+            <a href="{% url 'courses:student_question_lists' %}" class="nav-link {% if '/my-lists/' in request.path %}is-active{% endif %}">My Lists</a>
           {% endif %}
-          <a href="/question-form/" class="nav-link {% if '/question-form/' in request.path %}is-active{% endif %}">Question Form</a>
-          <a href="/resources/" class="nav-link {% if '/resources/' in request.path %}is-active{% endif %}">Resources</a>
-          <a href="/blogs/" class="nav-link {% if '/blogs/' in request.path %}is-active{% endif %}">Blogs</a>
-          <a href="/contact/" class="nav-link {% if '/contact/' in request.path %}is-active{% endif %}">Contact</a>
+          <a href="{% url 'courses:question_form' %}" class="nav-link {% if '/question-form/' in request.path or '/public-chat/' in request.path %}is-active{% endif %}">Question Form</a>
+          <a href="{% url 'courses:resources_list' %}" class="nav-link {% if '/resources/' in request.path %}is-active{% endif %}">Resources</a>
+          <a href="{% url 'courses:blog_list' %}" class="nav-link {% if '/blogs/' in request.path %}is-active{% endif %}">Blogs</a>
+          <a href="{% url 'courses:contact' %}" class="nav-link {% if '/contact/' in request.path %}is-active{% endif %}">Contact</a>
         </div>
 
         <div class="nav-actions" id="navActions">
           {% if user.is_authenticated %}
             {% if is_admin_user %}
-              <a href="/admin-panel/dashboard/" class="nav-btn nav-btn-solid">Admin Panel</a>
+              <a href="{% url 'admin_panel:dashboard' %}" class="nav-btn nav-btn-solid">Admin Panel</a>
             {% endif %}
-            <a href="/logout/" class="nav-btn nav-btn-ghost">Log Out</a>
+            <a href="{% url 'courses:student_logout' %}" class="nav-btn nav-btn-ghost">Log Out</a>
           {% else %}
-            <a href="/login/" class="nav-btn nav-btn-outline">Log In</a>
-            <a href="/signup/" class="nav-btn nav-btn-solid">Sign Up</a>
+            <a href="{% url 'courses:student_login' %}" class="nav-btn nav-btn-outline">Log In</a>
+            <a href="{% url 'courses:student_signup' %}" class="nav-btn nav-btn-solid">Sign Up</a>
           {% endif %}
         </div>
 
@@ -647,10 +648,10 @@
         </div>
         <div>
           <h4>Quick Links</h4>
-          <a href="/courses/">Browse Courses</a>
-          <a href="/resources/">Free Resources</a>
-          <a href="/question-form/">Question Form</a>
-          <a href="/contact/">Contact Us</a>
+          <a href="{% url 'courses:courses_list' %}">Browse Courses</a>
+          <a href="{% url 'courses:resources_list' %}">Free Resources</a>
+          <a href="{% url 'courses:question_form' %}">Question Form</a>
+          <a href="{% url 'courses:contact' %}">Contact Us</a>
         </div>
         <div>
           <h4>Support</h4>

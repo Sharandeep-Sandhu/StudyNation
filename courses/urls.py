@@ -27,6 +27,12 @@ from .views import (
     student_practice_start,
     student_practice_submit,
     student_practice_result,
+    student_question_lists,
+    student_create_question_list,
+    student_edit_question_list,
+    student_question_list_toggle_question,
+    student_question_list_reorder,
+    student_delete_question_list,
     discussion_create_post,
     discussion_add_reply,
     discussion_edit_reply,
@@ -115,5 +121,32 @@ urlpatterns = [
         "my-exams/<int:exam_id>/reorder/",
         student_exam_reorder_questions,
         name="student_exam_reorder_questions",
+    ),
+    # Student Question Lists (Build Question List)
+    path("my-lists/", student_question_lists, name="student_question_lists"),
+    path(
+        "my-lists/create/",
+        student_create_question_list,
+        name="student_create_question_list",
+    ),
+    path(
+        "my-lists/<int:list_id>/",
+        student_edit_question_list,
+        name="student_edit_question_list",
+    ),
+    path(
+        "my-lists/<int:list_id>/delete/",
+        student_delete_question_list,
+        name="student_delete_question_list",
+    ),
+    path(
+        "my-lists/<int:list_id>/toggle-question/",
+        student_question_list_toggle_question,
+        name="student_question_list_toggle_question",
+    ),
+    path(
+        "my-lists/<int:list_id>/reorder/",
+        student_question_list_reorder,
+        name="student_question_list_reorder",
     ),
 ]

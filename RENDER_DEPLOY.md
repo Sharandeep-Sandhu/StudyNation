@@ -146,6 +146,10 @@ gunicorn config.wsgi:application --bind 0.0.0.0:8000
 | Static files 404             | Confirm build ran`collectstatic`; WhiteNoise is enabled in middleware                               |
 | Build fails on`build.sh`     | Ensure file has Unix line endings (`LF`) and is executable                                          |
 | App works but uploads vanish | Attach a persistent disk or external media storage                                                  |
+| Health check failing / flaky | `/healthz/` is SSL-redirect exempt; confirm `healthCheckPath` is `/healthz/`                        |
+| Some pages 500 after deploy  | Open Render logs; run `python manage.py migrate` + `python manage.py ensure_schema` in Shell        |
+| My Lists / question lists 404| Redeploy latest code — student routes are `/my-lists/`                                              |
+| Logo or CSS missing          | Logo is served from static (`/static/images/...`) via WhiteNoise, not `/media/`                     |
 
 ## Custom domain
 

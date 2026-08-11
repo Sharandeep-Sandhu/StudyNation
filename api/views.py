@@ -27,16 +27,18 @@ class CourseCategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = CourseCategory.objects.annotate(
         courses_count=models.Count("courses")
-    ).all()
+    ).order_by("name")
     serializer_class = CourseCategorySerializer
 
 
 class CourseViewSet(viewsets.ReadOnlyModelViewSet):
     """API endpoint for courses"""
 
-    queryset = Course.objects.prefetch_related(
-        "study_materials", "question_banks"
-    ).all()
+    queryset = (
+        Course.objects.prefetch_related("study_materials", "question_banks")
+        .all()
+        .order_by("title")
+    )
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -76,7 +78,7 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
 class StudyMaterialViewSet(viewsets.ReadOnlyModelViewSet):
     """API endpoint for study materials"""
 
-    queryset = StudyMaterial.objects.all()
+    queryset = StudyMaterial.objects.all().order_by("-created_at", "id")
     serializer_class = StudyMaterialSerializer
 
     def get_queryset(self):
@@ -123,9 +125,11 @@ class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
 class QuestionBankViewSet(viewsets.ReadOnlyModelViewSet):
     """API endpoint for question banks (questions without answer keys)."""
 
-    queryset = QuestionBank.objects.prefetch_related("questions").annotate(
-        question_count=models.Count("questions")
-    ).all()
+    queryset = (
+        QuestionBank.objects.prefetch_related("questions")
+        .annotate(question_count=models.Count("questions"))
+        .order_by("title", "id")
+    )
     serializer_class = QuestionBankSerializer
 
     def get_queryset(self):
@@ -138,7 +142,11 @@ class QuestionBankViewSet(viewsets.ReadOnlyModelViewSet):
 class QuestionViewSet(viewsets.ReadOnlyModelViewSet):
     """Public questions API — does not expose correct answers or explanations."""
 
-    queryset = Question.objects.select_related("question_bank").all()
+    queryset = (
+        Question.objects.select_related("question_bank")
+        .all()
+        .order_by("order", "id")
+    )
     serializer_class = QuestionSerializer
 
     def get_queryset(self):
