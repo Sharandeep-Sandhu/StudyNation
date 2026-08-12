@@ -27,7 +27,7 @@
       
       /* Sidebar */
       .sidebar {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
         color: white;
         padding: 30px 0;
         position: fixed;
@@ -161,24 +161,24 @@
       .form-group select:focus,
       .form-group input[type='file']:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: #0f766e;
         background: white;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
       }
       
       .file-upload-area {
-        border: 2px dashed #667eea;
+        border: 2px dashed #0f766e;
         border-radius: 8px;
         padding: 30px;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
-        background: #f0f4ff;
+        background: #f0fdfa;
       }
       
       .file-upload-area:hover {
-        border-color: #764ba2;
-        background: #e8edff;
+        border-color: #134e4a;
+        background: #ccfbf1;
       }
       
       .file-upload-area input[type='file'] {
@@ -192,7 +192,7 @@
       
       .upload-text {
         font-weight: 600;
-        color: #667eea;
+        color: #0f766e;
         margin-bottom: 5px;
       }
       
@@ -204,7 +204,7 @@
       .submit-btn {
         width: 100%;
         padding: 14px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
         color: white;
         border: none;
         border-radius: 6px;
@@ -220,8 +220,8 @@
       }
       
       .info-box {
-        background: #f0f4ff;
-        border-left: 4px solid #667eea;
+        background: #f0fdfa;
+        border-left: 4px solid #0f766e;
         padding: 16px;
         border-radius: 6px;
         margin-bottom: 24px;
@@ -230,7 +230,7 @@
       }
       
       .info-box h4 {
-        color: #667eea;
+        color: #0f766e;
         margin-bottom: 8px;
         font-size: 14px;
       }
@@ -250,7 +250,7 @@
         content: '•';
         position: absolute;
         left: 8px;
-        color: #667eea;
+        color: #0f766e;
         font-weight: bold;
       }
       
@@ -379,7 +379,7 @@
         </div>
 
         {% if pending_preview %}
-          <div class="alert" style="max-width:900px; padding:14px 16px; border-radius:8px; margin-bottom:16px; background:#e3f2fd; color:#0d47a1; border-left:4px solid #1565c0;">
+          <div class="alert" style="max-width:900px; padding:14px 16px; border-radius:8px; margin-bottom:16px; background:#ecfdf5; color:#0d47a1; border-left:4px solid #0f766e;">
             You have a <strong>pending import preview</strong>
             ({{ pending_preview.questions|length }} question(s) from
             “{{ pending_preview.file_name }}”).
@@ -392,7 +392,7 @@
         {% if messages %}
           <div class="messages" style="margin-bottom: 20px;">
             {% for message in messages %}
-              <div class="alert alert-{{ message.tags|default:'error' }}" style="padding:14px 16px; border-radius:8px; margin-bottom:10px; font-size:14px; line-height:1.5; {% if 'success' in message.tags %}background:#e8f5e9; color:#1b5e20; border-left:4px solid #2e7d32;{% elif 'error' in message.tags %}background:#ffebee; color:#b71c1c; border-left:4px solid #c62828;{% else %}background:#e3f2fd; color:#0d47a1; border-left:4px solid #1565c0;{% endif %}">
+              <div class="alert alert-{{ message.tags|default:'error' }}" style="padding:14px 16px; border-radius:8px; margin-bottom:10px; font-size:14px; line-height:1.5; {% if 'success' in message.tags %}background:#e8f5e9; color:#1b5e20; border-left:4px solid #2e7d32;{% elif 'error' in message.tags %}background:#ffebee; color:#b71c1c; border-left:4px solid #c62828;{% else %}background:#ecfdf5; color:#0d47a1; border-left:4px solid #0f766e;{% endif %}">
                 {{ message }}
               </div>
             {% endfor %}
@@ -417,10 +417,10 @@
           <div class="info-box">
             <h4>📋 File Format Required (CSV or Excel — same columns either way):</h4>
             <p style="margin: 4px 0 12px; display:flex; flex-wrap:wrap; gap:10px;">
-              <a href="{% url 'admin_panel:download_sample_template' %}" style="display:inline-flex; align-items:center; gap:6px; background:#667eea; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600;">
+              <a href="{% url 'admin_panel:download_sample_template' %}" style="display:inline-flex; align-items:center; gap:6px; background:#0f766e; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600;">
                 📥 Download Sample Excel (.xlsx)
               </a>
-              <a href="{% url 'admin_panel:download_sample_docx' %}" style="display:inline-flex; align-items:center; gap:6px; background:#764ba2; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600;">
+              <a href="{% url 'admin_panel:download_sample_docx' %}" style="display:inline-flex; align-items:center; gap:6px; background:#134e4a; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600;">
                 📥 Download Sample Word (.docx)
               </a>
             </p>
@@ -449,10 +449,10 @@
             </ul>
           </div>
 
-          <div class="info-box" style="border-left-color: #764ba2; background: #f4f1fb;">
+          <div class="info-box" style="border-left-color: #134e4a; background: #f4f1fb;">
             <h4>📄 Word (.docx / .doc) Format Instead:</h4>
             <p style="margin: 4px 0 12px;">
-              <a href="{% url 'admin_panel:download_sample_docx' %}" style="display:inline-flex; align-items:center; gap:6px; background:#764ba2; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600;">
+              <a href="{% url 'admin_panel:download_sample_docx' %}" style="display:inline-flex; align-items:center; gap:6px; background:#134e4a; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600;">
                 📥 Download Sample Word Question Paper (.docx)
               </a>
             </p>
@@ -510,8 +510,8 @@
               {% endif %}
             </div>
 
-            <div id="word-batch-fields" style="display: none; border: 1px dashed #764ba2; border-radius: 8px; padding: 16px; margin-bottom: 20px; background: #faf9ff;">
-              <p style="margin-bottom: 12px; color: #764ba2; font-weight: 600;">📄 Word import — applies to every question in this file</p>
+            <div id="word-batch-fields" style="display: none; border: 1px dashed #134e4a; border-radius: 8px; padding: 16px; margin-bottom: 20px; background: #faf9ff;">
+              <p style="margin-bottom: 12px; color: #134e4a; font-weight: 600;">📄 Word import — applies to every question in this file</p>
 
               <div class="form-group">
                 <label>{{ form.topic.label }}</label>
@@ -572,7 +572,7 @@
               });
             })();
           </script>
-          <div id="uploadWaitNote" style="display:none; margin-top:12px; padding:12px 16px; background:#e3f2fd; border-radius:8px; color:#0d47a1; font-size:13.5px;">
+          <div id="uploadWaitNote" style="display:none; margin-top:12px; padding:12px 16px; background:#ecfdf5; border-radius:8px; color:#0d47a1; font-size:13.5px;">
             ⏳ Processing file (equations may take a bit)… This page will redirect when finished.
           </div>
         </div>
@@ -611,13 +611,13 @@
 
       uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault()
-        uploadArea.style.borderColor = '#764ba2'
-        uploadArea.style.background = '#e8edff'
+        uploadArea.style.borderColor = '#134e4a'
+        uploadArea.style.background = '#ccfbf1'
       })
       
       uploadArea.addEventListener('dragleave', () => {
-        uploadArea.style.borderColor = '#667eea'
-        uploadArea.style.background = '#f0f4ff'
+        uploadArea.style.borderColor = '#0f766e'
+        uploadArea.style.background = '#f0fdfa'
       })
       
       uploadArea.addEventListener('drop', (e) => {

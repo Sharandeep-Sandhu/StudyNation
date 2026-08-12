@@ -12,7 +12,7 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
         .dashboard-wrapper { min-height: 100vh; width: 100%; }
         .sidebar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
             color: white; padding: 30px 0; position: fixed; top: 0; left: 0; height: 100vh; width: 250px;
             overflow-y: auto; box-shadow: 2px 0 10px rgba(0,0,0,.1); z-index: 100;
         }
@@ -44,8 +44,8 @@
             border-radius: 6px; font-size: 14px; font-weight: 600; border: none;
             cursor: pointer; text-decoration: none;
         }
-        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
-        .btn-outline { background: #fff; color: #667eea; border: 1.5px solid #667eea; }
+        .btn-primary { background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%); color: #fff; }
+        .btn-outline { background: #fff; color: #0f766e; border: 1.5px solid #0f766e; }
         .btn-danger { background: #fff; color: #d64545; border: 1.5px solid #f3c6c6; }
         .btn-ghost { background: #f1f3f7; color: #444; border: 1px solid #e0e0e0; }
         .filter-section {
@@ -60,7 +60,7 @@
             font-size: 14px; background: #f8f9fa; font-family: inherit;
         }
         .filter-group select:focus, .field input:focus, .field textarea:focus, textarea:focus {
-            outline: none; border-color: #667eea; background: #fff;
+            outline: none; border-color: #0f766e; background: #fff;
         }
         .questions-section {
             background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); overflow: hidden;
@@ -83,13 +83,13 @@
         .question-meta { display: flex; gap: 14px; font-size: 12px; color: #999; margin-bottom: 10px; flex-wrap: wrap; }
         .type-badge {
             display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px;
-            font-weight: 600; background: #e3f2fd; color: #1565c0;
+            font-weight: 600; background: #ecfdf5; color: #0f766e;
         }
         .q-options .opt { padding: 4px 0; }
         .q-options .opt.correct { color: #1c8a4c; font-weight: 600; }
         .q-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
         .empty-state { padding: 60px 20px; text-align: center; color: #999; }
-        .empty-state h3 { font-size: 20px; margin-bottom: 10px; color: #667eea; }
+        .empty-state h3 { font-size: 20px; margin-bottom: 10px; color: #0f766e; }
 
         /* Bulk select / delete */
         .bulk-toolbar {
@@ -102,10 +102,10 @@
         }
         .bulk-toolbar input[type="checkbox"],
         .q-check {
-            width: 17px; height: 17px; accent-color: #667eea; cursor: pointer; flex-shrink: 0;
+            width: 17px; height: 17px; accent-color: #0f766e; cursor: pointer; flex-shrink: 0;
         }
         .bulk-count { font-size: 13px; color: #666; }
-        .bulk-count strong { color: #3b3b78; }
+        .bulk-count strong { color: #0f172a; }
         .btn-danger-solid {
             background: #d64545; color: #fff; border: none;
             padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 700;
@@ -193,7 +193,7 @@
         {% if messages %}
         <div style="margin-bottom:18px;">
           {% for message in messages %}
-            <div style="padding:14px 16px; border-radius:8px; margin-bottom:8px; font-size:14px; line-height:1.5; {% if 'success' in message.tags %}background:#e8f5e9; color:#1b5e20; border-left:4px solid #2e7d32;{% elif 'error' in message.tags %}background:#ffebee; color:#b71c1c; border-left:4px solid #c62828;{% else %}background:#e3f2fd; color:#0d47a1; border-left:4px solid #1565c0;{% endif %}">
+            <div style="padding:14px 16px; border-radius:8px; margin-bottom:8px; font-size:14px; line-height:1.5; {% if 'success' in message.tags %}background:#e8f5e9; color:#1b5e20; border-left:4px solid #2e7d32;{% elif 'error' in message.tags %}background:#ffebee; color:#b71c1c; border-left:4px solid #c62828;{% else %}background:#ecfdf5; color:#0d47a1; border-left:4px solid #0f766e;{% endif %}">
               {{ message }}
             </div>
           {% endfor %}
@@ -236,7 +236,7 @@
                                onchange="onQuestionCheckChange()" aria-label="Select question {{ question.id }}" />
                     </div>
                     <div class="q-body">
-                    <div class="question-text"><span style="color:#667eea;font-weight:700;margin-right:6px;">{{ page_obj.start_index|add:forloop.counter0 }}.</span>{{ question.question_text|safe_html_stem }}</div>
+                    <div class="question-text"><span style="color:#0f766e;font-weight:700;margin-right:6px;">{{ page_obj.start_index|add:forloop.counter0 }}.</span>{{ question.question_text|safe_html_stem }}</div>
                     <div class="question-meta">
                         <span class="type-badge">{{ question.get_question_type_display }}</span>
                         <span>📚 {{ question.question_bank.title }}</span>
@@ -263,7 +263,7 @@
                       {% endif %}
                     {% endwith %}
                     {% if question.correct_answer %}
-                    <div style="font-size: 12px; color: #667eea; margin-bottom: 6px;">
+                    <div style="font-size: 12px; color: #0f766e; margin-bottom: 6px;">
                         <strong>Answer:</strong> {{ question.correct_answer|safe_html }}
                     </div>
                     {% endif %}

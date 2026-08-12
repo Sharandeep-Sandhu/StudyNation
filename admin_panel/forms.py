@@ -775,23 +775,11 @@ class QuestionBankForm(forms.ModelForm):
 
 # ==================== BLOG ====================
 class BlogForm(forms.ModelForm):
-    """Form for creating/editing blog posts (with media support)"""
+    """Form for creating/editing blog posts (image + video + PDF)."""
 
-    video = forms.FileField(
-        required=False,
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "video/*"}),
-        label="Upload Video (MP4, WebM, etc.)",
-    )
-    pdf = forms.FileField(
-        required=False,
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": ".pdf"}),
-        label="Upload PDF Document",
-    )
-    ppt = forms.FileField(
-        required=False,
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": ".ppt,.pptx"}),
-        label="Upload PowerPoint (PPT/PPTX)",
-    )
+    MAX_IMAGE_MB = 8
+    MAX_VIDEO_MB = 80
+    MAX_DOC_MB = 40
 
     class Meta:
         model = Blog
@@ -800,10 +788,9 @@ class BlogForm(forms.ModelForm):
             "content",
             "author",
             "image",
-            "published",
             "video",
             "pdf",
-            "ppt",
+            "published",
         ]
         widgets = {
             "title": forms.TextInput(
@@ -819,8 +806,61 @@ class BlogForm(forms.ModelForm):
             "author": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Author Name"}
             ),
-            "image": forms.FileInput(attrs={"class": "form-control"}),
+            "image": forms.ClearableFileInput(
+                attrs={
+                    "class": "form-control",
+                    "accept": "image/png,image/jpeg,image/jpg,image/webp,image/gif",
+                }
+            ),
+            "video": forms.ClearableFileInput(
+                attrs={
+                    "class": "form-control",
+                    "accept": "video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg",
+                }
+            ),
+            "pdf": forms.ClearableFileInput(
+                attrs={"class": "form-control", "accept": ".pdf,application/pdf"}
+            ),
         }
+        labels = {
+            "image": "Featured image",
+            "video": "Video (MP4 / WebM)",
+            "pdf": "PDF document",
+        }
+
+    def _check_size(self, f, max_mb: int, label: str):
+        if not f:
+            return
+        size = getattr(f, "size", None)
+        if size is None:
+            return
+        if size > max_mb * 1024 * 1024:
+            raise forms.ValidationError(
+                f"{label} must be smaller than {max_mb}MB (got {size // (1024 * 1024)}MB)."
+            )
+
+    def clean_image(self):
+        f = self.cleaned_data.get("image")
+        self._check_size(f, self.MAX_IMAGE_MB, "Image")
+        return f
+
+    def clean_video(self):
+        f = self.cleaned_data.get("video")
+        self._check_size(f, self.MAX_VIDEO_MB, "Video")
+        if f and hasattr(f, "name"):
+            ext = (f.name.rsplit(".", 1)[-1] if "." in f.name else "").lower()
+            if ext and ext not in {"mp4", "webm", "ogg", "mov", "m4v"}:
+                raise forms.ValidationError(
+                    "Video must be MP4, WebM, OGG, MOV, or M4V."
+                )
+        return f
+
+    def clean_pdf(self):
+        f = self.cleaned_data.get("pdf")
+        self._check_size(f, self.MAX_DOC_MB, "PDF")
+        if f and hasattr(f, "name") and not f.name.lower().endswith(".pdf"):
+            raise forms.ValidationError("Document must be a .pdf file.")
+        return f
 
 
 # ==================== COURSE ====================
@@ -1169,7 +1209,12 @@ class ExamForm(forms.ModelForm):
             "duration_minutes",
             "questions_per_page",
             "shuffle_questions",
+            "allow_calculator",
         ]
+        labels = {
+            "allow_calculator": "Need calculator (show calculator during practice)",
+            "shuffle_questions": "Shuffle questions",
+        }
         widgets = {
             "name": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "e.g. Mock Exam 1"}
@@ -1183,6 +1228,9 @@ class ExamForm(forms.ModelForm):
                 attrs={"class": "form-control"},
             ),
             "shuffle_questions": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+            "allow_calculator": forms.CheckboxInput(
                 attrs={"class": "form-check-input"}
             ),
         }

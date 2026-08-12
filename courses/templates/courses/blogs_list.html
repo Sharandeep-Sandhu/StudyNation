@@ -1,12 +1,15 @@
 {% extends 'base.html' %}
+{% load course_extras %}
 {% block title %}Blogs - Study Nation{% endblock %}
 
 {% block extra_css %}
+{% include 'partials/no_download_media.html' %}
+{% include 'partials/no_screenshot.html' %}
 <style>
   .bl-page { max-width: 1180px; margin: 0 auto; padding-bottom: 2rem; }
 
   .bl-hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 55%, #8b5cf6 100%);
+    background: linear-gradient(165deg, #0f172a 0%, #134e4a 55%, #0f766e 100%);
     border-radius: 20px;
     padding: 2.75rem 2.4rem;
     color: #fff;
@@ -67,7 +70,7 @@
   .bl-card-media {
     position: relative;
     height: 200px;
-    background: linear-gradient(135deg, #eef1ff, #f3e8ff);
+    background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
     overflow: hidden;
   }
   .bl-card-media img {
@@ -117,7 +120,7 @@
   }
   .bl-avatar {
     width: 32px; height: 32px; border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(165deg, #0f766e, #0d9488);
     color: #fff; font-size: 0.75rem; font-weight: 700;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
@@ -127,7 +130,7 @@
   }
   .bl-author-date { font-size: 0.75rem; color: #8a91a8; }
   .bl-read {
-    font-size: 0.82rem; font-weight: 700; color: #667eea; white-space: nowrap;
+    font-size: 0.82rem; font-weight: 700; color: #0f766e; white-space: nowrap;
   }
 
   .bl-empty {
@@ -145,7 +148,11 @@
 {% endblock %}
 
 {% block content %}
-<div class="bl-page">
+<div
+  class="bl-page no-copy-zone no-screenshot-zone no-print-zone"
+  data-protected-page="1"
+  data-ns-mark="Study Nation · Blog Protected · No Download · No Copy · No Screenshot · No Print"
+>
   <section class="bl-hero">
     <div class="bl-hero-inner">
       <div class="bl-kicker">Study Nation Blog</div>
@@ -154,20 +161,28 @@
     </div>
   </section>
 
+  <p class="bl-empty" style="padding:0.85rem 1rem; margin-bottom:1.25rem; border-style:solid; background:#fef2f2; border-color:#fecaca; color:#991b1b; text-align:left;">
+    <strong>Protected content.</strong> Blog media is view-only — download, copy, print, and screenshots are not allowed.
+  </p>
+
   {% if blogs %}
     <div class="bl-grid">
       {% for blog in blogs %}
-        <a class="bl-card" href="{% url 'courses:blog_detail' blog.slug %}">
-          <div class="bl-card-media">
-            {% if blog.image %}
-              <img src="{{ blog.image.url }}" alt="{{ blog.title }}" loading="lazy" draggable="false" />
+        <a class="bl-card no-dl-zone no-copy-zone sn-protect-allow" href="{% url 'courses:blog_detail' blog.slug %}">
+          <div class="bl-card-media no-dl-media">
+            {% with cover_url=blog.image|media_url %}
+            {% if cover_url %}
+              <img src="{{ cover_url }}" alt="{{ blog.title }}" loading="lazy" draggable="false" oncontextmenu="return false;"
+                   onerror="this.style.display='none'; this.parentElement.querySelector('.bl-card-placeholder') && (this.parentElement.querySelector('.bl-card-placeholder').style.display='flex');" />
+              <div class="bl-card-placeholder" style="display:none;">📝</div>
             {% else %}
               <div class="bl-card-placeholder">📝</div>
             {% endif %}
+            {% endwith %}
             <div class="bl-card-badges">
               {% if blog.video %}<span class="bl-badge">Video</span>{% endif %}
               {% if blog.pdf %}<span class="bl-badge">Document</span>{% endif %}
-              {% if blog.ppt %}<span class="bl-badge">Slides</span>{% endif %}
+              <span class="bl-badge" style="color:#b91c1c;">View only</span>
             </div>
           </div>
           <div class="bl-card-body">

@@ -180,7 +180,7 @@ class BlogAdmin(admin.ModelAdmin):
     fieldsets = (
         ("Basic Info", {"fields": ("title", "slug", "author", "published")}),
         ("Content", {"fields": ("content", "image")}),
-        ("Media Files", {"fields": ("video", "pdf", "ppt")}),
+        ("Media Files", {"fields": ("video", "pdf")}),
         (
             "Timestamps",
             {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},

@@ -210,7 +210,7 @@ class QuestionBankForm(forms.ModelForm):
 
 # ==================== BLOG ====================
 class BlogForm(forms.ModelForm):
-    """Form for creating/editing blog posts (with media support)"""
+    """Form for creating/editing blog posts (image + video + PDF)."""
 
     video = forms.FileField(
         required=False,
@@ -221,11 +221,6 @@ class BlogForm(forms.ModelForm):
         required=False,
         widget=forms.FileInput(attrs={"class": "form-control", "accept": ".pdf"}),
         label="Upload PDF Document",
-    )
-    ppt = forms.FileField(
-        required=False,
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": ".ppt,.pptx"}),
-        label="Upload PowerPoint (PPT/PPTX)",
     )
 
     class Meta:
@@ -238,7 +233,6 @@ class BlogForm(forms.ModelForm):
             "published",
             "video",
             "pdf",
-            "ppt",
         ]
         widgets = {
             "title": forms.TextInput(
@@ -480,7 +474,12 @@ class StudentExamForm(forms.ModelForm):
             "duration_minutes",
             "questions_per_page",
             "shuffle_questions",
+            "allow_calculator",
         ]
+        labels = {
+            "allow_calculator": "Need calculator (show calculator during practice)",
+            "shuffle_questions": "Shuffle questions",
+        }
         widgets = {
             "name": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "e.g. My Practice Exam"}
@@ -498,6 +497,9 @@ class StudentExamForm(forms.ModelForm):
                 attrs={"class": "form-control"},
             ),
             "shuffle_questions": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+            "allow_calculator": forms.CheckboxInput(
                 attrs={"class": "form-check-input"}
             ),
         }

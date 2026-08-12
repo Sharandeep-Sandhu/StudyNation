@@ -20,7 +20,7 @@
       --pq-brand: #3730a3;
       --pq-brand-soft: #eef2ff;
       --pq-brand-mid: #4f46e5;
-      --pq-brand-hot: #7c3aed;
+      --pq-brand-hot: #0f766e;
       --pq-ok: #0f766e;
       --pq-ok-bg: #f0fdfa;
       --pq-ok-line: #99f6e4;
@@ -120,7 +120,7 @@
     .pq-topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
     .pq-exam-chip {
       width: 42px; height: 42px; border-radius: 12px;
-      background: linear-gradient(145deg, #4f46e5 0%, #7c3aed 55%, #a855f7 100%);
+      background: linear-gradient(145deg, #4f46e5 0%, #0f766e 55%, #a855f7 100%);
       color: #fff; display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-size: 0.78rem; flex-shrink: 0;
       letter-spacing: 0.04em;
@@ -157,7 +157,7 @@
     .pq-timer {
       font-family: ui-monospace, 'SF Mono', Consolas, monospace;
       font-size: 1.08rem !important; font-weight: 700 !important; letter-spacing: 0.05em;
-      background: linear-gradient(90deg, #4f46e5, #7c3aed);
+      background: linear-gradient(90deg, #4f46e5, #0f766e);
       -webkit-background-clip: text; background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -177,7 +177,7 @@
       box-shadow: 0 6px 16px rgba(79, 70, 229, 0.14);
     }
     .pq-calc-toggle.is-open {
-      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      background: linear-gradient(135deg, #4f46e5, #0f766e);
       color: #fff; border-color: transparent;
       box-shadow: 0 8px 22px rgba(79, 70, 229, 0.35);
     }
@@ -337,7 +337,7 @@
     }
     .pq-option.pq-selected .pq-option-letter {
       border-color: transparent;
-      background: linear-gradient(145deg, #4f46e5, #7c3aed);
+      background: linear-gradient(145deg, #4f46e5, #0f766e);
       color: #fff;
       box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
     }
@@ -438,7 +438,7 @@
       background:
         radial-gradient(120px 80px at 100% 0%, rgba(244, 114, 182, 0.35), transparent 60%),
         radial-gradient(100px 70px at 0% 100%, rgba(52, 211, 191, 0.28), transparent 55%),
-        linear-gradient(155deg, #4338ca 0%, #4f46e5 35%, #7c3aed 72%, #a855f7 100%);
+        linear-gradient(155deg, #4338ca 0%, #4f46e5 35%, #0f766e 72%, #a855f7 100%);
       border: 1px solid rgba(255,255,255,0.18);
       color: #fff;
       box-shadow: 0 16px 40px rgba(79, 70, 229, 0.38), inset 0 1px 0 rgba(255,255,255,0.2);
@@ -580,7 +580,7 @@
       box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
     }
     .pq-qlist-item.pq-current {
-      background: linear-gradient(145deg, #4f46e5, #7c3aed);
+      background: linear-gradient(145deg, #4f46e5, #0f766e);
       color: #fff; border-color: transparent;
       box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
     }
@@ -643,7 +643,7 @@
     .pq-calc-head {
       display: flex; align-items: center; justify-content: space-between;
       padding: 11px 14px;
-      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%);
+      background: linear-gradient(135deg, #4f46e5 0%, #0f766e 50%, #a855f7 100%);
       cursor: move;
     }
     .pq-calc-head strong { font-size: 0.88rem; font-weight: 700; }
@@ -666,7 +666,7 @@
     .pq-calc-keys button:hover { background: #35354d; transform: scale(1.03); }
     .pq-calc-keys button.fn { background: #25253a; color: #b8c0ff; font-size: 0.78rem; }
     .pq-calc-keys button.op { background: #3b3b5c; }
-    .pq-calc-keys button.eq { background: linear-gradient(135deg, #4f46e5, #7c3aed); grid-column: span 2; }
+    .pq-calc-keys button.eq { background: linear-gradient(135deg, #4f46e5, #0f766e); grid-column: span 2; }
     .pq-calc-keys button.danger { background: #3a2430; color: #fca5a5; }
     .pq-calc-hint { padding: 0 12px 10px; font-size: 0.7rem; color: #7c8098; text-align: center; }
 
@@ -723,9 +723,11 @@
       </div>
     </div>
     <div class="pq-topbar-right">
+      {% if exam.allow_calculator %}
       <button type="button" class="pq-calc-toggle" id="pqCalcToggle" onclick="togglePracticeCalculator()">
         <span aria-hidden="true">⌨</span> Calculator
       </button>
+      {% endif %}
       <div class="pq-meta-pills">
         <div class="pq-meta-pill">
           <label>Answered</label>
@@ -742,7 +744,8 @@
     <div class="pq-progress-fill" id="pqProgressFill"></div>
   </div>
 
-  <!-- Full scientific calculator -->
+  {% if exam.allow_calculator %}
+  <!-- Full scientific calculator (only when paper allows it) -->
   <div class="pq-calc" id="pqCalculator" aria-label="Scientific calculator" role="dialog">
     <div class="pq-calc-head" id="pqCalcDragHandle">
       <strong>Full Calculator</strong>
@@ -798,6 +801,7 @@
     </div>
     <div class="pq-calc-hint">Scientific mode · Degrees · Drag header to move</div>
   </div>
+  {% endif %}
 
   <form id="practiceForm" method="post" action="{% url 'courses:student_practice_submit' exam.id %}">
     {% csrf_token %}

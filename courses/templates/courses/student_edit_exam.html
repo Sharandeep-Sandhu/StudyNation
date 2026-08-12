@@ -28,12 +28,12 @@
       font-size: 1rem; font-weight: 700; color: #222; border: none; border-bottom: 2px solid transparent;
       padding: 2px 4px; background: transparent; min-width: 220px;
     }
-    .eb-name-row input[type="text"]:focus { outline: none; border-bottom-color: #667eea; background: #f5f7fa; }
+    .eb-name-row input[type="text"]:focus { outline: none; border-bottom-color: #0f766e; background: #f5f7fa; }
     .eb-name-row button {
-      font-size: 0.8rem; padding: 6px 12px; border-radius: 5px; border: 1px solid #667eea;
-      background: #fff; color: #667eea; cursor: pointer;
+      font-size: 0.8rem; padding: 6px 12px; border-radius: 5px; border: 1px solid #0f766e;
+      background: #fff; color: #0f766e; cursor: pointer;
     }
-    .eb-name-row button:hover { background: #667eea; color: #fff; }
+    .eb-name-row button:hover { background: #0f766e; color: #fff; }
 
     .eb-tabs { display: flex; gap: 24px; border-bottom: 1px solid #eee; margin-top: 1.25rem; flex-wrap: wrap; }
     .eb-tab {
@@ -41,9 +41,9 @@
       text-decoration: none; border-bottom: 3px solid transparent; text-transform: uppercase; cursor: pointer;
       background: none; border-top: none; border-left: none; border-right: none;
     }
-    .eb-tab.eb-active { color: #3b3b78; border-bottom-color: #667eea; }
+    .eb-tab.eb-active { color: #0f172a; border-bottom-color: #0f766e; }
     .eb-tab .eb-badge {
-      background: #eef0fb; color: #667eea; border-radius: 10px; padding: 1px 8px;
+      background: #ecfdf5; color: #0f766e; border-radius: 10px; padding: 1px 8px;
       font-size: 0.68rem; margin-left: 4px;
     }
 
@@ -59,7 +59,7 @@
     .eb-create-card::before {
       content: "";
       position: absolute; left: 0; top: 0; right: 0; height: 4px;
-      background: linear-gradient(90deg, #667eea 0%, #8b5cf6 50%, #764ba2 100%);
+      background: linear-gradient(90deg, #0f766e 0%, #0d9488 50%, #134e4a 100%);
     }
     .eb-create-card h2 {
       margin: 0 0 6px; font-size: 1.2rem; color: #1f2550; letter-spacing: -0.02em;
@@ -151,9 +151,9 @@
       box-shadow: 0 0 0 3px rgba(102,126,234,.12), 0 4px 12px rgba(102,126,234,.12);
     }
     .eb-chip input:checked + span::before {
-      border-color: #667eea;
+      border-color: #0f766e;
       background:
-        linear-gradient(135deg, #667eea, #764ba2);
+        linear-gradient(165deg, #0f766e, #0d9488);
       box-shadow: inset 0 0 0 2px #fff;
     }
     .eb-chip input:focus-visible + span {
@@ -200,7 +200,7 @@
     }
     .eb-seg-opt input:checked + span {
       color: #fff;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
       border-color: transparent;
       box-shadow: 0 6px 14px rgba(102,126,234,.28);
     }
@@ -214,7 +214,7 @@
     }
     .eb-create-btn {
       display: inline-flex; align-items: center; gap: 8px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
       color: #fff; border: none; border-radius: 12px; padding: 13px 24px; font-weight: 700;
       font-size: 0.95rem; cursor: pointer;
       box-shadow: 0 8px 18px rgba(102, 126, 234, 0.28);
@@ -245,7 +245,7 @@
     .eb-sections-wrap > .eb-sections-title::before {
       content: "";
       width: 8px; height: 8px; border-radius: 50%;
-      background: linear-gradient(135deg, #667eea, #764ba2);
+      background: linear-gradient(165deg, #0f766e, #0d9488);
       box-shadow: 0 0 0 4px rgba(102,126,234,.15);
     }
     .eb-sections-wrap > .eb-sections-sub {
@@ -297,8 +297,8 @@
       box-shadow: 0 0 0 3px rgba(102,126,234,.14);
     }
     .eb-section-row input.eb-sec-count[readonly] {
-      font-weight: 750; color: #3b3b78; letter-spacing: 0.02em;
-      background: linear-gradient(180deg, #f4f6ff 0%, #eef1ff 100%);
+      font-weight: 750; color: #0f172a; letter-spacing: 0.02em;
+      background: linear-gradient(180deg, #f4f6ff 0%, #ecfdf5 100%);
       border-color: #d4dbf5;
       cursor: default;
     }
@@ -315,7 +315,7 @@
       gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
     }
     .eb-type-filter > .eb-type-filter-head label {
-      margin: 0; font-size: 0.78rem; font-weight: 750; color: #3b3b78;
+      margin: 0; font-size: 0.78rem; font-weight: 750; color: #0f172a;
     }
     .eb-type-filter-hint {
       font-size: 0.72rem; color: #8b92a8;
@@ -338,7 +338,7 @@
     }
     .eb-type-field.is-active {
       border-color: #c5cef5;
-      background: linear-gradient(180deg, #f7f8ff 0%, #eef1ff 100%);
+      background: linear-gradient(180deg, #f7f8ff 0%, #ecfdf5 100%);
       box-shadow: 0 0 0 3px rgba(102,126,234,.08);
     }
     .eb-type-grid .eb-type-field label {
@@ -385,7 +385,7 @@
       transition: transform .1s ease, background .12s, color .12s, box-shadow .12s;
     }
     .eb-counter-btn:hover {
-      background: #667eea; color: #fff;
+      background: #0f766e; color: #fff;
       box-shadow: 0 4px 10px rgba(102,126,234,.28);
       transform: scale(1.04);
     }
@@ -418,7 +418,7 @@
       appearance: textfield;
     }
     .eb-type-field.is-active .eb-counter input.eb-sec-type-count {
-      color: #3b3b78;
+      color: #0f172a;
     }
     .eb-counter input.eb-sec-type-count::-webkit-outer-spin-button,
     .eb-counter input.eb-sec-type-count::-webkit-inner-spin-button {
@@ -449,7 +449,7 @@
       display: inline-flex; align-items: center; justify-content: center;
       min-width: 28px; height: 28px; padding: 0 8px;
       border-radius: 999px;
-      background: linear-gradient(135deg, #667eea, #764ba2);
+      background: linear-gradient(165deg, #0f766e, #0d9488);
       color: #fff; font-weight: 750; font-size: 0.85rem;
       box-shadow: 0 4px 10px rgba(102,126,234,.3);
     }
@@ -471,7 +471,7 @@
     .eb-selected-row:last-child { border-bottom: none; }
     .eb-selected-row .eb-drag-handle { color: #ccc; font-size: 15px; cursor: grab; }
     .eb-selected-row .eb-order-num {
-      width: 24px; height: 24px; border-radius: 50%; background: #eef0fb; color: #667eea;
+      width: 24px; height: 24px; border-radius: 50%; background: #ecfdf5; color: #0f766e;
       font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
@@ -482,10 +482,10 @@
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .eb-selected-row .eb-type-tag {
-      font-size: 0.72rem; color: #5b6fd8; background: #eef0fb; padding: 3px 8px;
+      font-size: 0.72rem; color: #5b6fd8; background: #ecfdf5; padding: 3px 8px;
       border-radius: 12px; font-weight: 600; white-space: nowrap;
     }
-    .eb-selected-row .eb-marks-tag { font-size: 0.72rem; color: #667eea; font-weight: 600; white-space: nowrap; }
+    .eb-selected-row .eb-marks-tag { font-size: 0.72rem; color: #0f766e; font-weight: 600; white-space: nowrap; }
     .eb-selected-row .eb-remove-btn {
       background: none; border: none; color: #c0392b; font-size: 0.78rem; cursor: pointer; padding: 6px 10px;
     }
@@ -512,6 +512,28 @@
     .eb-settings-card .eb-checkbox-row { display: flex; align-items: center; gap: 8px; }
     .eb-settings-card .eb-checkbox-row input { width: auto; }
 
+    .eb-calc-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      padding: 0.9rem 1rem;
+      border: 1.5px solid #c7d2fe;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
+      cursor: pointer;
+      line-height: 1.45;
+    }
+    .eb-calc-option:hover { border-color: #818cf8; }
+    .eb-calc-option input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: #0f766e;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .eb-calc-option strong { color: #1e293b; }
+
     .eb-practice-card {
       background: white; border: 1px solid #dde2f7; border-radius: 10px; padding: 1.5rem; max-width: 640px;
     }
@@ -525,7 +547,7 @@
       text-align: left; padding: 8px 10px; color: #777; font-weight: 600; border-bottom: 1px solid #eee;
     }
     .eb-attempts-table td { padding: 8px 10px; border-bottom: 1px solid #f2f2f8; color: #333; }
-    .eb-attempts-table a { color: #667eea; text-decoration: none; font-weight: 600; }
+    .eb-attempts-table a { color: #0f766e; text-decoration: none; font-weight: 600; }
 
     @media (max-width: 720px) {
       .eb-form-grid { grid-template-columns: 1fr; }
@@ -558,7 +580,7 @@
           <input id="examNameInput" type="text" name="name" value="{{ exam.name }}" />
           <button type="submit">Save name</button>
         </form>
-        <a href="{% url 'courses:student_exams' %}" style="margin-left: auto; font-size: 0.82rem; color: #667eea; text-decoration: none;">← Back to My Exams</a>
+        <a href="{% url 'courses:student_exams' %}" style="margin-left: auto; font-size: 0.82rem; color: #0f766e; text-decoration: none;">← Back to My Exams</a>
       </div>
 
       <div class="eb-tabs">
@@ -740,6 +762,21 @@
                 <span class="eb-total-chip" id="sectionsTotal">{{ form_defaults.num_questions }}</span>
               </div>
             </div>
+
+            <div class="eb-field eb-field-full">
+              <label class="eb-calc-option">
+                <input
+                  type="checkbox"
+                  name="allow_calculator"
+                  value="1"
+                  {% if exam.allow_calculator %}checked{% endif %}
+                />
+                <span>
+                  <strong>Need calculator</strong>
+                  <span class="eb-field-hint"> — if checked, students can open the on-screen calculator during practice; if unchecked, the calculator is hidden.</span>
+                </span>
+              </label>
+            </div>
           </div>
 
           <div class="eb-create-actions">
@@ -785,6 +822,13 @@
         <div><strong id="summaryCount">{{ selected_count }}</strong> question(s)</div>
         <div><strong id="summaryMarks">{{ total_marks }}</strong> total marks</div>
         <div><strong>{{ exam.duration_minutes }}</strong> minute timer</div>
+        <div>
+          {% if exam.allow_calculator %}
+            <strong>Calculator allowed</strong>
+          {% else %}
+            <span style="color:#94a3b8;">No calculator</span>
+          {% endif %}
+        </div>
         {% if selected_count %}
           <div style="margin-left:auto;">
             <a href="{% url 'courses:student_practice_start' exam.id %}" class="eb-practice-start-btn" style="padding: 8px 16px; font-size: 0.82rem;">▶ Start Practice</a>
@@ -895,6 +939,13 @@
             {{ settings_form.shuffle_questions }}
             {{ settings_form.shuffle_questions.label_tag }}
           </div>
+          <div class="form-group eb-checkbox-row">
+            {{ settings_form.allow_calculator }}
+            {{ settings_form.allow_calculator.label_tag }}
+          </div>
+          <p style="font-size:0.82rem;color:#64748b;margin:-6px 0 14px;">
+            When enabled, the on-screen calculator appears during Practice. When disabled, it is completely hidden.
+          </p>
           <button type="submit" class="btn">💾 Save Settings</button>
         </form>
       </div>
@@ -1199,12 +1250,12 @@
             datasets: [{
               label: 'Score %',
               data: chronological.map(function (r) { return r.score; }),
-              borderColor: '#667eea',
+              borderColor: '#0f766e',
               backgroundColor: 'rgba(102,126,234,0.15)',
               fill: true,
               tension: 0.3,
               pointRadius: 4,
-              pointBackgroundColor: '#667eea'
+              pointBackgroundColor: '#0f766e'
             }]
           },
           options: {

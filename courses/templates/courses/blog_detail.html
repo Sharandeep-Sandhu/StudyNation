@@ -1,13 +1,28 @@
 {% extends 'base.html' %}
+{% load course_extras %}
 {% block title %}{{ blog.title }} - Study Nation{% endblock %}
 
 {% block extra_css %}
 {% include 'partials/no_download_media.html' %}
+{% include 'partials/no_screenshot.html' %}
 <style>
   .bd-page { max-width: 1100px; margin: 0 auto; padding-bottom: 2rem; }
+  .bd-protect-note {
+    font-size: 0.84rem; color: #6b7280; margin: 0 0 1rem;
+    background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 10px; padding: 10px 12px; color: #991b1b;
+  }
+  .bd-protect-note strong { color: #7f1d1d; }
+  .bd-lock-badge {
+    display: inline-block;
+    background: #fef2f2; color: #b91c1c;
+    font-size: 0.72rem; font-weight: 800; letter-spacing: .03em;
+    text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
+    margin-left: 8px;
+  }
   .bd-back {
     display: inline-flex; align-items: center; gap: 6px;
-    color: #667eea; font-weight: 700; font-size: 0.9rem;
+    color: #0f766e; font-weight: 700; font-size: 0.9rem;
     text-decoration: none; margin-bottom: 1.1rem;
   }
   .bd-back:hover { opacity: 0.85; }
@@ -32,11 +47,11 @@
     max-height: 420px;
     object-fit: cover;
     display: block;
-    background: linear-gradient(135deg, #eef1ff, #f3e8ff);
+    background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
   }
   .bd-cover-ph {
     height: 200px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
     display: flex; align-items: center; justify-content: center;
     color: rgba(255,255,255,0.9); font-size: 2.8rem;
   }
@@ -63,7 +78,7 @@
   .bd-author { display: flex; align-items: center; gap: 10px; }
   .bd-avatar {
     width: 42px; height: 42px; border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(165deg, #0f766e, #0d9488);
     color: #fff; font-weight: 800; font-size: 0.95rem;
     display: flex; align-items: center; justify-content: center;
   }
@@ -109,10 +124,26 @@
   .bd-embed {
     width: 100%;
     min-height: 560px;
+    height: 70vh;
     border: 1px solid #e6e9f5;
     border-radius: 14px;
     background: #fafbff;
     margin-bottom: 1.25rem;
+  }
+  .bd-pdf-wrap {
+    border: 1px solid #e6e9f5;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fafbff;
+    margin-bottom: 1.25rem;
+  }
+  .bd-pdf-wrap object,
+  .bd-pdf-wrap embed {
+    width: 100%;
+    min-height: 560px;
+    height: 70vh;
+    display: block;
+    border: 0;
   }
 
   .bd-side { position: sticky; top: 90px; }
@@ -137,7 +168,7 @@
   .bd-side-list li:last-child { border-bottom: none; }
   .bd-side-cta {
     display: block; text-align: center;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(165deg, #0f766e, #0d9488);
     color: #fff !important; text-decoration: none;
     font-weight: 700; font-size: 0.9rem;
     padding: 12px 14px; border-radius: 10px;
@@ -172,21 +203,41 @@
 {% endblock %}
 
 {% block content %}
-<div class="bd-page">
-  <a class="bd-back" href="{% url 'courses:blog_list' %}">← Back to all blogs</a>
+<div
+  class="bd-page no-copy-zone no-screenshot-zone no-print-zone"
+  data-protected-page="1"
+  data-ns-mark="Study Nation · Blog Protected · No Download · No Copy · No Screenshot · No Print"
+>
+  <a class="bd-back sn-protect-allow" href="{% url 'courses:blog_list' %}">← Back to all blogs</a>
+
+  <p class="bd-protect-note">
+    <strong>Protected · View only.</strong>
+    Download, copy, print, and screenshots are not allowed on this page.
+  </p>
 
   <div class="bd-layout">
-    <article class="bd-article no-dl-zone">
+    <article class="bd-article no-dl-zone no-copy-zone" oncontextmenu="return false;">
+      {% with cover_url=blog.image|media_url %}
       <div class="no-dl-media">
-        {% if blog.image %}
-          <img class="bd-cover" src="{{ blog.image.url }}" alt="{{ blog.title }}" draggable="false" oncontextmenu="return false;" />
+        {% if cover_url %}
+          <img
+            class="bd-cover"
+            src="{{ cover_url }}"
+            alt="{{ blog.title }}"
+            draggable="false"
+            oncontextmenu="return false;"
+            onerror="this.style.display='none'; this.nextElementSibling && (this.nextElementSibling.style.display='flex');"
+          />
+          <div class="bd-cover-ph" style="display:none;">📝</div>
         {% else %}
           <div class="bd-cover-ph">📝</div>
         {% endif %}
       </div>
+      {% endwith %}
 
       <div class="bd-body">
         <div class="bd-kicker">Study Nation Blog</div>
+        <span class="bd-lock-badge">No download · No copy · No print</span>
         <h1 class="bd-title">{{ blog.title }}</h1>
 
         <div class="bd-meta">
@@ -203,92 +254,81 @@
           {% endif %}
         </div>
 
-        <div class="bd-content no-dl-media">
+        <div class="bd-content no-dl-media no-copy-zone" oncopy="return false;" oncut="return false;" onselectstart="return false;">
           {{ blog.content|linebreaks }}
         </div>
 
-        {% if blog.video or blog.pdf or blog.ppt %}
-          <div class="bd-media no-dl-media">
+        {% with video_url=blog.video|media_url pdf_url=blog.pdf|media_url %}
+        {% if video_url or pdf_url %}
+          <div class="bd-media no-dl-media no-copy-zone">
             <p class="bd-view-note">
-              <strong>View only.</strong> Files on this page cannot be downloaded.
-              PowerPoint files are never linked directly (that would force a browser download).
+              <strong>View only.</strong> Media cannot be downloaded, copied, printed, or screenshotted.
             </p>
 
-            {% if blog.video %}
+            {% if video_url %}
               <h3>Video</h3>
               <div class="bd-video-wrap">
                 <video
                   controls
+                  playsinline
                   preload="metadata"
                   controlsList="nodownload noremoteplayback noplaybackrate"
                   disablePictureInPicture
                   oncontextmenu="return false;"
                 >
-                  <source src="{{ blog.video.url }}" type="video/mp4" />
+                  <source src="{{ video_url }}" type="{{ video_mime|default:'video/mp4' }}" />
                   Your browser does not support the video tag.
                 </video>
               </div>
             {% endif %}
 
-            {% if blog.pdf %}
+            {% if pdf_url %}
               <h3>Document</h3>
-              {# PDF only — toolbar hidden; no <a href> download link #}
-              <iframe
-                class="bd-embed"
-                src="{{ blog.pdf.url }}#toolbar=0&navpanes=0&scrollbar=1&view=FitH"
-                title="Document viewer"
-                oncontextmenu="return false;"
-              ></iframe>
-            {% endif %}
-
-            {% if blog.ppt %}
-              <h3>Presentation</h3>
-              {#
-                Never use the raw .ppt/.pptx URL in an iframe or <a href>.
-                Browsers cannot display PowerPoint inline and will auto-download.
-                Office Online can render public URLs only (not localhost).
-              #}
-              {% if request.get_host == 'localhost' or request.get_host == '127.0.0.1' or 'localhost' in request.get_host %}
-                <div class="bd-view-note" style="background:#fff8e1;border-color:#ffe082;color:#6d4c00;">
-                  A presentation is attached to this post, but PowerPoint files cannot be shown
-                  safely in the browser without triggering a download.
-                  Preview is disabled so the file is not offered for download.
-                </div>
-              {% else %}
-                <iframe
+              <div class="bd-pdf-wrap">
+                {# object + iframe fallback — better cross-browser PDF viewing #}
+                <object
+                  data="{{ pdf_url }}#toolbar=0&navpanes=0&scrollbar=1&view=FitH"
+                  type="application/pdf"
                   class="bd-embed"
-                  src="https://view.officeapps.live.com/op/embed.aspx?src={{ request.scheme }}%3A%2F%2F{{ request.get_host }}{{ blog.ppt.url|urlencode }}"
-                  title="Presentation viewer (view only)"
-                  oncontextmenu="return false;"
-                ></iframe>
-              {% endif %}
+                  aria-label="PDF document"
+                >
+                  <iframe
+                    class="bd-embed"
+                    src="{{ pdf_url }}#toolbar=0&navpanes=0&scrollbar=1&view=FitH"
+                    title="Document viewer"
+                    oncontextmenu="return false;"
+                  ></iframe>
+                </object>
+              </div>
             {% endif %}
           </div>
         {% endif %}
+        {% endwith %}
       </div>
     </article>
 
-    <aside class="bd-side">
+    <aside class="bd-side sn-protect-allow">
       <div class="bd-side-card">
         <h4>About this post</h4>
         <ul class="bd-side-list">
           <li><strong>Author:</strong> {{ blog.author|default:"Study Nation Team" }}</li>
           <li><strong>Published:</strong> {{ blog.created_at|date:"M d, Y" }}</li>
+          <li><strong>Protection:</strong> No download · No copy · No screenshot · No print</li>
+          {% if blog.image %}<li>Includes cover image (view only)</li>{% endif %}
           {% if blog.video %}<li>Includes video (view only)</li>{% endif %}
           {% if blog.pdf %}<li>Includes document (view only)</li>{% endif %}
-          {% if blog.ppt %}<li>Includes presentation (view only)</li>{% endif %}
         </ul>
       </div>
 
       <div class="bd-side-card">
         <h4>Share</h4>
         <div class="bd-share">
-          <button type="button" onclick="navigator.clipboard.writeText(window.location.href).then(function(){ this.textContent='Copied!'; }.bind(this))">Copy link</button>
+          <button type="button" class="sn-protect-allow" onclick="navigator.clipboard.writeText(window.location.href).then(function(){ this.textContent='Link copied'; }.bind(this))">Copy page link</button>
         </div>
       </div>
 
-      <a class="bd-side-cta" href="{% url 'courses:blog_list' %}">Browse all blogs</a>
-      <a class="bd-side-cta secondary" href="{% url 'courses:courses_list' %}">Explore courses</a>
+      <a class="bd-side-cta sn-protect-allow" href="{% url 'courses:blog_list' %}">Browse all blogs</a>
+      <a class="bd-side-cta secondary sn-protect-allow" href="{% url 'courses:courses_list' %}">Explore courses</a>
     </aside>
   </div>
 </div>

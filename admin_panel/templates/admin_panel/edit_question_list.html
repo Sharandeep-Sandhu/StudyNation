@@ -28,7 +28,7 @@
 
       /* Sidebar (shared with rest of admin panel) */
       .sidebar {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
         color: white;
         padding: 30px 0;
         position: fixed;
@@ -56,7 +56,7 @@
 
       /* ---- Top header ---- */
       .builder-header { background: white; border-radius: 8px; padding: 20px 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
-      .builder-header h1 { font-size: 22px; color: #3b3b78; display: flex; align-items: center; gap: 8px; letter-spacing: .3px; }
+      .builder-header h1 { font-size: 22px; color: #0f172a; display: flex; align-items: center; gap: 8px; letter-spacing: .3px; }
       .builder-header .desc { color: #777; font-size: 13.5px; margin-top: 8px; line-height: 1.55; max-width: 1000px; }
 
       .list-name-row { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
@@ -67,9 +67,9 @@
         font-size: 16px; font-weight: 700; color: #222; border: none; border-bottom: 2px solid transparent;
         padding: 2px 4px; background: transparent; min-width: 220px;
       }
-      .list-name-row input[type="text"]:focus { outline: none; border-bottom-color: #667eea; background: #f5f7fa; }
-      .list-name-row button { font-size: 12px; padding: 6px 12px; border-radius: 5px; border: 1px solid #667eea; background: #fff; color: #667eea; cursor: pointer; }
-      .list-name-row button:hover { background: #667eea; color: #fff; }
+      .list-name-row input[type="text"]:focus { outline: none; border-bottom-color: #0f766e; background: #f5f7fa; }
+      .list-name-row button { font-size: 12px; padding: 6px 12px; border-radius: 5px; border: 1px solid #0f766e; background: #fff; color: #0f766e; cursor: pointer; }
+      .list-name-row button:hover { background: #0f766e; color: #fff; }
 
       /* ---- Tabs ---- */
       .tabs-bar { display: flex; gap: 28px; border-bottom: 1px solid #e3e3ee; margin-top: 22px; flex-wrap: wrap; }
@@ -77,9 +77,9 @@
         padding: 14px 2px; font-size: 13.5px; font-weight: 700; letter-spacing: .3px; color: #888;
         text-decoration: none; border-bottom: 3px solid transparent; text-transform: uppercase; cursor: pointer;
       }
-      .tab-link.current-source { color: #667eea; }
-      .tab-link.active-tab { color: #3b3b78; border-bottom-color: #667eea; }
-      .tab-link .count-badge { background: #eef0fb; color: #667eea; border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: 4px; }
+      .tab-link.current-source { color: #0f766e; }
+      .tab-link.active-tab { color: #0f172a; border-bottom-color: #0f766e; }
+      .tab-link .count-badge { background: #ecfdf5; color: #0f766e; border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: 4px; }
 
       /* ---- Filter bar ---- */
       .filter-card { background: #eef1fc; border: 1px solid #dde2f7; border-radius: 10px; padding: 18px 22px; margin-top: 18px; }
@@ -107,9 +107,9 @@
 
       .qlist-pane { border-right: 1px solid #eee; display: flex; flex-direction: column; max-height: 720px; }
       .qlist-toolbar { display: flex; justify-content: space-around; padding: 12px 8px; border-bottom: 1px solid #eee; background: #fafbff; }
-      .qlist-toolbar .tbtn { text-align: center; font-size: 10.5px; color: #667eea; cursor: pointer; }
+      .qlist-toolbar .tbtn { text-align: center; font-size: 10.5px; color: #0f766e; cursor: pointer; }
       .qlist-toolbar .tbtn .ic { font-size: 16px; display: block; }
-      .qlist-toolbar .tbtn .badge { background: #eef0fb; border-radius: 10px; padding: 0 6px; font-size: 10px; }
+      .qlist-toolbar .tbtn .badge { background: #ecfdf5; border-radius: 10px; padding: 0 6px; font-size: 10px; }
 
       .qlist-scroll { flex: 1; overflow-y: auto; }
       .qlist-row {
@@ -135,15 +135,15 @@
         min-width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
         border-radius: 4px; font-size: 12px; color: #555; text-decoration: none;
       }
-      .pagination-bar a:hover { background: #eef0fb; }
-      .pagination-bar .current-page { background: #667eea; color: white; }
+      .pagination-bar a:hover { background: #ecfdf5; }
+      .pagination-bar .current-page { background: #0f766e; color: white; }
 
       /* ---- Preview pane ---- */
       .preview-pane { display: flex; flex-direction: column; max-height: 720px; }
       .preview-toggle { display: flex; justify-content: center; gap: 36px; padding: 14px; border-bottom: 1px solid #eee; }
       .preview-toggle .ptoggle { font-size: 12px; font-weight: 700; color: #888; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; text-transform: uppercase; }
       .preview-toggle .ptoggle .ic { font-size: 18px; }
-      .preview-toggle .ptoggle.active-toggle { color: #667eea; }
+      .preview-toggle .ptoggle.active-toggle { color: #0f766e; }
 
       .preview-scroll { flex: 1; overflow-y: auto; padding: 24px 30px; }
       .preview-topic { color: #b5474d; font-size: 13px; margin-bottom: 14px; }
@@ -162,11 +162,11 @@
       }
       .selected-row:last-child { border-bottom: none; }
       .selected-row .drag-handle { color: #ccc; font-size: 16px; }
-      .selected-row .order-num { width: 26px; height: 26px; border-radius: 50%; background: #eef0fb; color: #667eea; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+      .selected-row .order-num { width: 26px; height: 26px; border-radius: 50%; background: #ecfdf5; color: #0f766e; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
       .selected-row .meta { flex: 1; }
       .selected-row .meta .code { font-weight: 600; font-size: 13.5px; color: #333; }
       .selected-row .meta .topic { font-size: 12px; color: #888; margin-top: 2px; }
-      .selected-row .marks-tag { font-size: 12px; color: #667eea; font-weight: 600; }
+      .selected-row .marks-tag { font-size: 12px; color: #0f766e; font-weight: 600; }
       .selected-row .remove-btn { background: none; border: none; color: #c0392b; font-size: 13px; cursor: pointer; padding: 6px 10px; }
       .selected-row.dragging { opacity: .4; }
       .selected-empty { text-align: center; padding: 60px 20px; color: #999; }
@@ -461,7 +461,7 @@
           `<span class="eq-math"><img src="${escapeHtml(src)}" alt="" class="eq-math-img" decoding="async" /></span>`
         ).join('');
         return `<div style="margin-top:14px;">
-          <div style="font-size:0.78rem; color:#667eea; margin-bottom:6px;">∑ Equation image(s)</div>
+          <div style="font-size:0.78rem; color:#0f766e; margin-bottom:6px;">∑ Equation image(s)</div>
           <div style="display:flex; flex-wrap:wrap; gap:8px;">${thumbs}</div>
         </div>`;
       }

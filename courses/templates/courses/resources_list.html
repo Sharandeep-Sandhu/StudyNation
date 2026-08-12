@@ -9,7 +9,7 @@
 <style>
   .rl-wrap { max-width: 1100px; margin: 0 auto; }
   .rl-hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
     color: #fff; border-radius: 16px; padding: 1.75rem 1.75rem;
     margin-bottom: 1.5rem;
   }
@@ -36,7 +36,7 @@
     padding: 9px 14px; border-radius: 8px; font-weight: 700; font-size: 0.88rem;
     text-decoration: none; border: none; cursor: pointer;
   }
-  .rl-filters button { background: #667eea; color: #fff; }
+  .rl-filters button { background: #0f766e; color: #fff; }
   .rl-filters a { background: #f1f3f9; color: #444; border: 1px solid #e0e3ef; }
   .rl-grid {
     display: grid;
@@ -73,7 +73,7 @@
     border-top: 1px solid #eef0f6;
   }
   .rl-actions a {
-    display: inline-block; background: #667eea; color: #fff;
+    display: inline-block; background: #0f766e; color: #fff;
     text-decoration: none; font-weight: 700; font-size: 0.88rem;
     padding: 9px 14px; border-radius: 8px;
   }
@@ -85,17 +85,23 @@
 {% endblock %}
 
 {% block content %}
-<div class="rl-wrap">
+<div
+  class="rl-wrap no-copy-zone no-screenshot-zone no-print-zone"
+  data-protected-page="1"
+  data-ns-mark="Study Nation · Protected · No Download · No Copy · No Screenshot · No Print"
+>
   <div class="rl-hero">
     <h1>Study Resources</h1>
     <p>Browse free and premium e-books & notes — view online only.</p>
   </div>
 
-  <p class="rl-note">
-    <strong>View only.</strong> Download, copy, print, and screenshots are restricted on Resources.
+  <p class="rl-note" style="background:#fef2f2; border-color:#fecaca; color:#991b1b;">
+    <strong>Protected · View only.</strong>
+    Download, copy, print, and screenshots are not allowed on Resources.
+    Open each item in the protected viewer — browser print (Ctrl+P) is blocked.
   </p>
 
-  <div class="rl-filters">
+  <div class="rl-filters sn-protect-allow">
     <form method="get">
       <div>
         <label>Type</label>
@@ -119,9 +125,9 @@
     </form>
   </div>
 
-  <div class="rl-grid no-copy-zone no-screenshot-zone" data-ns-mark="Study Nation · Protected · No Screenshot">
+  <div class="rl-grid no-copy-zone no-screenshot-zone no-print-zone">
     {% for resource in resources %}
-      <div class="rl-card no-dl-zone no-copy-zone">
+      <div class="rl-card no-dl-zone no-copy-zone no-print-zone" oncontextmenu="return false;">
         <div class="rl-card-body">
           <h3>{{ resource.title }}</h3>
           <div class="meta">{{ resource.author|default:"Unknown Author" }}</div>
@@ -132,7 +138,7 @@
               <span class="rl-badge free">FREE</span>
             {% endif %}
             <span class="rl-badge">{{ resource.get_resource_type_display }}</span>
-            <span class="rl-badge">View only · No copy</span>
+            <span class="rl-badge" style="background:#fef2f2;color:#b91c1c;">No download · No copy · No print</span>
           </div>
           {% if resource.description %}
             <p class="rl-desc">{{ resource.description|truncatewords:25 }}</p>
@@ -156,8 +162,8 @@
           </div>
         {% endif %}
 
-        <div class="rl-actions">
-          <a href="{% url 'courses:resource_detail' resource.id %}">Open protected view</a>
+        <div class="rl-actions sn-protect-allow">
+          <a class="sn-protect-allow" href="{% url 'courses:resource_detail' resource.id %}">Open protected view</a>
         </div>
       </div>
     {% empty %}
@@ -170,7 +176,7 @@
       {% if page_obj.has_previous %}
         <a href="?page={{ page_obj.previous_page_number }}" style="padding:8px 12px; border-radius:8px; background:#fff; border:1px solid #e0e3ef; text-decoration:none; color:#444;">Previous</a>
       {% endif %}
-      <span style="padding:8px 12px; border-radius:8px; background:#667eea; color:#fff; font-weight:700;">{{ page_obj.number }}</span>
+      <span style="padding:8px 12px; border-radius:8px; background:#0f766e; color:#fff; font-weight:700;">{{ page_obj.number }}</span>
       {% if page_obj.has_next %}
         <a href="?page={{ page_obj.next_page_number }}" style="padding:8px 12px; border-radius:8px; background:#fff; border:1px solid #e0e3ef; text-decoration:none; color:#444;">Next</a>
       {% endif %}

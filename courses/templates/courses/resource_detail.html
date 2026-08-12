@@ -11,7 +11,7 @@
   .rd-wrap { max-width: 1000px; margin: 0 auto; }
   .rd-back {
     display: inline-flex; align-items: center; gap: 6px;
-    color: #667eea; font-weight: 700; font-size: 0.9rem;
+    color: #0f766e; font-weight: 700; font-size: 0.9rem;
     text-decoration: none; margin-bottom: 1rem;
   }
   .rd-card {
@@ -170,12 +170,13 @@
 
 {% block content %}
 <div
-  class="rd-wrap no-copy-zone no-screenshot-zone"
-  data-ns-mark="{{ ns_mark|default:'Study Nation · Protected · No Screenshot'|escape }}"
+  class="rd-wrap no-copy-zone no-screenshot-zone no-print-zone"
+  data-protected-page="1"
+  data-ns-mark="{{ ns_mark|default:'Study Nation · Protected · No Download · No Copy · No Screenshot · No Print'|escape }}"
 >
-  <a class="rd-back" href="{% url 'courses:resources_list' %}">← Back to Resources</a>
+  <a class="rd-back sn-protect-allow" href="{% url 'courses:resources_list' %}">← Back to Resources</a>
 
-  <div class="rd-card no-dl-zone no-copy-zone" oncontextmenu="return false;">
+  <div class="rd-card no-dl-zone no-copy-zone no-print-zone" oncontextmenu="return false;">
     <div class="rd-head">
       <h1>{{ resource.title }}</h1>
       {% if resource.author %}
@@ -188,7 +189,7 @@
           <span class="rd-badge free">FREE</span>
         {% endif %}
         <span class="rd-badge">{{ resource.get_resource_type_display }}</span>
-        <span class="rd-badge lock">Protected · No download · No copy · No screenshot</span>
+        <span class="rd-badge lock">Protected · No download · No copy · No screenshot · No print</span>
       </div>
       {% if resource.description %}
         <p class="rd-desc">{{ resource.description }}</p>
@@ -199,6 +200,7 @@
       <strong>View only.</strong>
       Download, copy, print, and screenshots are not allowed.
       Content is hidden if you switch apps or use capture shortcuts, and a watermark identifies the session.
+      Browser print (Ctrl+P) is blocked on this page.
     </p>
 
     <div class="rd-viewer no-dl-media">

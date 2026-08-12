@@ -1,15 +1,35 @@
 {% comment %}
-  Shared admin shell: cool glassmorphism sidebar + collapse toggle.
-  Include once right after <body>, before .dashboard-wrapper.
+  Shared admin shell: navy/teal glass sidebar + collapse toggle.
+  Matches public Study Nation home design. Include once after <body>.
 {% endcomment %}
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet" />
 <style>
-  /* ========== Canonical admin shell ========== */
+  /* ========== Canonical admin shell (home-page palette) ========== */
+  :root {
+    --sn-navy: #0f172a;
+    --sn-ink: #1e293b;
+    --sn-muted: #64748b;
+    --sn-line: #e2e8f0;
+    --sn-soft: #f8fafc;
+    --sn-accent: #0f766e;
+    --sn-accent-hover: #0d9488;
+    --sn-accent-soft: #ccfbf1;
+  }
+
+  body {
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    color: var(--sn-ink);
+    background: var(--sn-soft) !important;
+  }
+
   .dashboard-wrapper {
     display: block !important;
     min-height: 100vh;
     width: 100%;
     position: relative;
-    background: #f0f2f8;
+    background: var(--sn-soft) !important;
   }
 
   .sidebar {
@@ -23,14 +43,14 @@
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    /* Deep brand gradient + soft glow orbs */
+    /* Navy → teal (matches public site hero) */
     background:
-      radial-gradient(ellipse 120% 80% at 0% 0%, rgba(255, 255, 255, 0.18) 0%, transparent 55%),
-      radial-gradient(ellipse 90% 60% at 100% 100%, rgba(167, 139, 250, 0.35) 0%, transparent 50%),
-      linear-gradient(165deg, #5b6ee8 0%, #6b46c1 48%, #7c3aed 100%) !important;
+      radial-gradient(ellipse 120% 80% at 0% 0%, rgba(45, 212, 191, 0.16) 0%, transparent 55%),
+      radial-gradient(ellipse 90% 60% at 100% 100%, rgba(15, 118, 110, 0.35) 0%, transparent 50%),
+      linear-gradient(165deg, #0f172a 0%, #134e4a 48%, #0f766e 100%) !important;
     color: #fff !important;
     box-shadow:
-      8px 0 32px rgba(76, 29, 149, 0.22),
+      8px 0 32px rgba(15, 23, 42, 0.22),
       inset -1px 0 0 rgba(255, 255, 255, 0.08);
     overflow: hidden !important;
     z-index: 150;
@@ -260,7 +280,7 @@
 
   .sidebar-nav a.active .nav-ico {
     background: #fff;
-    color: #6b46c1;
+    color: #0f766e;
     border-color: transparent;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
@@ -372,7 +392,7 @@
     z-index: 200;
     width: 32px;
     height: 44px;
-    background: linear-gradient(165deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(165deg, #0f172a 0%, #0f766e 100%);
     color: white;
     border: none;
     border-radius: 0 12px 12px 0;
@@ -381,8 +401,37 @@
     align-items: center;
     justify-content: center;
     font-size: 13px;
-    box-shadow: 4px 4px 16px rgba(76, 29, 149, 0.28);
+    box-shadow: 4px 4px 16px rgba(15, 23, 42, 0.28);
     transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s ease;
+  }
+
+  /* Shared admin content accents (override page-level purple) */
+  .main-content .btn-primary,
+  .main-content .submit-btn,
+  .main-content button[type="submit"].btn-primary {
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%) !important;
+    border-color: #0f766e !important;
+  }
+  .main-content .btn-outline {
+    color: #0f766e !important;
+    border-color: #0f766e !important;
+  }
+  .main-content a:not(.logout-btn):not(.nav-btn) {
+    /* keep content links readable; don't force all anchors teal */
+  }
+  .main-content .header h1,
+  .main-content .stat-card .number,
+  .main-content h1 {
+    color: #0f172a !important;
+  }
+  .main-content .stat-card {
+    border-left-color: #0f766e !important;
+  }
+  .main-content input:focus,
+  .main-content select:focus,
+  .main-content textarea:focus {
+    border-color: #0f766e !important;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12) !important;
   }
 
   #sidebarToggleTab:hover {

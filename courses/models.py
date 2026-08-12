@@ -394,10 +394,9 @@ class Blog(models.Model):
     author = models.CharField(max_length=100, default="Study Nation Team")
     image = models.ImageField(upload_to="blog_images/", null=True, blank=True)
 
-    # === NEW FIELDS FOR ADMIN PANEL ===
+    # Optional media for public blog detail page
     video = models.FileField(upload_to="blog_media/", blank=True, null=True)
     pdf = models.FileField(upload_to="blog_media/", blank=True, null=True)
-    ppt = models.FileField(upload_to="blog_media/", blank=True, null=True)
 
     published = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -579,6 +578,10 @@ class Exam(models.Model):
         default=1, help_text="How many questions to show per page in the exported PDF"
     )
     shuffle_questions = models.BooleanField(default=False)
+    allow_calculator = models.BooleanField(
+        default=False,
+        help_text="If enabled, students can use the on-screen calculator during practice.",
+    )
 
     questions = models.ManyToManyField(
         Question, through="ExamQuestion", related_name="exams"

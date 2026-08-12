@@ -7,7 +7,7 @@
 
 {% block content %}
   <div style="margin-bottom: 2rem;">
-    <a href="/courses/" style="color: #667eea; text-decoration: none;">← Back to Courses</a>
+    <a href="/courses/" style="color: #0f766e; text-decoration: none;">← Back to Courses</a>
   </div>
 
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
@@ -15,10 +15,10 @@
       {% if course.thumbnail %}
         <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" style="width: 100%; border-radius: 8px; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
       {% else %}
-        <div style="width: 100%; aspect-ratio: 4/3; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 5rem; margin-bottom: 1rem;">📚</div>
+        <div style="width: 100%; aspect-ratio: 4/3; background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 5rem; margin-bottom: 1rem;">📚</div>
       {% endif %}
       <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <h3 style="color: #667eea; margin-bottom: 1rem;">Course Details</h3>
+        <h3 style="color: #0f766e; margin-bottom: 1rem;">Course Details</h3>
         <div style="margin-bottom: 1rem;">
           <strong>Category:</strong> {{ course.category.name }}
         </div>
@@ -56,7 +56,7 @@
   <!-- Tabs for content -->
   <div style="margin-top: 3rem;">
     <div style="display: flex; gap: 0; border-bottom: 2px solid #ddd; margin-bottom: 2rem;">
-      <button onclick="showTab('overview')" class="tab-button active" style="padding: 1rem 2rem; border: none; background: none; cursor: pointer; font-size: 1rem; color: #667eea; border-bottom: 3px solid #667eea; margin-bottom: -2px;">Overview</button>
+      <button onclick="showTab('overview')" class="tab-button active" style="padding: 1rem 2rem; border: none; background: none; cursor: pointer; font-size: 1rem; color: #0f766e; border-bottom: 3px solid #0f766e; margin-bottom: -2px;">Overview</button>
       <button onclick="showTab('materials')" class="tab-button" style="padding: 1rem 2rem; border: none; background: none; cursor: pointer; font-size: 1rem; color: #999;">Study Materials</button>
       <button onclick="showTab('questions')" class="tab-button" style="padding: 1rem 2rem; border: none; background: none; cursor: pointer; font-size: 1rem; color: #999;">Question Banks</button>
     </div>
@@ -103,22 +103,22 @@
             {% if course.curriculum %}
               {% for line in course.curriculum.splitlines %}
                 {% if line %}
-                  <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+                  <div style="padding: 1rem; border-left: 3px solid #0f766e; margin-bottom: 1rem;">
                     <strong>{{ line|module_title }}:</strong> {{ line|module_desc }}
                   </div>
                 {% endif %}
               {% endfor %}
             {% else %}
-              <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+              <div style="padding: 1rem; border-left: 3px solid #0f766e; margin-bottom: 1rem;">
                 <strong>Module 1:</strong> Introduction and Fundamentals
               </div>
-              <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+              <div style="padding: 1rem; border-left: 3px solid #0f766e; margin-bottom: 1rem;">
                 <strong>Module 2:</strong> Core Concepts and Techniques
               </div>
-              <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+              <div style="padding: 1rem; border-left: 3px solid #0f766e; margin-bottom: 1rem;">
                 <strong>Module 3:</strong> Advanced Topics
               </div>
-              <div style="padding: 1rem; border-left: 3px solid #667eea; margin-bottom: 1rem;">
+              <div style="padding: 1rem; border-left: 3px solid #0f766e; margin-bottom: 1rem;">
                 <strong>Module 4:</strong> Final Project and Assessment
               </div>
             {% endif %}
@@ -137,7 +137,7 @@
               <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 4px;">
                 <div style="display: flex; justify-content: space-between; align-items: start;">
                   <div style="flex: 1;">
-                    <h4 style="color: #667eea; margin-bottom: 0.5rem;">{{ material.title }}</h4>
+                    <h4 style="color: #0f766e; margin-bottom: 0.5rem;">{{ material.title }}</h4>
                     <p style="color: #999; font-size: 0.9rem; margin-bottom: 0.5rem;">Type: {{ material.get_material_type_display }}</p>
                     {% if material.description %}
                       <p style="color: #666;">{{ material.description }}</p>
@@ -165,7 +165,7 @@
               <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" onclick="toggleBank(this)">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                   <div style="flex: 1;">
-                    <h4 style="color: #667eea; margin-bottom: 0.5rem;">{{ bank.title }}</h4>
+                    <h4 style="color: #0f766e; margin-bottom: 0.5rem;">{{ bank.title }}</h4>
                     <div style="color: #999; font-size: 0.9rem;">{{ bank.questions.count }} questions • {{ bank.get_difficulty_display }} level</div>
                     {% if bank.description %}
                       <p style="color: #666; margin-top: 0.5rem;">{{ bank.description }}</p>
@@ -194,7 +194,7 @@
                         </div>
                       {% endif %}
                       {% if question.explanation %}
-                        <div style="margin-top: 0.5rem; color: #667eea; font-size: 0.95rem; line-height: 1.6;">💡 Explanation: {{ question.explanation|safe_html }}</div>
+                        <div style="margin-top: 0.5rem; color: #0f766e; font-size: 0.95rem; line-height: 1.6;">💡 Explanation: {{ question.explanation|safe_html }}</div>
                       {% endif %}
                       {% if question.video_solution_url %}
                         {% include 'partials/video_solution_link.html' with url=question.video_solution_url %}
@@ -225,8 +225,8 @@
       })
     
       document.getElementById(tabName).style.display = 'block'
-      event.target.style.color = '#667eea'
-      event.target.style.borderBottom = '3px solid #667eea'
+      event.target.style.color = '#0f766e'
+      event.target.style.borderBottom = '3px solid #0f766e'
       event.target.style.marginBottom = '-2px'
     }
     
@@ -246,8 +246,8 @@
 
   <style>
     .tab-button.active {
-      color: #667eea;
-      border-bottom: 3px solid #667eea;
+      color: #0f766e;
+      border-bottom: 3px solid #0f766e;
       margin-bottom: -2px;
     }
   </style>

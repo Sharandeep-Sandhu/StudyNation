@@ -46,6 +46,20 @@ class InlineMediaMiddleware:
                 is_navigation = True
         return is_navigation
 
+    # Blog media that must only be embedded (not opened as a top-level download tab).
+    BLOG_BLOCK_EXTS = OFFICE_EXTS + (
+        ".pdf",
+        ".mp4",
+        ".webm",
+        ".ogg",
+        ".ogv",
+        ".mov",
+        ".m4v",
+        ".zip",
+        ".rar",
+        ".7z",
+    )
+
     def __call__(self, request):
         path = (request.path or "").lower()
 
@@ -68,13 +82,28 @@ class InlineMediaMiddleware:
                             content_type="text/plain; charset=utf-8",
                         )
 
+                # Blog media/images: block top-level open of PDF/video/office
+                # (images still load for <img>; PDF loads inside iframe).
+                if path.startswith("/media/blog_media/") or path.startswith(
+                    "/media/blog_images/"
+                ):
+                    if path.endswith(self.BLOG_BLOCK_EXTS) and self._is_top_level_navigation(
+                        request
+                    ):
+                        return HttpResponse(
+                            "Downloading this file is not allowed. "
+                            "Open the Blog page to view content online only.",
+                            status=403,
+                            content_type="text/plain; charset=utf-8",
+                        )
+
                 if path.endswith(self.OFFICE_EXTS) and not path.startswith(
                     "/media/resources/"
                 ):
                     if self._is_top_level_navigation(request):
                         return HttpResponse(
                             "Downloading this file is not allowed. "
-                            "Open the Resources page to view content online only.",
+                            "Open the page to view content online only.",
                             status=403,
                             content_type="text/plain; charset=utf-8",
                         )
@@ -90,7 +119,10 @@ class InlineMediaMiddleware:
                 response["X-Frame-Options"] = "SAMEORIGIN"
                 if "Cache-Control" not in response:
                     response["Cache-Control"] = "private, max-age=3600"
-                if (request.path or "").lower().startswith("/media/resources/"):
+                low = (request.path or "").lower()
+                if low.startswith("/media/resources/") or low.startswith(
+                    "/media/blog_media/"
+                ):
                     response["X-Robots-Tag"] = "noindex, noarchive, nosnippet"
                     response["Cache-Control"] = "private, no-store"
         except Exception:

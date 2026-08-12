@@ -21,7 +21,7 @@
 
       /* Sidebar (shared look) */
       .sidebar {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
         color: white; padding: 30px 0; position: fixed; top: 0; left: 0; height: 100vh; width: 250px;
         overflow-y: auto; box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1); z-index: 100;
       }
@@ -280,7 +280,7 @@
               <ul style="text-align:left; max-width:420px; margin:20px auto 0; padding:0; list-style:none;">
                 {% for qb in question_banks %}
                   <li style="margin:6px 0;">
-                    <a href="?question_bank={{ qb.id }}" style="color:#667eea; font-weight:600; text-decoration:none;">
+                    <a href="?question_bank={{ qb.id }}" style="color:#0f766e; font-weight:600; text-decoration:none;">
                       {{ qb.title }}{% if qb.subject_title %} · {{ qb.subject_title }}{% endif %}
                       <span style="color:#888; font-weight:500;">({{ qb.course.title }})</span>
                     </a>
@@ -305,7 +305,7 @@
               <div>
                 <strong style="font-size:16px;">{{ selected_bank.title }}</strong>
                 {% if selected_bank.subject_title %}
-                  <span style="color:#667eea; font-size:13px; font-weight:600;"> · {{ selected_bank.subject_title }}</span>
+                  <span style="color:#0f766e; font-size:13px; font-weight:600;"> · {{ selected_bank.subject_title }}</span>
                 {% endif %}
                 <span style="color:#777; font-size:13px;"> — {% if page_obj %}{{ page_obj.paginator.count }} Question{{ page_obj.paginator.count|pluralize }}{% else %}{{ bank_questions|length }} Question{{ bank_questions|length|pluralize }}{% endif %}</span>
               </div>

@@ -220,9 +220,15 @@ MEDIA_ROOT = BASE_DIR / "media"
 DATA_UPLOAD_MAX_NUMBER_FIELDS = int(
     os.environ.get("DATA_UPLOAD_MAX_NUMBER_FIELDS", "20000")
 )
-# Large Word/equation payloads in session → preview posts
+# Blog video/PDF/PPT uploads + Word/equation payloads. Default 100MB so
+# multi-file blog posts (image + video + PDF + PPT) are not rejected with
+# RequestDataTooBig before the form can validate individual field limits.
 DATA_UPLOAD_MAX_MEMORY_SIZE = int(
-    os.environ.get("DATA_UPLOAD_MAX_MEMORY_SIZE", str(25 * 1024 * 1024))
+    os.environ.get("DATA_UPLOAD_MAX_MEMORY_SIZE", str(100 * 1024 * 1024))
+)
+# Keep modest in-memory buffering; larger files spill to temp disk.
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.environ.get("FILE_UPLOAD_MAX_MEMORY_SIZE", str(10 * 1024 * 1024))
 )
 
 # CORS Configuration

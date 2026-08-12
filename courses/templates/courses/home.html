@@ -1,168 +1,507 @@
-{% extends 'base.html' %} {% block title %}
-  Home - Study Nation
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Study Nation — Courses, Past Papers & Exam Practice{% endblock %}
+
+{% block full_width %}
+  {# Full-bleed hero like Revision Village course landing #}
+  <section class="rv-hero">
+    <div class="rv-hero-inner">
+      <p class="rv-kicker">Study Nation revision hub</p>
+      <h1>Master exams with focused practice</h1>
+      <p class="rv-lead">
+        Build confidence with topic-sorted questions, full past papers, practice exams,
+        and community support — structured for serious learners who want results.
+      </p>
+      <div class="rv-hero-actions">
+        <a href="{% url 'courses:courses_list' %}" class="btn">Explore courses</a>
+        <a href="{% url 'courses:past_papers' %}" class="btn btn-secondary rv-btn-ghost">View past papers</a>
+        {% if can_use_exam_builder %}
+          <a href="{% url 'courses:student_exams' %}" class="btn btn-secondary rv-btn-ghost">Build my exam</a>
+        {% else %}
+          <a href="{% url 'courses:student_signup' %}" class="btn btn-secondary rv-btn-ghost">Get started free</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
 {% endblock %}
-{% block content %}
-  <div class="hero" style="
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-    position: relative;
+
+{% block extra_css %}
+<style>
+  main > .container { padding-top: 0; }
+
+  .rv-hero {
+    background:
+      radial-gradient(ellipse 80% 60% at 85% 20%, rgba(45, 212, 191, 0.18), transparent 55%),
+      linear-gradient(155deg, #0f172a 0%, #134e4a 48%, #0f766e 100%);
+    color: #fff;
+    padding: 3.75rem 1.5rem 3.25rem;
+  }
+
+  .rv-hero-inner {
+    max-width: var(--sn-max);
+    margin: 0 auto;
+  }
+
+  .rv-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5eead4;
+    margin-bottom: 1rem;
+  }
+
+  .rv-hero h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(2.1rem, 4.5vw, 3.1rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.12;
+    max-width: 18ch;
+    margin-bottom: 1rem;
+  }
+
+  .rv-lead {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #cbd5e1;
+    max-width: 40rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .rv-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .rv-btn-ghost {
+    background: transparent !important;
+    color: #fff !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+  }
+  .rv-btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: #fff !important;
+  }
+
+  .rv-page {
+    padding: 2.5rem 0 1rem;
+  }
+
+  .rv-resource-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.15rem;
+    margin: 1.5rem 0 2.75rem;
+  }
+
+  .rv-resource-card {
+    background: #fff;
+    border: 1px solid var(--sn-line);
+    border-radius: 18px;
+    padding: 1.4rem 1.35rem 1.25rem;
+    box-shadow: var(--sn-card-shadow);
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .rv-resource-card:hover {
+    transform: translateY(-4px);
+    border-color: #99f6e4;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.1);
+  }
+
+  .rv-resource-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--sn-accent-soft);
+    color: var(--sn-accent);
+    font-size: 1.15rem;
+    margin-bottom: 1rem;
+  }
+
+  .rv-resource-card h3 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--sn-navy);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.45rem;
+  }
+
+  .rv-resource-card p {
+    color: var(--sn-muted);
+    font-size: 0.94rem;
+    line-height: 1.6;
+    flex: 1;
+  }
+
+  .rv-resource-cta {
+    margin-top: 1.1rem;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--sn-accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .rv-badge {
+    display: inline-flex;
+    margin-left: 0.4rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #b45309;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+
+  .rv-split {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 2rem;
+    align-items: start;
+    margin: 2.5rem 0;
+    background: #fff;
+    border: 1px solid var(--sn-line);
+    border-radius: 20px;
     overflow: hidden;
-  ">
-    <div style="
-      position: absolute;
-      top: -50%;
-      right: -10%;
-      width: 500px;
-      height: 500px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 50%;
-      filter: blur(40px);
-    "></div>
-    <div style="
-      position: absolute;
-      bottom: -30%;
-      left: 5%;
-      width: 300px;
-      height: 300px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 50%;
-      filter: blur(30px);
-    "></div>
-    <div style="position: relative; z-index: 1">
-      <h1 style="
-        font-size: 3.5rem;
-        font-weight: 800;
-        margin-bottom: 1rem;
-        letter-spacing: -1px;
-      ">🚀 Welcome to Study Nation</h1>
-      <p style="
-        font-size: 1.3rem;
-        margin-bottom: 2rem;
-        opacity: 0.95;
-        line-height: 1.8;
-      ">Master new skills with our comprehensive courses, past papers, and resources. Learn at your own pace and achieve your goals.</p>
-      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap">
-        <a href="/courses/" class="btn" style="
-          display: inline-block;
-          padding: 1rem 2.5rem;
-          font-size: 1.1rem;
-          background: white;
-          color: #667eea;
-          font-weight: 600;
-          border-radius: 50px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-          transition: all 0.3s;
-        ">Explore Courses →</a>
-        <a href="/past-papers/" class="btn" style="
-          display: inline-block;
-          padding: 1rem 2.5rem;
-          font-size: 1.1rem;
-          background: rgba(255, 255, 255, 0.2);
-          color: white;
-          font-weight: 600;
-          border-radius: 50px;
-          border: 2px solid white;
-          transition: all 0.3s;
-        ">View Past Papers →</a>
+    box-shadow: var(--sn-card-shadow);
+  }
+
+  .rv-split-copy {
+    padding: 2rem 2rem 2rem 2.1rem;
+  }
+
+  .rv-split-copy h2 {
+    font-family: var(--font-serif);
+    font-size: 1.75rem;
+    color: var(--sn-navy);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.85rem;
+  }
+
+  .rv-split-copy p {
+    color: var(--sn-muted);
+    margin-bottom: 0.85rem;
+    font-size: 0.98rem;
+  }
+
+  .rv-split-visual {
+    min-height: 280px;
+    background:
+      linear-gradient(145deg, rgba(15, 118, 110, 0.12), rgba(15, 23, 42, 0.06)),
+      url("{% static 'images/hero-bg.png' %}") center/cover no-repeat;
+    background-color: #ecfdf5;
+  }
+
+  .rv-tips {
+    background: #fff;
+    border: 1px solid var(--sn-line);
+    border-radius: 18px;
+    padding: 1.75rem 1.75rem 1.5rem;
+    margin: 2rem 0 2.5rem;
+    box-shadow: var(--sn-card-shadow);
+  }
+
+  .rv-tips h2 {
+    font-family: var(--font-serif);
+    font-size: 1.55rem;
+    color: var(--sn-navy);
+    margin-bottom: 1rem;
+  }
+
+  .rv-tips ol {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: var(--sn-ink);
+  }
+
+  .rv-tips li {
+    margin-bottom: 0.7rem;
+    padding-left: 0.25rem;
+    color: var(--sn-muted);
+  }
+
+  .rv-tips li strong { color: var(--sn-navy); }
+
+  .rv-course-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.15rem;
+    margin: 1.25rem 0 2.5rem;
+  }
+
+  .rv-course-card {
+    background: #fff;
+    border: 1px solid var(--sn-line);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--sn-card-shadow);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .rv-course-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+  }
+
+  .rv-course-card img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    background: #e2e8f0;
+  }
+
+  .rv-course-card .body {
+    padding: 1.1rem 1.15rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .rv-course-card .cat {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--sn-accent);
+    margin-bottom: 0.35rem;
+  }
+
+  .rv-course-card h3 {
+    font-size: 1.05rem;
+    color: var(--sn-navy);
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.02em;
+  }
+
+  .rv-course-card p {
+    color: var(--sn-muted);
+    font-size: 0.9rem;
+    flex: 1;
+    margin-bottom: 0.9rem;
+  }
+
+  .rv-faq {
+    margin: 1rem 0 2rem;
+  }
+
+  .rv-faq details {
+    background: #fff;
+    border: 1px solid var(--sn-line);
+    border-radius: 14px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 0.65rem;
+    box-shadow: var(--sn-card-shadow);
+  }
+
+  .rv-faq summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--sn-navy);
+    list-style: none;
+  }
+
+  .rv-faq summary::-webkit-details-marker { display: none; }
+
+  .rv-faq details[open] summary {
+    margin-bottom: 0.55rem;
+    color: var(--sn-accent);
+  }
+
+  .rv-faq details p {
+    color: var(--sn-muted);
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+
+  @media (max-width: 960px) {
+    .rv-resource-grid { grid-template-columns: 1fr 1fr; }
+    .rv-split { grid-template-columns: 1fr; }
+    .rv-split-visual { min-height: 200px; }
+  }
+
+  @media (max-width: 640px) {
+    .rv-resource-grid { grid-template-columns: 1fr; }
+    .rv-hero h1 { max-width: none; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="rv-page">
+    <h2 class="sn-section-title">Everything you need to revise</h2>
+    <p class="sn-section-lead">
+      Pick a tool and start practising — question banks, practice exams, past papers,
+      resources, and community help, organised for focused study.
+    </p>
+
+    <div class="rv-resource-grid">
+      <a class="rv-resource-card" href="{% url 'courses:courses_list' %}">
+        <div class="rv-resource-icon"><i class="fas fa-layer-group"></i></div>
+        <h3>Courses &amp; topics</h3>
+        <p>Browse structured courses by category. Jump into the topics you need and build understanding step by step.</p>
+        <span class="rv-resource-cta">Explore courses <i class="fas fa-arrow-right"></i></span>
+      </a>
+
+      <a class="rv-resource-card" href="{% if can_use_exam_builder %}{% url 'courses:student_exams' %}{% else %}{% url 'courses:student_login' %}{% endif %}">
+        <div class="rv-resource-icon"><i class="fas fa-file-circle-check"></i></div>
+        <h3>Practice exams</h3>
+        <p>Build your own exam from filters, then practise under timed conditions and review results with solutions.</p>
+        <span class="rv-resource-cta">Build my exam <i class="fas fa-arrow-right"></i></span>
+      </a>
+
+      <a class="rv-resource-card" href="{% url 'courses:past_papers' %}">
+        <div class="rv-resource-icon"><i class="fas fa-scroll"></i></div>
+        <h3>Past papers</h3>
+        <p>Full exam PDFs with optional answer sheets — browse by subject, year, and paper for real exam practice.</p>
+        <span class="rv-resource-cta">Open past papers <i class="fas fa-arrow-right"></i></span>
+      </a>
+
+      <a class="rv-resource-card" href="{% if can_use_exam_builder %}{% url 'courses:student_question_lists' %}{% else %}{% url 'courses:student_login' %}{% endif %}">
+        <div class="rv-resource-icon"><i class="fas fa-list-check"></i></div>
+        <h3>Question lists</h3>
+        <p>Curate targeted sets by topic, paper, and year — perfect for focused revision sessions.</p>
+        <span class="rv-resource-cta">My lists <i class="fas fa-arrow-right"></i></span>
+      </a>
+
+      <a class="rv-resource-card" href="{% url 'courses:resources_list' %}">
+        <div class="rv-resource-icon"><i class="fas fa-book-open"></i></div>
+        <h3>Key resources</h3>
+        <p>Notes, e-books, and study materials to refresh concepts before you drill exam-style questions.</p>
+        <span class="rv-resource-cta">Browse resources <i class="fas fa-arrow-right"></i></span>
+      </a>
+
+      <a class="rv-resource-card" href="{% url 'courses:question_forum' %}">
+        <div class="rv-resource-icon"><i class="fas fa-comments"></i></div>
+        <h3>Question forum <span class="rv-badge">Live</span></h3>
+        <p>Ask doubts on topic boards, share solutions, and learn from peers and mentors in the community.</p>
+        <span class="rv-resource-cta">Join the forum <i class="fas fa-arrow-right"></i></span>
+      </a>
+    </div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <div class="number">{{ categories|length }}</div>
+        <div class="label">Categories</div>
+      </div>
+      <div class="stat-item">
+        <div class="number">{{ featured_courses|length }}</div>
+        <div class="label">Featured courses</div>
+      </div>
+      <div class="stat-item">
+        <div class="number">10K+</div>
+        <div class="label">Practice questions</div>
+      </div>
+      <div class="stat-item">
+        <div class="number">24/7</div>
+        <div class="label">Self-paced access</div>
       </div>
     </div>
-  </div>
 
-  <div class="stats">
-    <div class="stat-item">
-      <div class="number">{{ categories.count }}</div>
-      <div class="label">Categories</div>
-    </div>
-    <div class="stat-item">
-      <div class="number">{{ featured_courses.count }}</div>
-      <div class="label">Courses</div>
-    </div>
-    <div class="stat-item">
-      <div class="number">10K+</div>
-      <div class="label">Students</div>
-    </div>
-    <div class="stat-item">
-      <div class="number">100%</div>
-      <div class="label">Success Rate</div>
+    <div class="rv-split">
+      <div class="rv-split-copy">
+        <h2>How Study Nation helps you revise</h2>
+        <p>
+          Great revision is not random scrolling — it is deliberate practice.
+          Start with concept refreshers, then drill topic questions, then sit
+          full papers under exam conditions.
+        </p>
+        <p>
+          Use <strong>My Exams</strong> to assemble papers by topic and difficulty,
+          review mark schemes after you submit, and track what still needs work.
+        </p>
+        <p>
+          When you get stuck, open the <strong>Question Forum</strong> or revisit
+          resources and blogs for clear explanations.
+        </p>
+        <a href="{% url 'courses:courses_list' %}" class="btn" style="margin-top: 0.5rem;">Start with a course</a>
+      </div>
+      <div class="rv-split-visual" role="img" aria-label="Study Nation learning"></div>
     </div>
 
-    <!-- BUILD & PRACTICE Section -->
-  </div>
+    <h2 class="sn-section-title">Featured courses</h2>
+    <p class="sn-section-lead">Jump into popular courses available on the platform right now.</p>
 
-  <div style="margin: 3rem 0">
-    <h2 style="color: #333; margin-bottom: 1.5rem">Explore Our Course Categories</h2>
-    <div class="grid">
-      {% for category in categories %}
-        <div class="card">
-          <h3>{{ category.name }}</h3>
-          <p>{{ category.description }}</p>
-          <a href="/courses/?category={{ category.id }}" class="btn">View Courses</a>
-        </div>
-      {% empty %}
-        <p>No categories available yet.</p>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div style="margin: 3rem 0">
-    <h2 style="color: #333; margin-bottom: 1.5rem">Featured Courses</h2>
-    <div class="grid">
+    <div class="rv-course-grid">
       {% for course in featured_courses %}
-        <div class="card">
+        <article class="rv-course-card">
           {% if course.thumbnail %}
-            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" style="
-          width: 100%;
-          height: 150px;
-          object-fit: cover;
-          border-radius: 4px;
-          margin-bottom: 1rem;
-        " />
+            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" />
+          {% else %}
+            <img src="{% static 'images/course-bg.png' %}" alt="" />
           {% endif %}
-          <h3>{{ course.title }}</h3>
-          <p style="font-size: 0.9rem; color: #999">{{ course.category.name }}</p>
-          <p>{{ course.description|truncatewords:20 }}</p>
-          <div style="margin: 1rem 0; font-size: 0.9rem; color: #666">
-            <span>⭐ {{ course.rating }}</span>
-            <span style="margin-left: 1rem">👥 {{ course.students_enrolled }} students</span>
+          <div class="body">
+            <div class="cat">{{ course.category.name|default:"Course" }}</div>
+            <h3>{{ course.title }}</h3>
+            <p>{{ course.description|truncatewords:22 }}</p>
+            <a href="{% url 'courses:course_detail' course.id %}" class="btn" style="align-self: flex-start;">View course</a>
           </div>
-          <a href="/courses/{{ course.id }}/" class="btn">View Course</a>
-        </div>
+        </article>
       {% empty %}
-        <p>No courses available yet.</p>
+        <p style="color: var(--sn-muted);">No courses published yet. Check back soon.</p>
       {% endfor %}
     </div>
-  </div>
 
-  <div style="background: #f5f5f5; padding: 2rem; border-radius: 8px; margin: 3rem 0">
-    <h2 style="color: #333; margin-bottom: 1.5rem">Why Choose Study Nation?</h2>
-    <div style="
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 2rem;
-    ">
-      <div>
-        <h4 style="color: #667eea; margin-bottom: 0.5rem">📚 Quality Content</h4>
-        <p>Curated by industry experts with years of experience</p>
-      </div>
-      <div>
-        <h4 style="color: #667eea; margin-bottom: 0.5rem">💪 Hands-On Learning</h4>
-        <p>Practical exercises and real-world projects</p>
-      </div>
-      <div>
-        <h4 style="color: #667eea; margin-bottom: 0.5rem">🎓 Certifications</h4>
-        <p>Earn recognized certificates upon completion</p>
-      </div>
-      <div>
-        <h4 style="color: #667eea; margin-bottom: 0.5rem">⏰ Learn at Your Pace</h4>
-        <p>Self-paced learning with lifetime access</p>
-      </div>
-      <div>
-        <h4 style="color: #667eea; margin-bottom: 0.5rem">💬 Community Support</h4>
-        <p>Connect with fellow learners and instructors</p>
-      </div>
-      <div>
-        <h4 style="color: #667eea; margin-bottom: 0.5rem">🚀 Career Growth</h4>
-        <p>Advance your career with in-demand skills</p>
-      </div>
+    <div class="rv-tips">
+      <h2>Tips for success</h2>
+      <ol>
+        <li><strong>Show full working</strong> — clear steps score marks even when the final answer slips.</li>
+        <li><strong>Simplify early</strong> — neat algebra makes the next step easier and reduces careless errors.</li>
+        <li><strong>Link multi-part questions</strong> — later parts often reuse values or ideas from earlier parts.</li>
+        <li><strong>Mix practice modes</strong> — short topic drills during the week, full papers on weekends.</li>
+      </ol>
+    </div>
+
+    <h2 class="sn-section-title">Frequently asked questions</h2>
+    <div class="rv-faq">
+      <details open>
+        <summary>What can I do on Study Nation?</summary>
+        <p>
+          You can explore courses, practise with past papers, build custom exams and question lists,
+          download or view study resources, and discuss doubts on the Question Forum.
+        </p>
+      </details>
+      <details>
+        <summary>Do I need an account for practice exams?</summary>
+        <p>
+          Yes — create a free student account to build and save exams, attempt timed practice,
+          and review your results with solutions after submission.
+        </p>
+      </details>
+      <details>
+        <summary>How should I revise effectively?</summary>
+        <p>
+          Learn topics in class or from resources first, then revise with lots of exam-style questions.
+          Use filters for weak topics, then finish with full past papers under timed conditions.
+        </p>
+      </details>
+      <details>
+        <summary>Where do I ask questions if I am stuck?</summary>
+        <p>
+          Use the Question Forum — pick a topic board, post your question (with optional image),
+          and get replies from the community.
+        </p>
+      </details>
     </div>
   </div>
 {% endblock %}

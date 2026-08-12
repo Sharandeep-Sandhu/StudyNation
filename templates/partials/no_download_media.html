@@ -1,11 +1,16 @@
-{# View-only media: block download UI, drag/save, and copy of protected content. #}
+{# View-only media: block download UI, drag/save, copy, and print of protected content. #}
 <style>
   .no-dl-media,
   .no-dl-media img,
   .no-dl-media video,
   .no-dl-media iframe,
+  .no-dl-media object,
+  .no-dl-media embed,
+  .no-dl-media canvas,
   .no-dl-zone,
-  .no-copy-zone {
+  .no-copy-zone,
+  .no-screenshot-zone,
+  .no-print-zone {
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
     -ms-user-select: none !important;
@@ -16,7 +21,8 @@
   }
 
   .no-dl-media img,
-  .no-dl-media video {
+  .no-dl-media video,
+  .no-dl-media canvas {
     pointer-events: auto;
   }
 
@@ -26,7 +32,13 @@
   .no-dl-zone select,
   .no-copy-zone input,
   .no-copy-zone textarea,
-  .no-copy-zone select {
+  .no-copy-zone select,
+  .no-screenshot-zone input,
+  .no-screenshot-zone textarea,
+  .no-screenshot-zone select,
+  .no-print-zone input,
+  .no-print-zone textarea,
+  .no-print-zone select {
     -webkit-user-select: text !important;
     user-select: text !important;
   }
@@ -45,22 +57,69 @@
   .no-copy-zone .rd-viewer {
     position: relative;
   }
+
+  /* Print: blank protected pages entirely (no content dump via Ctrl+P / Print) */
+  @media print {
+    body.sn-protected-page {
+      background: #fff !important;
+    }
+    body.sn-protected-page * {
+      visibility: hidden !important;
+    }
+    body.sn-protected-page::before {
+      content: "Printing is not allowed. This content is protected (Study Nation).";
+      visibility: visible !important;
+      display: block !important;
+      position: fixed !important;
+      inset: 0 !important;
+      padding: 3rem !important;
+      font-size: 1.25rem !important;
+      font-weight: 700 !important;
+      color: #111 !important;
+      background: #fff !important;
+      text-align: center !important;
+    }
+  }
 </style>
 <script>
 (function () {
   if (window.__noDlMediaBound) return;
   window.__noDlMediaBound = true;
 
+  var PROTECTED_SEL =
+    '.no-dl-media, .no-dl-zone, .no-copy-zone, .no-screenshot-zone, .no-print-zone, [data-protected-page]';
+
+  function pageIsProtected() {
+    return !!(
+      document.body.classList.contains('sn-protected-page') ||
+      document.querySelector(PROTECTED_SEL)
+    );
+  }
+
   function isProtected(el) {
-    return el && el.closest && el.closest('.no-dl-media, .no-dl-zone, .no-copy-zone');
+    if (!el) return false;
+    if (pageIsProtected() && document.body.classList.contains('sn-protected-page')) {
+      // Whole page is protected except explicit allowlist
+      if (el.closest && el.closest('.sn-protect-allow')) return false;
+      return true;
+    }
+    return !!(el.closest && el.closest(PROTECTED_SEL));
   }
 
   function isEditable(el) {
     if (!el) return false;
     var tag = (el.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    if (tag === 'button' || tag === 'a') return true;
     if (el.isContentEditable) return true;
+    if (el.closest && el.closest('.sn-protect-allow')) return true;
     return false;
+  }
+
+  function markProtectedPage() {
+    if (document.querySelector(PROTECTED_SEL)) {
+      document.body.classList.add('sn-protected-page');
+    }
   }
 
   // Right-click / context menu
@@ -104,55 +163,111 @@
     }
   }, true);
 
-  // Keyboard shortcuts: save, view-source, print, copy, cut, select-all
+  // Keyboard shortcuts on protected pages: save, view-source, print, copy, cut, select-all
   document.addEventListener('keydown', function (e) {
-    var key = (e.key || '').toLowerCase();
-    var inProtected = isProtected(e.target) || isProtected(document.activeElement);
-    if (!inProtected) return;
-    if (isEditable(e.target) || isEditable(document.activeElement)) return;
+    if (!pageIsProtected()) return;
+    if (isEditable(e.target) || isEditable(document.activeElement)) {
+      // Still block print/save even when focus is on a button
+      var k0 = (e.key || '').toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && (k0 === 'p' || k0 === 's')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+      return;
+    }
 
-    // Ctrl/Cmd + S / U / P / C / X / A
+    var key = (e.key || '').toLowerCase();
+    var code = e.code || '';
+
+    // Ctrl/Cmd + S / U / P / C / X / A  (+ Shift+I sometimes)
     if (e.ctrlKey || e.metaKey) {
-      if (key === 's' || key === 'u' || key === 'p' || key === 'c' || key === 'x' || key === 'a') {
+      if (
+        key === 's' ||
+        key === 'u' ||
+        key === 'p' ||
+        key === 'c' ||
+        key === 'x' ||
+        key === 'a' ||
+        key === 'i' ||
+        code === 'KeyS' ||
+        code === 'KeyU' ||
+        code === 'KeyP' ||
+        code === 'KeyC' ||
+        code === 'KeyX' ||
+        code === 'KeyA'
+      ) {
         e.preventDefault();
         e.stopPropagation();
         return false;
       }
     }
-    // PrintScr is not reliably blockable; block F12 lightly (devtools still possible)
-    if (key === 'printscreen') {
+    // PrintScreen
+    if (key === 'printscreen' || code === 'PrintScreen') {
       e.preventDefault();
+      e.stopPropagation();
+      return false;
     }
   }, true);
 
+  // Block browser print dialog as thoroughly as JS allows
+  window.addEventListener('beforeprint', function () {
+    if (!pageIsProtected()) return;
+    document.body.classList.add('sn-print-blocked');
+    try {
+      document.title = 'Printing not allowed — Study Nation';
+    } catch (err) {}
+  });
+  window.addEventListener('afterprint', function () {
+    document.body.classList.remove('sn-print-blocked');
+  });
+
   // Harden media elements inside protected zones
   function hardenMedia(root) {
-    (root || document).querySelectorAll('.no-dl-media video, .no-dl-zone video, .no-copy-zone video').forEach(function (v) {
+    var scope = root || document;
+    scope.querySelectorAll(
+      '.no-dl-media video, .no-dl-zone video, .no-copy-zone video, .no-screenshot-zone video, .no-print-zone video'
+    ).forEach(function (v) {
       v.setAttribute('controlsList', 'nodownload noremoteplayback noplaybackrate');
       v.setAttribute('disablePictureInPicture', '');
       v.setAttribute('oncontextmenu', 'return false');
-      try { v.controlsList && v.controlsList.add && v.controlsList.add('nodownload'); } catch (err) {}
+      try {
+        v.controlsList && v.controlsList.add && v.controlsList.add('nodownload');
+      } catch (err) {}
     });
-    (root || document).querySelectorAll('.no-dl-media img, .no-dl-zone img, .no-copy-zone img').forEach(function (img) {
+    scope.querySelectorAll(
+      '.no-dl-media img, .no-dl-zone img, .no-copy-zone img, .no-screenshot-zone img, .no-print-zone img'
+    ).forEach(function (img) {
       img.setAttribute('draggable', 'false');
       img.setAttribute('oncontextmenu', 'return false');
     });
-    (root || document).querySelectorAll('.no-dl-media iframe, .no-dl-zone iframe, .no-copy-zone iframe').forEach(function (frame) {
+    scope.querySelectorAll(
+      '.no-dl-media iframe, .no-dl-zone iframe, .no-copy-zone iframe, .no-screenshot-zone iframe, .no-print-zone iframe, .no-dl-media object, .no-dl-zone object'
+    ).forEach(function (frame) {
       frame.setAttribute('oncontextmenu', 'return false');
-      // Prefer no download toolbar fragments when src is set later
       try {
-        var src = frame.getAttribute('src') || '';
+        var src = frame.getAttribute('src') || frame.getAttribute('data') || '';
         if (src && src.indexOf('.pdf') !== -1 && src.indexOf('toolbar=0') === -1) {
-          frame.setAttribute('src', src + (src.indexOf('#') === -1 ? '#' : '&') + 'toolbar=0&navpanes=0');
+          var next = src + (src.indexOf('#') === -1 ? '#' : '&') + 'toolbar=0&navpanes=0';
+          if (frame.tagName && frame.tagName.toLowerCase() === 'object') {
+            frame.setAttribute('data', next);
+          } else {
+            frame.setAttribute('src', next);
+          }
         }
       } catch (err) {}
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { hardenMedia(); });
-  } else {
+  function boot() {
+    markProtectedPage();
     hardenMedia();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
   }
 })();
 </script>

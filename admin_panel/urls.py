@@ -35,11 +35,6 @@ urlpatterns = [
         name="download_sample_blog_pdf",
     ),
     path(
-        "blogs/sample-pptx/",
-        views.download_sample_blog_pptx,
-        name="download_sample_blog_pptx",
-    ),
-    path(
         "blogs/sample-docx/",
         views.download_sample_blog_docx,
         name="download_sample_blog_docx",

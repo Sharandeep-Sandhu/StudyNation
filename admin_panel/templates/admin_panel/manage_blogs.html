@@ -25,7 +25,7 @@
       
       /* Sidebar */
       .sidebar {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
         color: white;
         padding: 30px 0;
         position: fixed;
@@ -161,7 +161,7 @@
         font-size: 20px;
         margin-bottom: 20px;
         color: #333;
-        border-bottom: 2px solid #667eea;
+        border-bottom: 2px solid #0f766e;
         padding-bottom: 10px;
       }
       
@@ -193,7 +193,7 @@
       .form-group textarea:focus,
       .form-group select:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: #0f766e;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
       }
       
@@ -225,7 +225,7 @@
       }
       
       .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(165deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
         color: white;
       }
       
@@ -245,7 +245,7 @@
       }
       
       .btn-danger {
-        background: linear-gradient(135deg, #f5576c 0%, #e63946 100%);
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
         color: white;
         padding: 8px 16px;
         font-size: 13px;
@@ -273,7 +273,7 @@
       .upload-table th {
         background: #f5f7fa;
         font-weight: 600;
-        color: #667eea;
+        color: #0f766e;
         text-transform: uppercase;
         font-size: 12px;
         letter-spacing: 0.5px;
@@ -397,8 +397,29 @@
         {% if form %}
           <div class="form-section">
             <h2>{{ action }} Blog</h2>
-            <form method="post" enctype="multipart/form-data">
+
+            {% if form.errors %}
+              <div class="alert alert-error">
+                <strong>Could not save — fix these errors:</strong>
+                <ul style="margin:8px 0 0 18px;">
+                  {% for field, errs in form.errors.items %}
+                    {% for e in errs %}
+                      <li>{% if field != '__all__' %}<strong>{{ field }}:</strong> {% endif %}{{ e }}</li>
+                    {% endfor %}
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" id="blogMediaForm" action="">
               {% csrf_token %}
+
+              <div class="alert alert-warning" style="margin-bottom:16px;">
+                <strong>Media tips:</strong>
+                Use the file pickers below for cover image, video (MP4), and PDF.
+                Max sizes: image 8MB · video 80MB · PDF 40MB. Total request up to ~100MB.
+                After saving, open the public blog page to confirm everything displays.
+              </div>
 
               <div class="form-group">{{ form.title.label_tag }}
                 {{ form.title }}</div>
@@ -412,48 +433,43 @@
               <div class="form-group">
                 {{ form.image.label_tag }}
                 {{ form.image }}
-                <small style="color:#888; display:block; margin-top:4px;">Upload a featured image for the blog post (optional)</small>
+                <small style="color:#888; display:block; margin-top:4px;">
+                  Featured cover image (PNG/JPG/WebP, max 8MB)
+                </small>
+                {% if blog and blog.image %}
+                  <div style="margin-top:10px;">
+                    <img src="{{ blog.image.url }}" alt="Current cover" style="max-width:220px; max-height:140px; border-radius:8px; border:1px solid #e0e0e0; object-fit:cover;" />
+                    <div style="font-size:12px; color:#666; margin-top:4px;">Current: {{ blog.image.name }}</div>
+                  </div>
+                {% endif %}
               </div>
 
-              <!-- Extra Media Uploads -->
               <div class="form-group">
                 {{ form.video.label_tag }}
                 {{ form.video }}
-                <small style="color:#888; display:block; margin-top:4px;">Upload a video for this blog (optional)</small>
+                <small style="color:#888; display:block; margin-top:4px;">MP4 / WebM recommended (max 80MB)</small>
+                {% if blog and blog.video %}
+                  <div style="margin-top:8px; font-size:13px; color:#0f766e;">
+                    ✅ Current video: <code>{{ blog.video.name }}</code>
+                  </div>
+                {% endif %}
               </div>
 
               <div class="form-group">
                 {{ form.pdf.label_tag }}
                 {{ form.pdf }}
                 <small style="color:#888; display:block; margin-top:4px;">
-                  Upload a PDF document (optional)
+                  PDF document (max 40MB)
                   <a href="{% url 'admin_panel:download_sample_blog_pdf' %}"
-                     style="display:inline-flex; align-items:center; gap:5px; margin-left:8px; background:#667eea; color:#fff; padding:5px 11px; border-radius:6px; text-decoration:none; font-size:12.5px; font-weight:600;">
-                    📥 Download Sample PDF
+                     style="display:inline-flex; align-items:center; gap:5px; margin-left:8px; background:#0f766e; color:#fff; padding:5px 11px; border-radius:6px; text-decoration:none; font-size:12.5px; font-weight:600;">
+                    📥 Sample PDF
                   </a>
                 </small>
-              </div>
-
-              <div class="form-group">
-                {{ form.ppt.label_tag }}
-                {{ form.ppt }}
-                <small style="color:#888; display:block; margin-top:4px;">
-                  Upload a PowerPoint presentation (optional)
-                  <a href="{% url 'admin_panel:download_sample_blog_pptx' %}"
-                     style="display:inline-flex; align-items:center; gap:5px; margin-left:8px; background:#764ba2; color:#fff; padding:5px 11px; border-radius:6px; text-decoration:none; font-size:12.5px; font-weight:600;">
-                    📥 Download Sample PPTX
-                  </a>
-                  <a href="{% url 'admin_panel:download_sample_blog_docx' %}"
-                     style="display:inline-flex; align-items:center; gap:5px; margin-left:6px; background:#5a6fd8; color:#fff; padding:5px 11px; border-radius:6px; text-decoration:none; font-size:12.5px; font-weight:600;">
-                    📥 Sample Word (.docx)
-                  </a>
-                </small>
-              </div>
-
-              <div class="form-group">
-                {{ form.images.label_tag }}
-                <input type="file" name="images" id="{{ form.images.id_for_label }}" class="form-control" multiple accept="image/*" />
-                <small style="color:#888; display:block; margin-top:4px;">You can select multiple images (hold Ctrl/Cmd)</small>
+                {% if blog and blog.pdf %}
+                  <div style="margin-top:8px; font-size:13px; color:#0f766e;">
+                    ✅ Current PDF: <code>{{ blog.pdf.name }}</code>
+                  </div>
+                {% endif %}
               </div>
 
               <div class="form-group">
@@ -480,8 +496,9 @@
             <table class="upload-table">
               <thead>
                 <tr>
-                  <th style="width: 35%;">Title</th>
+                  <th style="width: 28%;">Title</th>
                   <th>Author</th>
+                  <th>Media</th>
                   <th>Status</th>
                   <th>Date</th>
                   <th style="width: 160px;">Actions</th>
@@ -492,8 +509,21 @@
                   <tr>
                     <td>
                       <strong>{{ blog.title|truncatewords:10 }}</strong>
+                      {% if blog.image %}
+                        <div style="margin-top:6px;">
+                          <img src="{{ blog.image.url }}" alt="" style="width:64px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e0e0e0;" />
+                        </div>
+                      {% endif %}
                     </td>
                     <td>{{ blog.author|default:'-' }}</td>
+                    <td style="font-size:12px; line-height:1.6;">
+                      {% if blog.image %}<div>🖼 Image</div>{% endif %}
+                      {% if blog.video %}<div>🎬 Video</div>{% endif %}
+                      {% if blog.pdf %}<div>📄 PDF</div>{% endif %}
+                      {% if not blog.image and not blog.video and not blog.pdf %}
+                        <span style="color:#999;">—</span>
+                      {% endif %}
+                    </td>
                     <td>
                       {% if blog.published %}
                         <span class="status-badge status-success">✅ Published</span>

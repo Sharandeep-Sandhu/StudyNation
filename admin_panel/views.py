@@ -172,12 +172,6 @@ def download_sample_blog_pdf(request):
 
 
 @admin_required
-def download_sample_blog_pptx(request):
-    """Sample PowerPoint for the Blog form PPT/PPTX upload field."""
-    return _serve_sample_file("sample_blog.pptx")
-
-
-@admin_required
 def download_sample_blog_docx(request):
     """Sample Word doc for blog-related attachments (optional reference)."""
     return _serve_sample_file("sample_blog.docx")
@@ -1370,18 +1364,60 @@ def manage_blogs(request):
     return render(request, "admin_panel/manage_blogs.html", {"blogs": blogs})
 
 
+def _blog_media_summary(blog) -> str:
+    """Human-readable list of attached media for admin flash messages."""
+    parts = []
+    if blog.image:
+        parts.append("image")
+    if blog.video:
+        parts.append("video")
+    if blog.pdf:
+        parts.append("PDF")
+    if not parts:
+        return "no media files"
+    return ", ".join(parts)
+
+
+def _blog_form_media_debug(request) -> str:
+    """Short note about which files arrived in the multipart POST."""
+    keys = []
+    for key in ("image", "video", "pdf"):
+        f = request.FILES.get(key)
+        if f:
+            keys.append(f"{key}={getattr(f, 'name', '?')} ({getattr(f, 'size', 0)} bytes)")
+    if not keys:
+        return "No media files in this request (check enctype=multipart/form-data and field sizes)."
+    return "Received: " + "; ".join(keys)
+
+
 @admin_required
 def create_blog(request):
     if request.method == "POST":
         form = BlogForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Blog created successfully!")
+            blog = form.save(commit=False)
+            # Explicitly bind uploaded files so storage always writes them
+            for field in ("image", "video", "pdf"):
+                uploaded = request.FILES.get(field)
+                if uploaded:
+                    setattr(blog, field, uploaded)
+            blog.save()
+            form.save_m2m()
+            messages.success(
+                request,
+                f"Blog created successfully with {_blog_media_summary(blog)}.",
+            )
             return redirect("admin_panel:manage_blogs")
+        messages.error(
+            request,
+            f"Please fix the errors below. Media was not saved. {_blog_form_media_debug(request)}",
+        )
     else:
         form = BlogForm()
     return render(
-        request, "admin_panel/manage_blogs.html", {"form": form, "action": "Create"}
+        request,
+        "admin_panel/manage_blogs.html",
+        {"form": form, "action": "Create", "blogs": Blog.objects.all()[:50]},
     )
 
 
@@ -1391,15 +1427,33 @@ def edit_blog(request, blog_id):
     if request.method == "POST":
         form = BlogForm(request.POST, request.FILES, instance=blog)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Blog updated successfully!")
+            blog = form.save(commit=False)
+            for field in ("image", "video", "pdf"):
+                uploaded = request.FILES.get(field)
+                if uploaded:
+                    setattr(blog, field, uploaded)
+            blog.save()
+            form.save_m2m()
+            messages.success(
+                request,
+                f"Blog updated successfully with {_blog_media_summary(blog)}.",
+            )
             return redirect("admin_panel:manage_blogs")
+        messages.error(
+            request,
+            f"Please fix the errors below. Media was not saved. {_blog_form_media_debug(request)}",
+        )
     else:
         form = BlogForm(instance=blog)
     return render(
         request,
         "admin_panel/manage_blogs.html",
-        {"form": form, "blog": blog, "action": "Edit"},
+        {
+            "form": form,
+            "blog": blog,
+            "action": "Edit",
+            "blogs": Blog.objects.all()[:50],
+        },
     )
 
 

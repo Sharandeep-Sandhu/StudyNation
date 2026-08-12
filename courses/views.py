@@ -251,6 +251,21 @@ class BlogDetailView(DetailView):
     context_object_name = "blog"
     slug_field = "slug"
 
+    def get_queryset(self):
+        # Public site only shows published posts
+        return Blog.objects.filter(published=True)
+
+    def get_context_data(self, **kwargs):
+        from .blog_media import guess_blog_content_type
+
+        context = super().get_context_data(**kwargs)
+        blog = self.object
+        video_type = ""
+        if blog.video and blog.video.name:
+            video_type = guess_blog_content_type(blog.video.name)
+        context["video_mime"] = video_type or "video/mp4"
+        return context
+
 
 # ==================== OTHER PAGES ====================
 class ContactView(View):
@@ -324,17 +339,78 @@ class ContactView(View):
 
 
 class PastPapersView(TemplateView):
-    """Public Past Papers browser: filter by category / subject / year,
-    list full exam PDFs on the left, preview the selected PDF on the right.
+    """Public Past Papers browser: multi-select filter by category / subject /
+    year / paper code; list full exam PDFs on the left, preview on the right.
     """
 
     template_name = "courses/past_papers.html"
+
+    @staticmethod
+    def _getlist_clean(request, key: str) -> list[str]:
+        """Return non-empty trimmed values for a multi-select GET param."""
+        values = []
+        for raw in request.GET.getlist(key):
+            s = (raw or "").strip()
+            if s:
+                values.append(s)
+        # De-dupe while preserving order
+        seen = set()
+        out = []
+        for v in values:
+            key_l = v.lower()
+            if key_l in seen:
+                continue
+            seen.add(key_l)
+            out.append(v)
+        return out
+
+    @staticmethod
+    def _build_filter_query(
+        categories: list[str],
+        subjects: list[str],
+        years: list[str],
+        paper_codes: list[str],
+        *,
+        paper: str | int | None = None,
+        view: str | None = None,
+    ) -> str:
+        """Build a query string preserving multi-select filter state."""
+        from urllib.parse import urlencode
+
+        pairs: list[tuple[str, str]] = []
+        for c in categories:
+            pairs.append(("category", c))
+        for s in subjects:
+            pairs.append(("subject", s))
+        for y in years:
+            pairs.append(("year", y))
+        for pc in paper_codes:
+            pairs.append(("paper_code", pc))
+        if paper is not None and str(paper).strip():
+            pairs.append(("paper", str(paper)))
+        if view:
+            pairs.append(("view", view))
+        return urlencode(pairs)
 
     def get_context_data(self, **kwargs):
         from django.db import DatabaseError
 
         context = super().get_context_data(**kwargs)
         request = self.request
+
+        empty_filters = {
+            "filter_categories": [],
+            "filter_subjects": [],
+            "filter_years": [],
+            "filter_paper_codes": [],
+            # Legacy single-value aliases (templates / deep links)
+            "filter_category": "",
+            "filter_subject": "",
+            "filter_year": "",
+            "filter_paper_code": "",
+            "filter_query": "",
+            "paper_codes": [],
+        }
 
         try:
             published = PastPaper.objects.filter(is_published=True).select_related(
@@ -353,17 +429,15 @@ class PastPapersView(TemplateView):
                     "papers": PastPaper.objects.none(),
                     "total_papers": 0,
                     "selected_paper": None,
-                    "filter_category": "",
-                    "filter_subject": "",
-                    "filter_year": "",
                     "view_mode": "question",
                     "has_filters": False,
                     "db_error": True,
+                    **empty_filters,
                 }
             )
             return context
 
-        # All DB categories for the browse strip + filter dropdown
+        # All DB categories for the browse strip + filter checkboxes
         try:
             categories = CourseCategory.objects.order_by("name").annotate(
                 paper_count=Count(
@@ -374,29 +448,50 @@ class PastPapersView(TemplateView):
         except DatabaseError:
             categories = CourseCategory.objects.order_by("name")
 
-        subjects = (
+        subjects = list(
             published.exclude(subject="")
             .values_list("subject", flat=True)
             .distinct()
             .order_by("subject")
         )
-        years = published.values_list("year", flat=True).distinct().order_by("-year")
+        years = list(
+            published.values_list("year", flat=True).distinct().order_by("-year")
+        )
+        paper_codes = list(
+            published.exclude(paper_code="")
+            .values_list("paper_code", flat=True)
+            .distinct()
+            .order_by("paper_code")
+        )
 
-        category_id = (request.GET.get("category") or "").strip()
-        subject = (request.GET.get("subject") or "").strip()
-        year = (request.GET.get("year") or "").strip()
+        filter_categories = self._getlist_clean(request, "category")
+        filter_subjects = self._getlist_clean(request, "subject")
+        filter_years = self._getlist_clean(request, "year")
+        filter_paper_codes = self._getlist_clean(request, "paper_code")
+
         paper_id = (request.GET.get("paper") or "").strip()
         view_mode = (request.GET.get("view") or "question").strip().lower()
         if view_mode not in ("question", "answer"):
             view_mode = "question"
 
         papers = published
-        if category_id.isdigit():
-            papers = papers.filter(category_id=int(category_id))
-        if subject:
-            papers = papers.filter(subject__iexact=subject)
-        if year.isdigit():
-            papers = papers.filter(year=int(year))
+        cat_ids = [int(c) for c in filter_categories if c.isdigit()]
+        if cat_ids:
+            papers = papers.filter(category_id__in=cat_ids)
+        if filter_subjects:
+            # Case-insensitive match for any selected subject
+            subj_q = Q()
+            for s in filter_subjects:
+                subj_q |= Q(subject__iexact=s)
+            papers = papers.filter(subj_q)
+        year_ints = [int(y) for y in filter_years if y.isdigit()]
+        if year_ints:
+            papers = papers.filter(year__in=year_ints)
+        if filter_paper_codes:
+            code_q = Q()
+            for pc in filter_paper_codes:
+                code_q |= Q(paper_code__iexact=pc)
+            papers = papers.filter(code_q)
 
         papers = papers.order_by("-year", "subject", "title")
 
@@ -406,9 +501,10 @@ class PastPapersView(TemplateView):
             if selected_paper is None:
                 # Allow opening a paper even if filters don't match (deep link)
                 selected_paper = published.filter(pk=int(paper_id)).first()
-        if selected_paper is None and papers.exists() and (
-            category_id or subject or year
-        ):
+        has_any_filter = bool(
+            filter_categories or filter_subjects or filter_years or filter_paper_codes
+        )
+        if selected_paper is None and papers.exists() and has_any_filter:
             # After applying filters, auto-select first paper for convenience
             selected_paper = papers.first()
 
@@ -420,19 +516,40 @@ class PastPapersView(TemplateView):
         ):
             view_mode = "question"
 
+        filter_query = self._build_filter_query(
+            filter_categories,
+            filter_subjects,
+            filter_years,
+            filter_paper_codes,
+        )
+
         context.update(
             {
                 "categories": categories,
-                "subjects": list(subjects),
-                "years": list(years),
+                "subjects": subjects,
+                "years": years,
+                "paper_codes": paper_codes,
                 "papers": papers,
                 "total_papers": published.count(),
                 "selected_paper": selected_paper,
-                "filter_category": category_id,
-                "filter_subject": subject,
-                "filter_year": year,
+                "filter_categories": filter_categories,
+                "filter_subjects": filter_subjects,
+                "filter_years": filter_years,
+                "filter_paper_codes": filter_paper_codes,
+                # Single-value aliases for simpler template checks
+                "filter_category": filter_categories[0] if len(filter_categories) == 1 else (
+                    filter_categories[0] if filter_categories else ""
+                ),
+                "filter_subject": filter_subjects[0] if len(filter_subjects) == 1 else "",
+                "filter_year": filter_years[0] if len(filter_years) == 1 else "",
+                "filter_paper_code": (
+                    filter_paper_codes[0] if len(filter_paper_codes) == 1 else ""
+                ),
+                "filter_query": filter_query,
                 "view_mode": view_mode,
-                "has_filters": bool(category_id or subject or year or paper_id),
+                "has_filters": bool(
+                    has_any_filter or paper_id
+                ),
             }
         )
         return context
@@ -972,6 +1089,14 @@ def student_generate_exam_paper(request, exam_id):
             f"{cat_name or 'Mixed'}{topic_bit} · {type_label} · "
             f"{pick_count}Q{sec_bit}"
         )[:200]
+
+    # Calculator allowed during practice only when opted-in on Create Paper
+    exam.allow_calculator = request.POST.get("allow_calculator") in (
+        "1",
+        "true",
+        "on",
+        "yes",
+    )
 
     with transaction.atomic():
         exam.save()
