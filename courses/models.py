@@ -755,7 +755,7 @@ class QuestionListItem(models.Model):
 
 # ==================== QUESTION FORM (TOPIC BOARDS) ====================
 class DiscussionBoard(models.Model):
-    """A topic/category board on the Question Form page.
+    """A topic/category board on the Question Forum page.
 
     Shown in the left-hand sidebar. Questions belong to one board so users
     can browse by topic instead of one giant feed.
@@ -770,8 +770,8 @@ class DiscussionBoard(models.Model):
 
     class Meta:
         ordering = ["order", "name"]
-        verbose_name = "Question Form Board"
-        verbose_name_plural = "Question Form Boards"
+        verbose_name = "Question Forum Board"
+        verbose_name_plural = "Question Forum Boards"
 
     def __str__(self):
         return self.name
@@ -789,7 +789,7 @@ class DiscussionBoard(models.Model):
 
 
 class DiscussionPost(models.Model):
-    """A question submitted via the Question Form by a logged-in user."""
+    """A question submitted via the Question Forum by a logged-in user."""
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="discussion_posts"
@@ -826,15 +826,15 @@ class DiscussionPost(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Question Form Question"
-        verbose_name_plural = "Question Form Questions"
+        verbose_name = "Question Forum Question"
+        verbose_name_plural = "Question Forum Questions"
 
     def __str__(self):
         return f"{self.title} by {self.user.username}"
 
 
 class DiscussionReply(models.Model):
-    """Replies or solutions to a Question Form question."""
+    """Replies or solutions to a Question Forum question."""
 
     post = models.ForeignKey(
         DiscussionPost, on_delete=models.CASCADE, related_name="replies"
@@ -860,8 +860,8 @@ class DiscussionReply(models.Model):
 
     class Meta:
         ordering = ["created_at"]
-        verbose_name = "Question Form Reply"
-        verbose_name_plural = "Question Form Replies"
+        verbose_name = "Question Forum Reply"
+        verbose_name_plural = "Question Forum Replies"
 
     def __str__(self):
         return f"Reply by {self.user.username} to '{self.post.title[:40]}'"

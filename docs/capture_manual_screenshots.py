@@ -44,7 +44,7 @@ def main():
         page.goto(f"{BASE}/past-papers/", wait_until="networkidle")
         shot(page, "07_past_papers")
 
-        page.goto(f"{BASE}/question-form/", wait_until="networkidle")
+        page.goto(f"{BASE}/question-forum/", wait_until="networkidle")
         shot(page, "08_public_chat")
 
         page.goto(f"{BASE}/contact/", wait_until="networkidle")

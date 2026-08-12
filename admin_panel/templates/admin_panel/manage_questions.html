@@ -75,23 +75,10 @@
             font-weight: 500; color: #222; margin-bottom: 8px;
             font-size: 15px; line-height: 1.9; word-wrap: break-word;
         }
-        /* Glyph-normalized PNGs: natural height, same letter size */
-        .question-text img,
-        .q-options img,
-        .question-item img[src*="question_equations"] {
-            height: auto !important;
-            max-height: 48px !important;
-            min-height: 0 !important;
-            width: auto !important;
-            max-width: min(96vw, 720px) !important;
-            vertical-align: middle !important;
-            object-fit: contain !important;
-            display: inline-block !important;
-            margin: 2px 4px !important;
-            padding: 0 !important;
-            border: none !important;
-            background: transparent !important;
-        }
+        /*
+          Equation sizing is owned by partials/equation_inline_css.html.
+          Do NOT set height/max-height here — it crushed multi-line formulas.
+        */
         .q-options { margin: 10px 0 12px; padding-left: 4px; font-size: 15px; color: #444; line-height: 1.9; }
         .question-meta { display: flex; gap: 14px; font-size: 12px; color: #999; margin-bottom: 10px; flex-wrap: wrap; }
         .type-badge {
@@ -135,7 +122,11 @@
             border: 1px solid #c5d8f7; border-radius: 6px;
         }
         .eq-ref-strip .eq-images img {
-            height: auto !important; max-height: 48px !important; max-width: 320px !important;
+            height: auto !important;
+            width: auto !important;
+            max-height: 3.2em !important;
+            max-width: min(100%, 320px) !important;
+            vertical-align: middle !important;
         }
 
         /* Modal editor */
@@ -245,7 +236,7 @@
                                onchange="onQuestionCheckChange()" aria-label="Select question {{ question.id }}" />
                     </div>
                     <div class="q-body">
-                    <div class="question-text"><span style="color:#667eea;font-weight:700;margin-right:6px;">{{ page_obj.start_index|add:forloop.counter0 }}.</span>{{ question.question_text|safe_html }}</div>
+                    <div class="question-text"><span style="color:#667eea;font-weight:700;margin-right:6px;">{{ page_obj.start_index|add:forloop.counter0 }}.</span>{{ question.question_text|safe_html_stem }}</div>
                     <div class="question-meta">
                         <span class="type-badge">{{ question.get_question_type_display }}</span>
                         <span>📚 {{ question.question_bank.title }}</span>
@@ -258,16 +249,16 @@
                         <div class="q-options">
                           {% for opt in opts %}
                             <div class="opt {% if opt.is_correct %}correct{% endif %}">
-                              {% if opt.is_correct %}✓{% else %}○{% endif %} {{ opt.text|safe_html }}
+                              {% if opt.is_correct %}✓{% else %}○{% endif %} {{ opt.text|safe_html_option }}
                             </div>
                           {% endfor %}
                         </div>
                       {% elif question.option_a or question.option_b %}
                         <div class="q-options">
-                          {% if question.option_a %}<div class="opt">A. {{ question.option_a|safe_html }}</div>{% endif %}
-                          {% if question.option_b %}<div class="opt">B. {{ question.option_b|safe_html }}</div>{% endif %}
-                          {% if question.option_c %}<div class="opt">C. {{ question.option_c|safe_html }}</div>{% endif %}
-                          {% if question.option_d %}<div class="opt">D. {{ question.option_d|safe_html }}</div>{% endif %}
+                          {% if question.option_a %}<div class="opt">A. {{ question.option_a|safe_html_option }}</div>{% endif %}
+                          {% if question.option_b %}<div class="opt">B. {{ question.option_b|safe_html_option }}</div>{% endif %}
+                          {% if question.option_c %}<div class="opt">C. {{ question.option_c|safe_html_option }}</div>{% endif %}
+                          {% if question.option_d %}<div class="opt">D. {{ question.option_d|safe_html_option }}</div>{% endif %}
                         </div>
                       {% endif %}
                     {% endwith %}

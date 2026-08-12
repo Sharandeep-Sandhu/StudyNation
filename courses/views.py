@@ -1593,13 +1593,13 @@ def _clean_video_solution_url(raw: str | None) -> str:
     return url[:500]
 
 
-# ==================== QUESTION FORM (DISCUSSION BOARDS) ====================
-class QuestionFormView(TemplateView):
-    """Dedicated Question Form page: sidebar of topic boards + a feed of
+# ==================== QUESTION FORUM (DISCUSSION BOARDS) ====================
+class QuestionForumView(TemplateView):
+    """Dedicated Question Forum page: sidebar of topic boards + a feed of
     questions (each with its own reply thread) for the selected board.
     """
 
-    template_name = "courses/question_form.html"
+    template_name = "courses/question_forum.html"
 
     def get_context_data(self, **kwargs):
         from django.db import DatabaseError
@@ -1646,16 +1646,16 @@ class QuestionFormView(TemplateView):
             context["sort"] = sort
         except DatabaseError:
             logger.exception(
-                "Question Form DB error — run migrate / ensure_schema on Render"
+                "Question Forum DB error — run migrate / ensure_schema on Render"
             )
             context["qf_error"] = (
-                "Question Form is updating. Please try again in a minute."
+                "Question Forum is updating. Please try again in a minute."
             )
             context["boards"] = []
             context["active_board"] = None
             context["posts"] = []
         except Exception:
-            logger.exception("Question Form unexpected error")
+            logger.exception("Question Forum unexpected error")
             context["qf_error"] = (
                 "Something went wrong loading questions. Please refresh."
             )
@@ -1666,16 +1666,17 @@ class QuestionFormView(TemplateView):
         return context
 
 
-# Backward-compatible alias
-PublicChatView = QuestionFormView
+# Backward-compatible aliases
+QuestionFormView = QuestionForumView
+PublicChatView = QuestionForumView
 
 
 @login_required
 def discussion_create_post(request):
-    """Logged-in users submit a new question via the Question Form.
+    """Logged-in users submit a new question via the Question Forum.
 
     Each question becomes its own thread with replies. An optional image
-    can be attached. After posting, the user returns to the Question Form
+    can be attached. After posting, the user returns to the Question Forum
     page on the correct board with the new question visible.
     """
     if request.method == "POST":
@@ -1683,7 +1684,7 @@ def discussion_create_post(request):
         content = sanitize_math_content(request.POST.get("content", ""))
         board_id = request.POST.get("board", "").strip()
         image = request.FILES.get("image")
-        # Normal users may attach optional video solution links only on Question Form
+        # Normal users may attach optional video solution links only on Question Forum
         video_solution_url = _clean_video_solution_url(
             request.POST.get("video_solution_url")
         )
@@ -1702,7 +1703,7 @@ def discussion_create_post(request):
             messages.success(
                 request, "✅ Your question has been submitted!"
             )
-            redirect_url = reverse("courses:question_form")
+            redirect_url = reverse("courses:question_forum")
             params = f"open={post.id}"
             if board:
                 params += f"&board={board.slug}"
@@ -1710,17 +1711,17 @@ def discussion_create_post(request):
         else:
             messages.error(request, "Title and question details are required.")
 
-        redirect_url = reverse("courses:question_form")
+        redirect_url = reverse("courses:question_forum")
         if board:
             return redirect(f"{redirect_url}?board={board.slug}")
         return redirect(redirect_url)
 
-    return redirect("courses:question_form")
+    return redirect("courses:question_forum")
 
 
-def _question_form_redirect(post, fragment=""):
-    """Return to the Question Form page, focused on the given question."""
-    redirect_url = reverse("courses:question_form")
+def _question_forum_redirect(post, fragment=""):
+    """Return to the Question Forum page, focused on the given question."""
+    redirect_url = reverse("courses:question_forum")
     params = f"open={post.id}"
     if post.board:
         params += f"&board={post.board.slug}"
@@ -1728,13 +1729,14 @@ def _question_form_redirect(post, fragment=""):
     return redirect(f"{redirect_url}?{params}#{anchor}")
 
 
-# Backward-compatible alias
-_public_chat_redirect = _question_form_redirect
+# Backward-compatible aliases
+_question_form_redirect = _question_forum_redirect
+_public_chat_redirect = _question_forum_redirect
 
 
 @login_required
 def discussion_add_reply(request, post_id):
-    """Logged-in users reply to a specific question on the Question Form.
+    """Logged-in users reply to a specific question on the Question Forum.
 
     `post_id` identifies exactly which question is being replied to, so a
     reply always lands on the question the user selected. An optional image
@@ -1761,7 +1763,7 @@ def discussion_add_reply(request, post_id):
                 request, "Write something, attach an image, or add a video solution link."
             )
 
-    return _question_form_redirect(post)
+    return _question_forum_redirect(post)
 
 
 @login_required
@@ -1772,10 +1774,10 @@ def discussion_edit_reply(request, reply_id):
 
     if reply.user_id != request.user.id:
         messages.error(request, "You can only edit your own replies.")
-        return _question_form_redirect(post, f"reply-{reply.id}")
+        return _question_forum_redirect(post, f"reply-{reply.id}")
 
     if request.method != "POST":
-        return _question_form_redirect(post, f"reply-{reply.id}")
+        return _question_forum_redirect(post, f"reply-{reply.id}")
 
     content = sanitize_math_content(request.POST.get("content", ""))
     image = request.FILES.get("image")
@@ -1789,7 +1791,7 @@ def discussion_edit_reply(request, reply_id):
         messages.error(
             request, "Write something, keep/attach an image, or add a video solution link."
         )
-        return _question_form_redirect(post, f"reply-{reply.id}")
+        return _question_forum_redirect(post, f"reply-{reply.id}")
 
     reply.content = content
     reply.video_solution_url = video_solution_url
@@ -1800,7 +1802,7 @@ def discussion_edit_reply(request, reply_id):
         reply.image = image
     reply.save()
     messages.success(request, "✅ Your reply has been updated.")
-    return _question_form_redirect(post, f"reply-{reply.id}")
+    return _question_forum_redirect(post, f"reply-{reply.id}")
 
 
 @login_required
@@ -1812,10 +1814,10 @@ def discussion_delete_reply(request, reply_id):
 
     if reply.user_id != request.user.id:
         messages.error(request, "You can only delete your own replies.")
-        return _question_form_redirect(post)
+        return _question_forum_redirect(post)
 
     if reply.image:
         reply.image.delete(save=False)
     reply.delete()
     messages.success(request, "🗑️ Your reply has been deleted.")
-    return _question_form_redirect(post)
+    return _question_forum_redirect(post)

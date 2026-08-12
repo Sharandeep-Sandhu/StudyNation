@@ -1,8 +1,8 @@
-"""Equation PNG markup for display.
+"""Equation PNG markup — always sized to surrounding text.
 
-PNGs are pre-normalized so the main glyph line is ~28px (see docx parser
-enhance). Display uses height:auto so simple and multi-line formulas keep
-the same character size — only total box height grows for fractions.
+Word MathType/OMML images are often huge in pixel terms. Display must
+scale them to ~1.45em (single-line) or ~2.4em (tall/fraction), never
+leave natural pixel height (that made a lone "2" fill the card).
 """
 from __future__ import annotations
 
@@ -16,19 +16,19 @@ _EQ_WRAP_RE = re.compile(
     re.IGNORECASE,
 )
 
-# height:auto — natural size after glyph-normalized PNGs
 _EQ_STYLE = (
-    "height:auto!important;"
-    "max-height:48px!important;"
+    "height:1.45em!important;"
     "width:auto!important;"
-    "max-width:min(96vw,720px)!important;"
+    "max-height:2.8em!important;"
+    "max-width:min(100%,520px)!important;"
     "display:inline-block!important;"
     "vertical-align:middle!important;"
     "object-fit:contain!important;"
-    "margin:2px 4px!important;"
+    "margin:0 0.12em!important;"
     "padding:0!important;"
     "border:0!important;"
     "background:transparent!important;"
+    "box-shadow:none!important;"
 )
 
 

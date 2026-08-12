@@ -2,7 +2,7 @@
 Ensure critical columns/tables exist on production databases.
 
 Render deploys sometimes have incomplete migration history; missing columns
-like discussion video_solution_url cause 500s on /question-form/.
+like discussion video_solution_url cause 500s on /question-forum/.
 
 Safe to run repeatedly (idempotent). Called from build.sh after migrate.
 """

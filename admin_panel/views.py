@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponseBadRequest, FileResponse, Http404
@@ -10,6 +11,7 @@ from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.conf import settings
 from django.urls import reverse
+from django import forms as django_forms
 import json
 import os
 
@@ -199,9 +201,323 @@ def download_sample_past_paper_answer(request):
     )
 
 
+SESSION_IMPORT_PREVIEW = "admin_question_import_preview"
+
+# Pipeline stages shown on upload / preview screens
+UPLOAD_PIPELINE_STEPS = [
+    ("upload", "DOC / DOCX Upload"),
+    ("normalize", "Prepare / Normalize document"),
+    ("convert", "DOC → DOCX"),
+    ("equations", "Extract equations"),
+    ("latex", "Equation → LaTeX"),
+    ("parse_q", "Parse questions + A/B/C/D"),
+    ("parse_a", "Parse answer sheet"),
+    ("preview", "Preview questions"),
+    ("edit", "Edit if required"),
+    ("import", "Import Questions"),
+    ("database", "Existing database"),
+]
+
+
+def _pipeline_stats_from_questions(questions, *, source_type: str, file_name: str):
+    """Build status for the Word/CSV import pipeline UI."""
+    latex_q = 0
+    eq_img_q = 0
+    eq_img_total = 0
+    with_answers = 0
+    for q in questions:
+        blob = " ".join(
+            str(q.get(k) or "")
+            for k in (
+                "question_text",
+                "option_a",
+                "option_b",
+                "option_c",
+                "option_d",
+            )
+        )
+        if "$" in blob or "\\(" in blob:
+            latex_q += 1
+        imgs = q.get("equation_images") or []
+        if isinstance(imgs, list) and imgs:
+            eq_img_q += 1
+            eq_img_total += len(imgs)
+        if (q.get("correct_answer") or "").strip():
+            with_answers += 1
+
+    is_word = source_type == "word"
+    is_doc = file_name.lower().endswith(".doc") and not file_name.lower().endswith(
+        ".docx"
+    )
+    return {
+        "source_type": source_type,
+        "file_name": file_name,
+        "question_count": len(questions),
+        "with_latex": latex_q,
+        "with_eq_images": eq_img_q,
+        "eq_image_total": eq_img_total,
+        "with_answers": with_answers,
+        "is_word": is_word,
+        "doc_converted": bool(is_word and is_doc),
+        # Step completion flags for the visual pipeline
+        "steps_done": {
+            "upload": True,
+            "normalize": is_word,
+            "convert": bool(is_word and (is_doc or file_name.lower().endswith(".docx"))),
+            "equations": is_word and (latex_q > 0 or eq_img_q > 0 or len(questions) > 0),
+            "latex": is_word and latex_q > 0,
+            "parse_q": len(questions) > 0,
+            "parse_a": with_answers > 0,
+            "preview": True,
+            "edit": False,
+            "import": False,
+            "database": False,
+        },
+    }
+
+
+def _serialize_import_question(q: dict) -> dict:
+    """JSON-safe question dict for session storage."""
+    eq = q.get("equation_images") or []
+    if not isinstance(eq, list):
+        eq = []
+    year = q.get("year")
+    try:
+        year = int(year) if year not in (None, "") else None
+    except (TypeError, ValueError):
+        year = None
+    try:
+        marks = int(float(q.get("marks") or 1))
+    except (TypeError, ValueError):
+        marks = 1
+    return {
+        "question_text": str(q.get("question_text") or ""),
+        "question_type": str(q.get("question_type") or "single_choice"),
+        "option_a": str(q.get("option_a") or ""),
+        "option_b": str(q.get("option_b") or ""),
+        "option_c": str(q.get("option_c") or ""),
+        "option_d": str(q.get("option_d") or ""),
+        "correct_answer": str(q.get("correct_answer") or ""),
+        "marks": marks,
+        "explanation": str(q.get("explanation") or ""),
+        "video_solution_url": str(q.get("video_solution_url") or "")[:500],
+        "topic": str(q.get("topic") or ""),
+        "paper_code": str(q.get("paper_code") or ""),
+        "year": year,
+        "season": str(q.get("season") or ""),
+        "zone": str(q.get("zone") or ""),
+        "question_number": str(q.get("question_number") or ""),
+        "equation_images": [str(u) for u in eq if u],
+    }
+
+
+def _import_questions_to_bank(question_bank, questions, admin_user, file_name, file_obj=None):
+    """
+    Write parsed/edited question dicts into the database.
+    Returns (successful, failed, errors, stats_dict).
+    """
+    csv_upload = CSVUpload(
+        admin_user=admin_user,
+        file_name=file_name or "import",
+        total_questions=len(questions),
+        status="processing",
+    )
+    if file_obj:
+        csv_upload.file = file_obj
+    csv_upload.save()
+
+    successful = 0
+    failed = 0
+    errors = []
+    questions_with_latex = 0
+    questions_with_eq_images = 0
+    equation_image_total = 0
+
+    with transaction.atomic():
+        for idx, q_data in enumerate(questions, 1):
+            try:
+                eq_images = q_data.get("equation_images") or []
+                if not isinstance(eq_images, list):
+                    eq_images = []
+                blob = " ".join(
+                    [
+                        str(q_data.get("question_text") or ""),
+                        str(q_data.get("option_a") or ""),
+                        str(q_data.get("option_b") or ""),
+                        str(q_data.get("option_c") or ""),
+                        str(q_data.get("option_d") or ""),
+                    ]
+                )
+                if "$" in blob or "\\(" in blob:
+                    questions_with_latex += 1
+                if eq_images:
+                    questions_with_eq_images += 1
+                    equation_image_total += len(eq_images)
+
+                paper_code = (q_data.get("paper_code") or "").strip()
+                if not paper_code:
+                    paper_code = f"IMPORT-{question_bank.id}"
+
+                year = q_data.get("year")
+                try:
+                    year = int(year) if year not in (None, "") else None
+                except (TypeError, ValueError):
+                    year = None
+
+                try:
+                    marks = int(float(q_data.get("marks") or 1))
+                except (TypeError, ValueError):
+                    marks = 1
+
+                Question.objects.create(
+                    question_bank=question_bank,
+                    question_text=q_data.get("question_text") or "",
+                    question_type=q_data.get("question_type") or "single_choice",
+                    option_a=q_data.get("option_a", "") or "",
+                    option_b=q_data.get("option_b", "") or "",
+                    option_c=q_data.get("option_c", "") or "",
+                    option_d=q_data.get("option_d", "") or "",
+                    correct_answer=q_data.get("correct_answer", "") or "",
+                    marks=marks,
+                    explanation=q_data.get("explanation", "") or "",
+                    video_solution_url=(
+                        (q_data.get("video_solution_url") or "").strip()[:500]
+                    ),
+                    topic=q_data.get("topic", "") or "",
+                    paper_code=paper_code,
+                    year=year,
+                    season=q_data.get("season", "") or "",
+                    zone=q_data.get("zone", "") or "",
+                    question_number=q_data.get("question_number", "") or str(idx),
+                    equation_images=(json.dumps(eq_images) if eq_images else ""),
+                    order=idx,
+                )
+                successful += 1
+            except (ValueError, TypeError, KeyError, OSError) as e:
+                failed += 1
+                errors.append(f"Row {idx}: {e}")
+            except Exception as e:
+                failed += 1
+                errors.append(f"Row {idx}: {type(e).__name__}: {e}")
+
+    csv_upload.successful_imports = successful
+    csv_upload.failed_imports = failed
+    csv_upload.error_details = "\n".join(errors[:20])
+    csv_upload.status = (
+        "success"
+        if failed == 0 and successful > 0
+        else ("partial" if successful else "failed")
+    )
+    csv_upload.save()
+
+    question_bank.total_questions = question_bank.questions.count()
+    question_bank.save(update_fields=["total_questions"])
+
+    stats = {
+        "questions_with_latex": questions_with_latex,
+        "questions_with_eq_images": questions_with_eq_images,
+        "equation_image_total": equation_image_total,
+    }
+    return successful, failed, errors, stats
+
+
+def _normalize_import_question(raw: dict, index: int) -> dict | None:
+    """Normalize one question dict from preview JSON / form. None = skip."""
+    if not isinstance(raw, dict):
+        return None
+    if raw.get("skip") in (True, 1, "1", "true", "True"):
+        return None
+    try:
+        marks = int(float(raw.get("marks") or 1))
+    except (TypeError, ValueError):
+        marks = 1
+    year = raw.get("year")
+    try:
+        year = int(year) if year not in (None, "") else None
+    except (TypeError, ValueError):
+        year = None
+    eq = raw.get("equation_images") or []
+    if isinstance(eq, str):
+        try:
+            eq = json.loads(eq)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            eq = []
+    if not isinstance(eq, list):
+        eq = []
+    return {
+        "question_text": str(raw.get("question_text") or ""),
+        "question_type": str(raw.get("question_type") or "single_choice"),
+        "option_a": str(raw.get("option_a") or ""),
+        "option_b": str(raw.get("option_b") or ""),
+        "option_c": str(raw.get("option_c") or ""),
+        "option_d": str(raw.get("option_d") or ""),
+        "correct_answer": str(raw.get("correct_answer") or "").strip(),
+        "marks": marks,
+        "explanation": str(raw.get("explanation") or ""),
+        "video_solution_url": str(raw.get("video_solution_url") or "")[:500],
+        "topic": str(raw.get("topic") or ""),
+        "paper_code": str(raw.get("paper_code") or ""),
+        "year": year,
+        "season": str(raw.get("season") or ""),
+        "zone": str(raw.get("zone") or ""),
+        "question_number": str(raw.get("question_number") or str(index + 1)),
+        "equation_images": [str(u) for u in eq if u],
+    }
+
+
+def _questions_from_preview_post(request, session_questions: list) -> list[dict]:
+    """
+    Rebuild questions for import.
+
+    Prefer a single JSON field `import_payload` (avoids Django
+    DATA_UPLOAD_MAX_NUMBER_FIELDS errors with 70+ questions).
+    Fall back to session data when the payload is empty (import as-parsed).
+    """
+    payload_raw = (request.POST.get("import_payload") or "").strip()
+    if payload_raw:
+        try:
+            payload = json.loads(payload_raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            payload = None
+        if isinstance(payload, list):
+            out = []
+            for i, raw in enumerate(payload):
+                q = _normalize_import_question(raw, i)
+                if q is not None:
+                    out.append(q)
+            return out
+
+    # No payload / invalid → import original session questions (no skips)
+    out = []
+    for i, raw in enumerate(session_questions or []):
+        q = _normalize_import_question(raw, i)
+        if q is not None:
+            out.append(q)
+    return out
+
+
 @admin_required
 def csv_upload(request):
+    """
+    Step 1 of the question import pipeline:
+      DOC/DOCX (or CSV/Excel) upload → normalize → parse → session preview.
+    Import to the database happens on the preview confirm screen.
+    """
     admin_user = request.user.admin_profile
+
+    # Allow starting a fresh upload even if a preview is pending
+    if request.method == "GET" and request.GET.get("fresh") == "1":
+        old = request.session.pop(SESSION_IMPORT_PREVIEW, None)
+        if old and old.get("upload_id"):
+            CSVUpload.objects.filter(
+                id=old["upload_id"], admin_user=admin_user
+            ).update(
+                status="failed",
+                error_details="Replaced by a new upload before import.",
+            )
+        request.session.modified = True
+
+    pending_preview = request.session.get(SESSION_IMPORT_PREVIEW)
 
     if request.method == "POST":
         form = CSVUploadForm(request.POST, request.FILES)
@@ -209,132 +525,60 @@ def csv_upload(request):
             csv_file = request.FILES["csv_file"]
             course = form.cleaned_data["course"]
             question_bank = form.cleaned_data["question_bank"]
+            name_lower = csv_file.name.lower()
 
             try:
                 questions = form.parse_csv()
+                if not questions:
+                    messages.error(request, "No questions were found in this file.")
+                    return redirect("admin_panel:csv_upload")
 
-                csv_upload = CSVUpload.objects.create(
+                if name_lower.endswith((".docx", ".doc")):
+                    source_type = "word"
+                elif name_lower.endswith((".xlsx", ".xls")):
+                    source_type = "excel"
+                else:
+                    source_type = "csv"
+
+                serialized = [_serialize_import_question(q) for q in questions]
+                pipeline = _pipeline_stats_from_questions(
+                    serialized, source_type=source_type, file_name=csv_file.name
+                )
+
+                # Keep the original file on the upload log for audit (not yet imported)
+                pending_upload = CSVUpload.objects.create(
                     admin_user=admin_user,
                     file_name=csv_file.name,
                     file=csv_file,
-                    total_questions=len(questions),
+                    total_questions=len(serialized),
                     status="processing",
                 )
 
-                successful = 0
-                failed = 0
-                errors = []
-                questions_with_latex = 0
-                questions_with_eq_images = 0
-                equation_image_total = 0
+                request.session[SESSION_IMPORT_PREVIEW] = {
+                    "upload_id": pending_upload.id,
+                    "file_name": csv_file.name,
+                    "course_id": course.id,
+                    "question_bank_id": question_bank.id,
+                    "source_type": source_type,
+                    "pipeline": pipeline,
+                    "questions": serialized,
+                }
+                request.session.modified = True
 
-                with transaction.atomic():
-                    for idx, q_data in enumerate(questions, 1):
-                        try:
-                            eq_images = q_data.get("equation_images") or []
-                            if not isinstance(eq_images, list):
-                                eq_images = []
-                            blob = " ".join(
-                                [
-                                    str(q_data.get("question_text") or ""),
-                                    str(q_data.get("option_a") or ""),
-                                    str(q_data.get("option_b") or ""),
-                                    str(q_data.get("option_c") or ""),
-                                    str(q_data.get("option_d") or ""),
-                                ]
-                            )
-                            if "$" in blob or "\\(" in blob:
-                                questions_with_latex += 1
-                            if eq_images:
-                                questions_with_eq_images += 1
-                                equation_image_total += len(eq_images)
-
-                            paper_code = (q_data.get("paper_code") or "").strip()
-                            # Exam Builder hides questions with empty paper_code
-                            if not paper_code:
-                                paper_code = f"IMPORT-{question_bank.id}"
-
-                            Question.objects.create(
-                                question_bank=question_bank,
-                                question_text=q_data.get("question_text") or "",
-                                question_type=q_data.get("question_type")
-                                or "single_choice",
-                                option_a=q_data.get("option_a", "") or "",
-                                option_b=q_data.get("option_b", "") or "",
-                                option_c=q_data.get("option_c", "") or "",
-                                option_d=q_data.get("option_d", "") or "",
-                                correct_answer=q_data.get("correct_answer", "") or "",
-                                marks=q_data.get("marks", 1) or 1,
-                                explanation=q_data.get("explanation", "") or "",
-                                video_solution_url=(
-                                    (q_data.get("video_solution_url") or "").strip()[:500]
-                                ),
-                                topic=q_data.get("topic", "") or "",
-                                paper_code=paper_code,
-                                year=q_data.get("year"),
-                                season=q_data.get("season", "") or "",
-                                zone=q_data.get("zone", "") or "",
-                                question_number=q_data.get("question_number", "")
-                                or str(idx),
-                                equation_images=(
-                                    json.dumps(eq_images) if eq_images else ""
-                                ),
-                                order=idx,
-                            )
-                            successful += 1
-                        except (ValueError, TypeError, KeyError, OSError) as e:
-                            failed += 1
-                            errors.append(f"Row {idx}: {e}")
-                        except Exception as e:
-                            # Unexpected DB/import errors — still record, but log type
-                            failed += 1
-                            errors.append(f"Row {idx}: {type(e).__name__}: {e}")
-
-                csv_upload.successful_imports = successful
-                csv_upload.failed_imports = failed
-                csv_upload.error_details = "\n".join(errors[:20])
-                csv_upload.status = (
-                    "success"
-                    if failed == 0 and successful > 0
-                    else ("partial" if successful else "failed")
+                messages.success(
+                    request,
+                    f"Parsed {len(serialized)} question(s) from “{csv_file.name}”. "
+                    f"Review and edit below, then import into the database.",
                 )
-                csv_upload.save()
+                return redirect("admin_panel:csv_upload_preview")
 
-                # Keep counter accurate (don't blindly += on re-import)
-                question_bank.total_questions = question_bank.questions.count()
-                question_bank.save(update_fields=["total_questions"])
-
-                if successful == 0:
-                    messages.error(
-                        request,
-                        "No questions were saved. "
-                        + ("; ".join(errors[:3]) if errors else "Check the file format."),
-                    )
-                    return redirect("admin_panel:csv_upload")
-
-                success_msg = (
-                    f"✅ Upload successful: {successful} question(s) imported"
-                    + (f", {failed} failed" if failed else "")
-                    + f" into “{question_bank.title}”."
-                )
-                if questions_with_latex:
-                    success_msg += (
-                        f" {questions_with_latex} question(s) store math as "
-                        f"text + LaTeX (rendered with KaTeX)."
-                    )
-                if questions_with_eq_images:
-                    success_msg += (
-                        f" {questions_with_eq_images} question(s) still have "
-                        f"{equation_image_total} fallback image(s) where LaTeX "
-                        f"could not be extracted."
-                    )
-                success_msg += " Open Manage Questions to review them."
-                messages.success(request, success_msg)
-                return redirect(
-                    reverse("admin_panel:manage_questions")
-                    + f"?question_bank={question_bank.id}"
-                )
-
+            except (ValidationError, django_forms.ValidationError) as e:
+                # Surface clean validation messages (e.g. .doc conversion failures)
+                if hasattr(e, "messages"):
+                    msg = "; ".join(str(m) for m in e.messages)
+                else:
+                    msg = str(e)
+                messages.error(request, msg)
             except (OSError, ValueError, TypeError, UnicodeDecodeError) as e:
                 messages.error(request, f"Error processing file: {e}")
             except Exception as e:
@@ -348,8 +592,237 @@ def csv_upload(request):
     context = {
         "form": form,
         "uploads": CSVUpload.objects.filter(admin_user=admin_user)[:10],
+        "pipeline_steps": UPLOAD_PIPELINE_STEPS,
+        "pending_preview": pending_preview,
     }
     return render(request, "admin_panel/csv_upload.html", context)
+
+
+@admin_required
+def csv_upload_preview(request):
+    """
+    Steps 8–10: Preview parsed questions, edit if needed, then import to DB.
+    """
+    admin_user = request.user.admin_profile
+    preview = request.session.get(SESSION_IMPORT_PREVIEW)
+    if not preview or not preview.get("questions"):
+        messages.info(request, "No file is waiting for preview. Upload a file first.")
+        return redirect("admin_panel:csv_upload")
+
+    question_bank = get_object_or_404(QuestionBank, id=preview["question_bank_id"])
+    course = get_object_or_404(Course, id=preview["course_id"])
+    questions = preview["questions"]
+    pipeline = preview.get("pipeline") or {}
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "import").strip().lower()
+
+        if action == "cancel":
+            # Mark pending upload log as cancelled/failed
+            upload_id = preview.get("upload_id")
+            if upload_id:
+                CSVUpload.objects.filter(id=upload_id, admin_user=admin_user).update(
+                    status="failed",
+                    error_details="Cancelled at preview (not imported).",
+                )
+            request.session.pop(SESSION_IMPORT_PREVIEW, None)
+            request.session.modified = True
+            messages.info(request, "Import cancelled. Nothing was saved to the database.")
+            return redirect("admin_panel:csv_upload")
+
+        # Apply edits from the preview form (single JSON payload preferred)
+        edited = _questions_from_preview_post(request, questions)
+        if not edited:
+            messages.error(
+                request,
+                "No questions left to import (all were skipped or empty).",
+            )
+            return redirect("admin_panel:csv_upload_preview")
+
+        # Re-use the pending CSVUpload row if present
+        file_obj = None
+        upload_id = preview.get("upload_id")
+        pending = None
+        if upload_id:
+            pending = CSVUpload.objects.filter(
+                id=upload_id, admin_user=admin_user
+            ).first()
+            if pending and pending.file:
+                file_obj = pending.file
+
+        try:
+            if pending:
+                # Import into bank; update the same audit row
+                successful = 0
+                failed = 0
+                errors = []
+                questions_with_latex = 0
+                questions_with_eq_images = 0
+                equation_image_total = 0
+
+                with transaction.atomic():
+                    for idx, q_data in enumerate(edited, 1):
+                        try:
+                            eq_images = q_data.get("equation_images") or []
+                            if not isinstance(eq_images, list):
+                                eq_images = []
+                            blob = " ".join(
+                                str(q_data.get(k) or "")
+                                for k in (
+                                    "question_text",
+                                    "option_a",
+                                    "option_b",
+                                    "option_c",
+                                    "option_d",
+                                )
+                            )
+                            if "$" in blob or "\\(" in blob:
+                                questions_with_latex += 1
+                            if eq_images:
+                                questions_with_eq_images += 1
+                                equation_image_total += len(eq_images)
+
+                            paper_code = (q_data.get("paper_code") or "").strip()
+                            if not paper_code:
+                                paper_code = f"IMPORT-{question_bank.id}"
+
+                            year = q_data.get("year")
+                            try:
+                                year = int(year) if year not in (None, "") else None
+                            except (TypeError, ValueError):
+                                year = None
+                            try:
+                                marks = int(float(q_data.get("marks") or 1))
+                            except (TypeError, ValueError):
+                                marks = 1
+
+                            Question.objects.create(
+                                question_bank=question_bank,
+                                question_text=q_data.get("question_text") or "",
+                                question_type=q_data.get("question_type")
+                                or "single_choice",
+                                option_a=q_data.get("option_a", "") or "",
+                                option_b=q_data.get("option_b", "") or "",
+                                option_c=q_data.get("option_c", "") or "",
+                                option_d=q_data.get("option_d", "") or "",
+                                correct_answer=q_data.get("correct_answer", "") or "",
+                                marks=marks,
+                                explanation=q_data.get("explanation", "") or "",
+                                video_solution_url=(
+                                    (q_data.get("video_solution_url") or "").strip()[
+                                        :500
+                                    ]
+                                ),
+                                topic=q_data.get("topic", "") or "",
+                                paper_code=paper_code,
+                                year=year,
+                                season=q_data.get("season", "") or "",
+                                zone=q_data.get("zone", "") or "",
+                                question_number=q_data.get("question_number", "")
+                                or str(idx),
+                                equation_images=(
+                                    json.dumps(eq_images) if eq_images else ""
+                                ),
+                                order=idx,
+                            )
+                            successful += 1
+                        except Exception as e:
+                            failed += 1
+                            errors.append(f"Row {idx}: {type(e).__name__}: {e}")
+
+                pending.total_questions = len(edited)
+                pending.successful_imports = successful
+                pending.failed_imports = failed
+                pending.error_details = "\n".join(errors[:20])
+                pending.status = (
+                    "success"
+                    if failed == 0 and successful > 0
+                    else ("partial" if successful else "failed")
+                )
+                pending.save()
+                question_bank.total_questions = question_bank.questions.count()
+                question_bank.save(update_fields=["total_questions"])
+                stats = {
+                    "questions_with_latex": questions_with_latex,
+                    "questions_with_eq_images": questions_with_eq_images,
+                    "equation_image_total": equation_image_total,
+                }
+            else:
+                successful, failed, errors, stats = _import_questions_to_bank(
+                    question_bank,
+                    edited,
+                    admin_user,
+                    preview.get("file_name") or "import",
+                    file_obj=None,
+                )
+        except Exception as e:
+            messages.error(request, f"Import failed: {type(e).__name__}: {e}")
+            return redirect("admin_panel:csv_upload_preview")
+
+        request.session.pop(SESSION_IMPORT_PREVIEW, None)
+        request.session.modified = True
+
+        if successful == 0:
+            messages.error(
+                request,
+                "No questions were saved. "
+                + ("; ".join(errors[:3]) if errors else "Check the preview data."),
+            )
+            return redirect("admin_panel:csv_upload")
+
+        success_msg = (
+            f"✅ Import complete: {successful} question(s) saved"
+            + (f", {failed} failed" if failed else "")
+            + f" into “{question_bank.title}”."
+        )
+        if stats.get("questions_with_latex"):
+            success_msg += (
+                f" {stats['questions_with_latex']} question(s) use text + LaTeX."
+            )
+        if stats.get("questions_with_eq_images"):
+            success_msg += (
+                f" {stats['questions_with_eq_images']} question(s) still have "
+                f"{stats.get('equation_image_total', 0)} fallback equation image(s)."
+            )
+        success_msg += " Open Manage Questions to review them."
+        messages.success(request, success_msg)
+        return redirect(
+            reverse("admin_panel:manage_questions")
+            + f"?question_bank={question_bank.id}"
+        )
+
+    # GET — show editable preview
+    steps_done = dict(pipeline.get("steps_done") or {})
+    steps_done["preview"] = True
+    steps_done["edit"] = True
+    active_keys = {"preview", "edit", "import"}
+    pipeline_ui = [
+        {
+            "key": key,
+            "label": label,
+            "done": bool(steps_done.get(key)),
+            "active": key in active_keys,
+        }
+        for key, label in UPLOAD_PIPELINE_STEPS
+    ]
+    equation_images_json = [
+        (q.get("equation_images") if isinstance(q.get("equation_images"), list) else [])
+        for q in questions
+    ]
+
+    context = {
+        "course": course,
+        "question_bank": question_bank,
+        "questions": questions,
+        "question_count": len(questions),
+        "file_name": preview.get("file_name") or "",
+        "source_type": preview.get("source_type") or "word",
+        "pipeline": pipeline,
+        "pipeline_ui": pipeline_ui,
+        "equation_images_json": equation_images_json,
+        "question_types": Question.QUESTION_TYPES,
+    }
+    return render(request, "admin_panel/csv_upload_preview.html", context)
 
 
 SESSION_LAST_QUESTION_BANK = "admin_last_question_bank_id"

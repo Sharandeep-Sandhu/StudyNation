@@ -601,7 +601,7 @@
             <a href="{% url 'courses:student_exams' %}" class="nav-link {% if '/my-exams/' in request.path %}is-active{% endif %}">My Exams</a>
             <a href="{% url 'courses:student_question_lists' %}" class="nav-link {% if '/my-lists/' in request.path %}is-active{% endif %}">My Lists</a>
           {% endif %}
-          <a href="{% url 'courses:question_form' %}" class="nav-link {% if '/question-form/' in request.path or '/public-chat/' in request.path %}is-active{% endif %}">Question Form</a>
+          <a href="{% url 'courses:question_forum' %}" class="nav-link {% if '/question-forum/' in request.path or '/question-form/' in request.path or '/public-chat/' in request.path %}is-active{% endif %}">Question Forum</a>
           <a href="{% url 'courses:resources_list' %}" class="nav-link {% if '/resources/' in request.path %}is-active{% endif %}">Resources</a>
           <a href="{% url 'courses:blog_list' %}" class="nav-link {% if '/blogs/' in request.path %}is-active{% endif %}">Blogs</a>
           <a href="{% url 'courses:contact' %}" class="nav-link {% if '/contact/' in request.path %}is-active{% endif %}">Contact</a>
@@ -650,7 +650,7 @@
           <h4>Quick Links</h4>
           <a href="{% url 'courses:courses_list' %}">Browse Courses</a>
           <a href="{% url 'courses:resources_list' %}">Free Resources</a>
-          <a href="{% url 'courses:question_form' %}">Question Form</a>
+          <a href="{% url 'courses:question_forum' %}">Question Forum</a>
           <a href="{% url 'courses:contact' %}">Contact Us</a>
         </div>
         <div>

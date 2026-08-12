@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 from .views import (
     HomeView,
     CoursesListView,
@@ -11,7 +12,7 @@ from .views import (
     ResourcesListView,
     ResourceDetailView,
     resource_file_stream,
-    QuestionFormView,
+    QuestionForumView,
     PublicChatView,
     student_signup,
     student_login,
@@ -58,9 +59,18 @@ urlpatterns = [
         resource_file_stream,
         name="resource_file_stream",
     ),
-    # Question Form (topic boards for community Q&A)
-    path("question-form/", QuestionFormView.as_view(), name="question_form"),
-    # Legacy URL redirect target (same view; bookmarks still work)
+    # Question Forum (topic boards for community Q&A)
+    path("question-forum/", QuestionForumView.as_view(), name="question_forum"),
+    # Legacy URLs — keep bookmarks/old links working
+    path(
+        "question-form/",
+        RedirectView.as_view(
+            pattern_name="courses:question_forum",
+            permanent=False,
+            query_string=True,
+        ),
+        name="question_form",
+    ),
     path("public-chat/", PublicChatView.as_view(), name="public_chat"),
     path("discussion/create/", discussion_create_post, name="discussion_create"),
     path("discussion/<int:post_id>/reply/", discussion_add_reply, name="discussion_reply"),

@@ -1,6 +1,28 @@
 """
 Word (.doc / .docx) question-bank importer.
 
+Pipeline (used by Admin → Upload Questions):
+
+    DOC / DOCX Upload
+            ↓
+    Prepare / Normalize document   (OOXML namespace fix)
+            ↓
+    DOC → DOCX                     (LibreOffice when needed)
+            ↓
+    Extract equations              (OMML + WMF/EMF/PNG)
+            ↓
+    Equation → LaTeX               (pandoc / pure-Python fallback)
+            ↓
+    Parse questions + A/B/C/D
+            ↓
+    Parse answer sheet             (numbered answer tables)
+            ↓
+    Preview questions              (admin UI — not this module)
+            ↓
+    Edit if required               (admin UI)
+            ↓
+    Import Questions → database
+
 Parses past-paper style Word documents shaped like:
 
     1. Question text ...
@@ -97,9 +119,95 @@ except ImportError:  # pragma: no cover
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 
-OPTION_RE = re.compile(r"\(([a-eA-E])\)\s*")
+# Classic past-paper: (a) (b) (c) (d)
+# Also common in single-correct banks: (1) (2) (3) (4) or 1) 2) 3) 4)
+OPTION_RE = re.compile(
+    r"(?:^|[\s\u00a0])\(([a-eA-E1-4])\)\s*|(?:^|[\s\u00a0])([1-4a-eA-E])\)\s+",
+)
+# Stronger splitter used when options share a line with the stem
+OPTION_SPLIT_RE = re.compile(
+    r"(?:(?<=\?)|(?<=\s)|(?<=\.))\s*"
+    r"(?:\(([1-4a-eA-E])\)|([1-4a-eA-E])\))\s*",
+    re.IGNORECASE,
+)
 QUESTION_NUM_RE = re.compile(r"^\s*(\d+)[\.\)]\s+")
 ANSWER_HEADING_RE = re.compile(r"answer\s*(sheet|key)", re.IGNORECASE)
+
+# Map numeric choice labels → a/b/c/d
+_OPT_NUM_TO_LETTER = {"1": "a", "2": "b", "3": "c", "4": "d", "5": "e"}
+
+
+def _option_letter(token: str) -> str:
+    """Normalize '(a)' / '(1)' / 'A' / '2' → lowercase a–e."""
+    t = (token or "").strip().lower()
+    if t in _OPT_NUM_TO_LETTER:
+        return _OPT_NUM_TO_LETTER[t]
+    if t in "abcde":
+        return t
+    return ""
+
+
+def _extract_options_from_text(text: str) -> tuple[str, dict]:
+    """
+    Split stem + options when choices are inline, e.g.:
+      '... on p ? (1) 2p (2) 2^{p^2} (3) p2 (4) pp'
+      '... is (a) foo (b) bar (c) baz (d) qux'
+    Returns (stem, {a:..., b:..., c:..., d:...}).
+    """
+    if not text:
+        return "", {}
+    # Find all option markers with either (1)/(a) or 1)/a) form
+    marker = re.compile(
+        r"(?:\(([1-4a-eA-E])\)|([1-4a-eA-E])\))\s*",
+        re.IGNORECASE,
+    )
+    matches = list(marker.finditer(text))
+    if len(matches) < 2:
+        return text, {}
+
+    # Prefer a run of 3–5 consecutive choices near the end (MCQ block)
+    # Group consecutive markers; take the last group with >= 2 items
+    groups = []
+    current = [matches[0]]
+    for m in matches[1:]:
+        # same group if gap between markers is short (< 400 chars of option text)
+        if m.start() - current[-1].end() < 400:
+            current.append(m)
+        else:
+            groups.append(current)
+            current = [m]
+    groups.append(current)
+
+    best = None
+    for g in groups:
+        if len(g) >= 2:
+            best = g
+    if not best or len(best) < 2:
+        return text, {}
+
+    # Stem ends where the option block starts
+    stem = text[: best[0].start()].rstrip()
+    # Trim trailing "is"/"are"/punctuation glue
+    stem = re.sub(r"[\s\u00a0]+$", "", stem)
+
+    options = {}
+    for i, m in enumerate(best):
+        letter = _option_letter(m.group(1) or m.group(2) or "")
+        if not letter:
+            continue
+        start = m.end()
+        end = best[i + 1].start() if i + 1 < len(best) else len(text)
+        opt = text[start:end].strip()
+        # Drop trailing punctuation junk
+        opt = re.sub(r"[\s,;]+$", "", opt)
+        if letter in options and options[letter]:
+            options[letter] = f"{options[letter]} {opt}".strip()
+        else:
+            options[letter] = opt
+
+    if len(options) < 2:
+        return text, {}
+    return stem, options
 
 VML_NS = "urn:schemas-microsoft-com:vml"
 VML_IMAGEDATA_TAG = f"{{{VML_NS}}}imagedata"
@@ -125,20 +233,24 @@ def _eq_img_html(url: str) -> str:
         return equation_img_html(url)
     except Exception:
         return (
-            f'<span class="eq-math" contenteditable="false">'
             f'<img src="{url}" alt="" class="eq-math-img" '
-            f'decoding="async" loading="lazy" /></span>'
+            f'style="height:auto;width:auto;max-height:3.2em;min-height:1.05em;'
+            f'vertical-align:middle;margin:0 .2em;background:transparent;border:0;'
+            f'object-fit:contain;display:inline-block" '
+            f'decoding="async" loading="lazy" />'
         )
 
 
-# Normalize by MAIN GLYPH height (not full canvas) so simple and multi-line
-# formulas have the same optical character size when shown with height:auto.
-_EQ_TARGET_GLYPH_PX = 28   # main text-line height in the PNG
-_EQ_MIN_GLYPH_PX = 18
-_EQ_MAX_TOTAL_HEIGHT_PX = 72  # multi-line formulas may be taller overall
-_EQ_MAX_WIDTH_PX = 960
-_EQ_MIN_HEIGHT_PX = 22  # absolute floor after scale
-_EQ_MIN_WIDTH_PX = 20
+# Normalize by MAIN GLYPH height so simple and multi-line formulas share
+# similar character size. Display CSS then scales to ~1.3em of body text
+# (see templates/partials/equation_inline_css.html) — keep source PNGs modest
+# so they do not look huge before JS runs.
+_EQ_TARGET_GLYPH_PX = 22   # main text-line height in the PNG (~body text ×1.4)
+_EQ_MIN_GLYPH_PX = 14
+_EQ_MAX_TOTAL_HEIGHT_PX = 56  # multi-line formulas may be taller overall
+_EQ_MAX_WIDTH_PX = 720
+_EQ_MIN_HEIGHT_PX = 16  # absolute floor after scale
+_EQ_MIN_WIDTH_PX = 16
 _CONVERT_BATCH_SIZE = 150
 _ENHANCE_WORKERS = min(8, (os.cpu_count() or 4))
 
@@ -408,11 +520,53 @@ def _has_numbering(paragraph):
 
 
 def _soffice_available():
-    return shutil.which("soffice") is not None or shutil.which("soffice.exe") is not None
+    return _soffice_bin() is not None
 
 
 def _soffice_bin():
-    return shutil.which("soffice") or shutil.which("soffice.exe")
+    """
+    Locate LibreOffice `soffice` on PATH or common install folders.
+
+    Windows installs rarely put soffice on PATH, so we also probe
+    Program Files. Returns absolute path or None.
+    """
+    for name in ("soffice", "soffice.exe", "libreoffice", "libreoffice.exe"):
+        found = shutil.which(name)
+        if found and os.path.isfile(found):
+            return found
+
+    candidates = []
+    # Explicit common paths (Windows + Linux containers)
+    candidates.extend(
+        [
+            r"C:\Program Files\LibreOffice\program\soffice.exe",
+            r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+            "/usr/bin/soffice",
+            "/usr/bin/libreoffice",
+            "/snap/bin/libreoffice",
+            "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+        ]
+    )
+    # Glob Program Files for versioned installs
+    for base in (
+        r"C:\Program Files",
+        r"C:\Program Files (x86)",
+    ):
+        try:
+            if not os.path.isdir(base):
+                continue
+            for entry in os.listdir(base):
+                if entry.lower().startswith("libreoffice"):
+                    candidates.append(
+                        os.path.join(base, entry, "program", "soffice.exe")
+                    )
+        except OSError:
+            pass
+
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return path
+    return None
 
 
 def _soffice_convert_document(src_path, target_ext, outdir):
@@ -421,16 +575,143 @@ def _soffice_convert_document(src_path, target_ext, outdir):
     if not soffice:
         return None
     try:
+        # User profile dir avoids lock conflicts when multiple conversions run
+        profile = os.path.join(outdir, "lo_profile")
+        os.makedirs(profile, exist_ok=True)
+        # file:/// URL for the profile (LibreOffice expects URI on Windows)
+        profile_uri = "file:///" + profile.replace("\\", "/").lstrip("/")
+        if not profile_uri.startswith("file:///"):
+            profile_uri = "file:///" + profile.replace("\\", "/")
         subprocess.run(
-            [soffice, "--headless", "--norestore", "--convert-to", target_ext,
-             "--outdir", outdir, src_path],
-            check=True, timeout=120, capture_output=True,
+            [
+                soffice,
+                "--headless",
+                "--norestore",
+                "--nologo",
+                "--nodefault",
+                f"-env:UserInstallation={profile_uri}",
+                "--convert-to",
+                target_ext,
+                "--outdir",
+                outdir,
+                src_path,
+            ],
+            check=True,
+            timeout=180,
+            capture_output=True,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return None
     base = os.path.splitext(os.path.basename(src_path))[0]
     out_path = os.path.join(outdir, f"{base}.{target_ext}")
-    return out_path if os.path.exists(out_path) else None
+    return out_path if os.path.exists(out_path) and os.path.getsize(out_path) > 0 else None
+
+
+def _word_com_convert_document(src_path, target_ext, outdir):
+    """
+    Convert .doc → .docx using installed Microsoft Word (Windows COM).
+
+    Used when LibreOffice is not installed. Preserves equations well enough
+    for the OMML → LaTeX pipeline that follows.
+    """
+    if sys.platform != "win32":
+        return None
+    if (target_ext or "").lower().lstrip(".") != "docx":
+        return None
+    if not os.path.isfile(src_path):
+        return None
+
+    os.makedirs(outdir, exist_ok=True)
+    base = os.path.splitext(os.path.basename(src_path))[0]
+    # Avoid overwriting the source when already in outdir
+    out_path = os.path.join(outdir, f"{base}_converted.docx")
+    if os.path.exists(out_path):
+        try:
+            os.remove(out_path)
+        except OSError:
+            pass
+
+    # wdFormatXMLDocument = 16 (.docx)
+    # Use absolute paths; Word COM is picky about relative paths.
+    src_abs = os.path.abspath(src_path)
+    out_abs = os.path.abspath(out_path)
+    script_path = os.path.join(outdir, "_word_convert.ps1")
+    # Escape single quotes for PowerShell single-quoted strings
+    src_ps = src_abs.replace("'", "''")
+    out_ps = out_abs.replace("'", "''")
+    script = f"""
+$ErrorActionPreference = 'Stop'
+$src = '{src_ps}'
+$dst = '{out_ps}'
+$word = $null
+$doc = $null
+try {{
+  $word = New-Object -ComObject Word.Application
+  $word.Visible = $false
+  $word.DisplayAlerts = 0
+  $doc = $word.Documents.Open($src, $false, $true)
+  # 16 = wdFormatXMLDocument (.docx)
+  $null = $doc.SaveAs([ref]$dst, [ref]16)
+  $doc.Close($false) | Out-Null
+  $doc = $null
+  $word.Quit() | Out-Null
+  $word = $null
+  if (Test-Path -LiteralPath $dst) {{ Write-Output 'OK' }} else {{ Write-Output 'MISSING' }}
+}} catch {{
+  Write-Output ('ERR:' + $_.Exception.Message)
+  exit 1
+}} finally {{
+  if ($doc -ne $null) {{ try {{ $doc.Close($false) | Out-Null }} catch {{}} }}
+  if ($word -ne $null) {{ try {{ $word.Quit() | Out-Null }} catch {{}} }}
+  [System.GC]::Collect()
+  [System.GC]::WaitForPendingFinalizers()
+}}
+"""
+    try:
+        with open(script_path, "w", encoding="utf-8") as fh:
+            fh.write(script)
+        result = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                script_path,
+            ],
+            check=False,
+            timeout=180,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return None
+        if os.path.exists(out_abs) and os.path.getsize(out_abs) > 0:
+            return out_abs
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return None
+    return None
+
+
+def _convert_document_to_docx(src_path, outdir):
+    """
+    Convert legacy .doc (or broken packages) → .docx.
+
+    Order:
+      1. LibreOffice headless (best on Linux / Render)
+      2. Microsoft Word COM (Windows desktops without LibreOffice)
+    Returns path to .docx or None.
+    """
+    os.makedirs(outdir, exist_ok=True)
+    # Prefer LibreOffice when present
+    converted = _soffice_convert_document(src_path, "docx", outdir)
+    if converted:
+        return converted
+    # Fallback: Word on Windows
+    converted = _word_com_convert_document(src_path, "docx", outdir)
+    if converted:
+        return converted
+    return None
 
 
 def _batch_convert_images_soffice(paths, target_ext, outdir):
@@ -697,9 +978,10 @@ def _enhance_equation_png(path, padding=2):
         if (new_w, new_h) != (w, h):
             im = im.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-        im = ImageEnhance.Contrast(im).enhance(1.15)
-        im = ImageEnhance.Sharpness(im).enhance(1.25)
-        im = ImageOps.expand(im, border=2, fill=(255, 255, 255))
+        im = ImageEnhance.Contrast(im).enhance(1.12)
+        im = ImageEnhance.Sharpness(im).enhance(1.2)
+        # Minimal white pad only — large borders made equations look like boxes
+        im = ImageOps.expand(im, border=1, fill=(255, 255, 255))
         im.save(path, format="PNG", optimize=True)
     except Exception:
         pass
@@ -727,18 +1009,30 @@ _ANSWER_LETTER_RE = re.compile(r"([a-eA-E])")
 
 
 def _normalize_answer_token(ans: str) -> str:
-    """Turn 'c', 'C.', ' c ', 'a,b' into a clean lowercase letter key."""
+    """Turn 'c', 'C.', '2', ' a,b ' into clean lowercase letter key(s)."""
     if not ans:
         return ""
     ans = ans.strip().lower()
-    # multi-select e.g. "a,b" or "a b"
-    letters = _ANSWER_LETTER_RE.findall(ans)
-    if not letters:
-        return ""
-    # de-dupe preserve order
+    # Numeric keys from (1)(2)(3)(4) style papers
+    if re.fullmatch(r"[1-5]", ans):
+        return _OPT_NUM_TO_LETTER.get(ans, "")
+    # multi-select e.g. "a,b" or "1,2"
+    parts = re.split(r"[\s,;/]+", ans)
     seen = []
-    for L in letters:
-        if L not in seen:
+    for p in parts:
+        p = p.strip().strip("().")
+        if not p:
+            continue
+        if p in _OPT_NUM_TO_LETTER:
+            L = _OPT_NUM_TO_LETTER[p]
+        elif p in "abcde":
+            L = p
+        else:
+            m = _ANSWER_LETTER_RE.search(p)
+            L = m.group(1).lower() if m else ""
+            if L in _OPT_NUM_TO_LETTER:
+                L = _OPT_NUM_TO_LETTER[L]
+        if L and L not in seen:
             seen.append(L)
     return ",".join(seen)
 
@@ -821,14 +1115,27 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                 f.write(chunk)
 
         docx_path = src_path
-        if src_name.lower().endswith(".doc"):
-            converted = _soffice_convert_document(src_path, "docx", work_dir)
+        name_lower = (src_name or "").lower()
+        # Treat only true legacy binary .doc (not .docx)
+        is_legacy_doc = name_lower.endswith(".doc") and not name_lower.endswith(".docx")
+
+        if is_legacy_doc:
+            convert_dir = os.path.join(work_dir, "converted")
+            os.makedirs(convert_dir, exist_ok=True)
+            converted = _convert_document_to_docx(src_path, convert_dir)
             if not converted:
+                lo = "found" if _soffice_bin() else "not found"
+                word_hint = (
+                    " Microsoft Word is also unavailable for COM conversion."
+                    if sys.platform == "win32"
+                    else ""
+                )
                 raise forms.ValidationError(
-                    "Couldn't convert this legacy .doc file (LibreOffice "
-                    "unavailable or conversion failed). Please open it in "
-                    "Word → Save As → .docx and re-upload. "
-                    "Tip: your sample files include .docx versions."
+                    "Couldn't convert this legacy .doc file to .docx "
+                    f"(LibreOffice {lo}.{word_hint}) "
+                    "Install LibreOffice, or open the file in Word → Save As → "
+                    ".docx and re-upload. On this PC, Microsoft Word COM is used "
+                    "automatically when LibreOffice is missing."
                 )
             docx_path = converted
 
@@ -844,16 +1151,24 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
         try:
             document = docx.Document(docx_path)
         except Exception as first_error:
+            # Re-save through Word/LibreOffice to repair odd packages
             renorm_dir = os.path.join(work_dir, "renormalized")
             os.makedirs(renorm_dir, exist_ok=True)
-            renormalized = _soffice_convert_document(docx_path, "docx", renorm_dir)
+            renormalized = _convert_document_to_docx(docx_path, renorm_dir)
             if renormalized:
                 try:
+                    # Normalize namespaces again after conversion
+                    fixed = os.path.join(renorm_dir, "normalized_retry.docx")
+                    try:
+                        normalize_ooxml_namespaces(renormalized, fixed)
+                        renormalized = fixed
+                    except (zipfile.BadZipFile, OSError):
+                        pass
                     document = docx.Document(renormalized)
                     docx_path = renormalized
                 except Exception:
                     raise forms.ValidationError(
-                        f"Couldn't read this Word file: {first_error}"
+                        f"Couldn't read this Word file after conversion: {first_error}"
                     )
             else:
                 raise forms.ValidationError(
@@ -956,16 +1271,44 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
             if current is None:
                 continue
 
-            # Option detection on text with placeholders preserved
-            plain_opts = text  # OPTION_RE works on the text; placeholders stay in segments
-            matches = list(OPTION_RE.finditer(plain_opts))
-            if matches:
+            # Option detection — (a)/(b) or (1)/(2) style, same-line or new line
+            plain_opts = text
+            matches = list(
+                re.finditer(
+                    r"(?:\(([1-4a-eA-E])\)|([1-4a-eA-E])\))\s*",
+                    plain_opts,
+                    re.IGNORECASE,
+                )
+            )
+            # Treat as option line if it starts with a marker OR has 2+ markers
+            starts_with_opt = bool(
+                re.match(
+                    r"^\s*(?:\(([1-4a-eA-E])\)|([1-4a-eA-E])\))\s*",
+                    plain_opts,
+                    re.IGNORECASE,
+                )
+            )
+            if matches and (starts_with_opt or len(matches) >= 2):
                 for idx, m in enumerate(matches):
-                    letter = m.group(1).lower()
+                    letter = _option_letter(m.group(1) or m.group(2) or "")
+                    if not letter:
+                        continue
                     start = m.end()
-                    end = matches[idx + 1].start() if idx + 1 < len(matches) else len(plain_opts)
+                    end = (
+                        matches[idx + 1].start()
+                        if idx + 1 < len(matches)
+                        else len(plain_opts)
+                    )
                     opt_text = plain_opts[start:end].strip(" \t")
-                    # Merge if option already started on a previous line
+                    # Text before first option on a mixed stem+options line → stem
+                    if idx == 0 and m.start() > 0:
+                        prefix = plain_opts[: m.start()].strip()
+                        if prefix:
+                            current["question_text"] = (
+                                f"{current['question_text']} {prefix}".strip()
+                                if current["question_text"]
+                                else prefix
+                            )
                     if letter in current["options"] and current["options"][letter]:
                         current["options"][letter] = (
                             f"{current['options'][letter]} {opt_text}".strip()
@@ -979,6 +1322,15 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                     else text
                 )
             current["image_rids"].extend(rids_here)
+
+        # ---- 2b. Pull inline (1)(2)(3)(4) options out of the stem if still missing ----
+        for q in questions:
+            if q.get("options"):
+                continue
+            stem, opts = _extract_options_from_text(q.get("question_text") or "")
+            if opts:
+                q["question_text"] = stem
+                q["options"] = opts
 
         # ---- 3. Answer Sheet table ----
         answers = _parse_answer_sheet_tables(document)

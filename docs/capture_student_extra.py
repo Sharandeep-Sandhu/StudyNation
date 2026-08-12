@@ -49,7 +49,7 @@ def main():
         page.wait_for_timeout(800)
         shot(page, "12b_student_list_builder")
 
-        page.goto(f"{BASE}/question-form/", wait_until="networkidle")
+        page.goto(f"{BASE}/question-forum/", wait_until="networkidle")
         shot(page, "08_public_chat")
 
         browser.close()

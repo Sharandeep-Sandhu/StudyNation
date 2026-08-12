@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview Import - Admin Panel</title>
+    {% include 'partials/katex.html' %}
+    {% include 'partials/equation_inline_css.html' %}
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f7fa;
+        color: #333;
+      }
+      .dashboard-wrapper {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        min-height: 100vh;
+      }
+      .main-content {
+        margin-left: 250px;
+        padding: 32px 40px 60px;
+        width: 100%;
+        max-width: 1100px;
+      }
+      .header h1 { font-size: 26px; margin-bottom: 6px; }
+      .header p { color: #666; font-size: 14px; margin-bottom: 20px; }
+
+      .pipeline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 24px;
+        background: #fff;
+        border-radius: 10px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        align-items: center;
+      }
+      .pipe-step {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 20px;
+        font-size: 11.5px;
+        font-weight: 600;
+        background: #f0f0f5;
+        color: #777;
+      }
+      .pipe-step.done { background: #e8f5e9; color: #1b5e20; }
+      .pipe-step.active { background: #e8eaf6; color: #3949ab; box-shadow: 0 0 0 2px #c5cae9; }
+      .pipe-arrow { color: #bbb; font-size: 12px; }
+
+      .stats-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .stat {
+        background: #fff;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        min-width: 120px;
+      }
+      .stat strong { display: block; font-size: 20px; color: #5b6fd8; }
+      .stat span { font-size: 12px; color: #777; }
+
+      .actions-top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 22px;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #f5f7fa;
+        padding: 12px 0;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 20px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+      }
+      .btn-secondary {
+        background: #fff;
+        color: #555;
+        border: 1px solid #ddd;
+      }
+      .btn-danger {
+        background: #fff5f5;
+        color: #c62828;
+        border: 1px solid #ffcdd2;
+      }
+
+      .q-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        padding: 18px 20px;
+        margin-bottom: 16px;
+        border-left: 4px solid #667eea;
+      }
+      .q-card.skipped {
+        opacity: .45;
+        border-left-color: #bbb;
+      }
+      .q-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .q-head h3 { font-size: 15px; color: #333; }
+      .q-preview {
+        background: #f8f9fc;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        font-size: 15px;
+        line-height: 1.8;
+        color: #222;
+      }
+      .q-preview img.eq-math-img,
+      .q-preview img[src*="question_equations"] {
+        height: 1.45em !important;
+        width: auto !important;
+        max-height: 2.8em !important;
+        vertical-align: middle !important;
+        background: transparent !important;
+        object-fit: contain !important;
+      }
+      .q-preview .opt { margin-top: 6px; color: #444; }
+      .q-preview .ans {
+        margin-top: 8px;
+        font-weight: 700;
+        color: #2e7d32;
+      }
+      .field-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .field-grid .full { grid-column: 1 / -1; }
+      label {
+        display: block;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #666;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: .3px;
+      }
+      input[type="text"],
+      input[type="number"],
+      select,
+      textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #dce0ef;
+        border-radius: 6px;
+        font-size: 13.5px;
+        font-family: inherit;
+        background: #fafbff;
+      }
+      textarea { min-height: 72px; resize: vertical; }
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(102,126,234,.12);
+      }
+      .skip-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #888;
+      }
+      .skip-row input { width: auto; }
+      .messages { margin-bottom: 16px; }
+      .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+      .alert-success { background: #e8f5e9; color: #1b5e20; border-left: 4px solid #2e7d32; }
+      .alert-error { background: #ffebee; color: #b71c1c; border-left: 4px solid #c62828; }
+      .alert-info { background: #e3f2fd; color: #0d47a1; border-left: 4px solid #1565c0; }
+      details.edit-toggle > summary {
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 13px;
+        color: #667eea;
+        margin-bottom: 10px;
+        user-select: none;
+      }
+      @media (max-width: 900px) {
+        .main-content { margin-left: 0; padding: 20px; }
+        .field-grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    {% include 'admin_panel/_partials/sidebar_slider.html' %}
+    <div class="dashboard-wrapper">
+      {% include 'admin_panel/_partials/admin_sidebar.html' with active='csv_upload' %}
+      <main class="main-content">
+        <div class="header">
+          <h1>👁 Preview &amp; Import Questions</h1>
+          <p>
+            File: <strong>{{ file_name }}</strong>
+            · Bank: <strong>{{ question_bank.title }}</strong>
+            · Course: <strong>{{ course.title }}</strong>
+            · Source: {{ source_type|upper }}
+          </p>
+        </div>
+
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="pipeline" aria-label="Import pipeline steps">
+          {% for step in pipeline_ui %}
+            {% if not forloop.first %}<span class="pipe-arrow">→</span>{% endif %}
+            <span class="pipe-step {% if step.done %}done{% endif %} {% if step.active %}active{% endif %}">
+              {% if step.done %}✓ {% endif %}{{ step.label }}
+            </span>
+          {% endfor %}
+        </div>
+
+        <div class="stats-bar">
+          <div class="stat"><strong>{{ question_count }}</strong><span>Questions parsed</span></div>
+          <div class="stat"><strong>{{ pipeline.with_answers|default:0 }}</strong><span>With answers</span></div>
+          <div class="stat"><strong>{{ pipeline.with_latex|default:0 }}</strong><span>With LaTeX math</span></div>
+          <div class="stat"><strong>{{ pipeline.with_eq_images|default:0 }}</strong><span>With eq. images</span></div>
+        </div>
+
+        {{ equation_images_json|json_script:"equation-images-data" }}
+        {{ questions|json_script:"session-questions-data" }}
+
+        <form method="post" id="importPreviewForm">
+          {% csrf_token %}
+          {# Single JSON field — avoids TooManyFieldsSent with 70+ questions #}
+          <input type="hidden" name="import_payload" id="importPayload" value="" />
+          <input type="hidden" name="action" id="formAction" value="import" />
+
+          <div class="actions-top">
+            <button type="submit" class="btn btn-primary" data-action="import">
+              ✅ Import {{ question_count }} question(s) into database
+            </button>
+            <button type="submit" class="btn btn-danger" data-action="cancel"
+              onclick="return confirm('Cancel this import? Parsed questions will not be saved.');">
+              ✖ Cancel import
+            </button>
+            <a href="{% url 'admin_panel:csv_upload' %}?fresh=1" class="btn btn-secondary">← New upload</a>
+          </div>
+
+          {% for q in questions %}
+            <div class="q-card" id="card-{{ forloop.counter0 }}" data-idx="{{ forloop.counter0 }}">
+              <div class="q-head">
+                <h3>
+                  Q{{ forloop.counter }}
+                  {% if q.question_number %}
+                    <span style="color:#888; font-weight:500;">(#{{ q.question_number }})</span>
+                  {% endif %}
+                  · {{ q.question_type }}
+                </h3>
+                <label class="skip-row">
+                  <input type="checkbox" data-field="skip" value="1"
+                    onchange="document.getElementById('card-{{ forloop.counter0 }}').classList.toggle('skipped', this.checked)" />
+                  Skip (do not import)
+                </label>
+              </div>
+
+              <div class="q-preview">
+                <div class="pq-question-text">{{ q.question_text|safe }}</div>
+                {% if q.option_a %}<div class="opt"><strong>(A)</strong> {{ q.option_a|safe }}</div>{% endif %}
+                {% if q.option_b %}<div class="opt"><strong>(B)</strong> {{ q.option_b|safe }}</div>{% endif %}
+                {% if q.option_c %}<div class="opt"><strong>(C)</strong> {{ q.option_c|safe }}</div>{% endif %}
+                {% if q.option_d %}<div class="opt"><strong>(D)</strong> {{ q.option_d|safe }}</div>{% endif %}
+                {% if q.correct_answer %}<div class="ans">Answer: {{ q.correct_answer|upper }}</div>{% endif %}
+              </div>
+
+              <details class="edit-toggle">
+                <summary>✏️ Edit this question</summary>
+                <div class="field-grid" style="margin-top: 10px;">
+                  <div class="full">
+                    <label>Question text</label>
+                    <textarea data-field="question_text">{{ q.question_text }}</textarea>
+                  </div>
+                  <div>
+                    <label>Option A</label>
+                    <textarea data-field="option_a" rows="2">{{ q.option_a }}</textarea>
+                  </div>
+                  <div>
+                    <label>Option B</label>
+                    <textarea data-field="option_b" rows="2">{{ q.option_b }}</textarea>
+                  </div>
+                  <div>
+                    <label>Option C</label>
+                    <textarea data-field="option_c" rows="2">{{ q.option_c }}</textarea>
+                  </div>
+                  <div>
+                    <label>Option D</label>
+                    <textarea data-field="option_d" rows="2">{{ q.option_d }}</textarea>
+                  </div>
+                  <div>
+                    <label>Correct answer</label>
+                    <input type="text" data-field="correct_answer" value="{{ q.correct_answer }}" placeholder="A or A,B" />
+                  </div>
+                  <div>
+                    <label>Type</label>
+                    <select data-field="question_type">
+                      {% for val, label in question_types %}
+                        <option value="{{ val }}" {% if q.question_type == val %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div>
+                    <label>Marks</label>
+                    <input type="number" data-field="marks" value="{{ q.marks|default:1 }}" min="1" />
+                  </div>
+                  <div>
+                    <label>Question number</label>
+                    <input type="text" data-field="question_number" value="{{ q.question_number }}" />
+                  </div>
+                  <div>
+                    <label>Topic</label>
+                    <input type="text" data-field="topic" value="{{ q.topic }}" />
+                  </div>
+                  <div>
+                    <label>Paper code</label>
+                    <input type="text" data-field="paper_code" value="{{ q.paper_code }}" />
+                  </div>
+                  <div>
+                    <label>Year</label>
+                    <input type="number" data-field="year" value="{{ q.year|default_if_none:'' }}" />
+                  </div>
+                  <div>
+                    <label>Season</label>
+                    <input type="text" data-field="season" value="{{ q.season }}" />
+                  </div>
+                  <div>
+                    <label>Zone</label>
+                    <input type="text" data-field="zone" value="{{ q.zone }}" />
+                  </div>
+                  <div class="full">
+                    <label>Explanation / solution</label>
+                    <textarea data-field="explanation" rows="2">{{ q.explanation }}</textarea>
+                  </div>
+                  <div class="full">
+                    <label>Video solution URL</label>
+                    <input type="text" data-field="video_solution_url" value="{{ q.video_solution_url }}" />
+                  </div>
+                  <input type="hidden" data-field="equation_images" value="[]" class="eq-images-field" data-idx="{{ forloop.counter0 }}" />
+                </div>
+              </details>
+            </div>
+          {% endfor %}
+
+          <div class="actions-top" style="margin-top: 8px;">
+            <button type="submit" class="btn btn-primary" data-action="import">
+              ✅ Import into database
+            </button>
+            <button type="submit" class="btn btn-danger" data-action="cancel"
+              onclick="return confirm('Cancel this import?');">
+              ✖ Cancel
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+    <script>
+      (function () {
+        var dataEl = document.getElementById('equation-images-data');
+        var eqData = [];
+        try {
+          eqData = dataEl ? JSON.parse(dataEl.textContent) : [];
+        } catch (e) {
+          eqData = [];
+        }
+        document.querySelectorAll('.eq-images-field').forEach(function (el) {
+          var i = parseInt(el.getAttribute('data-idx'), 10);
+          el.value = JSON.stringify(eqData[i] || []);
+        });
+
+        var form = document.getElementById('importPreviewForm');
+        if (!form) return;
+
+        function fieldVal(card, name) {
+          var el = card.querySelector('[data-field="' + name + '"]');
+          if (!el) return '';
+          if (el.type === 'checkbox') return el.checked ? '1' : '';
+          return el.value;
+        }
+
+        function buildPayload() {
+          var cards = form.querySelectorAll('.q-card');
+          var list = [];
+          cards.forEach(function (card) {
+            var eqRaw = fieldVal(card, 'equation_images') || '[]';
+            var eqImages = [];
+            try { eqImages = JSON.parse(eqRaw); } catch (e) { eqImages = []; }
+            if (!Array.isArray(eqImages)) eqImages = [];
+            list.push({
+              skip: fieldVal(card, 'skip') === '1',
+              question_text: fieldVal(card, 'question_text'),
+              option_a: fieldVal(card, 'option_a'),
+              option_b: fieldVal(card, 'option_b'),
+              option_c: fieldVal(card, 'option_c'),
+              option_d: fieldVal(card, 'option_d'),
+              correct_answer: fieldVal(card, 'correct_answer'),
+              question_type: fieldVal(card, 'question_type') || 'single_choice',
+              marks: fieldVal(card, 'marks') || 1,
+              question_number: fieldVal(card, 'question_number'),
+              topic: fieldVal(card, 'topic'),
+              paper_code: fieldVal(card, 'paper_code'),
+              year: fieldVal(card, 'year'),
+              season: fieldVal(card, 'season'),
+              zone: fieldVal(card, 'zone'),
+              explanation: fieldVal(card, 'explanation'),
+              video_solution_url: fieldVal(card, 'video_solution_url'),
+              equation_images: eqImages
+            });
+          });
+          return list;
+        }
+
+        form.addEventListener('submit', function (e) {
+          var btn = e.submitter;
+          var action = (btn && btn.getAttribute('data-action')) || 'import';
+          document.getElementById('formAction').value = action;
+
+          if (action === 'cancel') {
+            // Only csrf + action — no huge payload
+            document.getElementById('importPayload').value = '[]';
+            return;
+          }
+
+          // Pack all edits into ONE field (fixes TooManyFieldsSent)
+          try {
+            document.getElementById('importPayload').value = JSON.stringify(buildPayload());
+          } catch (err) {
+            e.preventDefault();
+            alert('Could not prepare import data: ' + err);
+            return;
+          }
+
+          if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Importing… please wait';
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -359,8 +359,35 @@
       <main class="main-content">
         <div class="header">
           <h1>📤 Upload Questions via CSV, Excel, or Word</h1>
-          <p>Bulk import questions from a CSV (.csv), Excel (.xlsx), or Word (.docx, .doc) file</p>
+          <p>Bulk import questions using the full DOC/DOCX pipeline (normalize → equations → LaTeX → preview → import)</p>
         </div>
+
+        <div class="info-box" style="max-width: 900px; margin-bottom: 20px;">
+          <h4>🔄 Question import pipeline</h4>
+          <ol style="margin: 8px 0 0 18px; line-height: 1.7; color: #444;">
+            <li><strong>DOC / DOCX Upload</strong> (CSV &amp; Excel also supported)</li>
+            <li><strong>Prepare / Normalize</strong> document (OOXML fix)</li>
+            <li><strong>DOC → DOCX</strong> automatic conversion (LibreOffice, or Microsoft Word on Windows)</li>
+            <li><strong>Extract equations</strong> (OMML / MathType / images)</li>
+            <li><strong>Equation → LaTeX</strong> when OMML is available; otherwise clear equation images</li>
+            <li><strong>Parse questions + A/B/C/D</strong></li>
+            <li><strong>Parse answer sheet</strong></li>
+            <li><strong>Preview questions</strong></li>
+            <li><strong>Edit if required</strong></li>
+            <li><strong>Import Questions</strong> → existing database</li>
+          </ol>
+        </div>
+
+        {% if pending_preview %}
+          <div class="alert" style="max-width:900px; padding:14px 16px; border-radius:8px; margin-bottom:16px; background:#e3f2fd; color:#0d47a1; border-left:4px solid #1565c0;">
+            You have a <strong>pending import preview</strong>
+            ({{ pending_preview.questions|length }} question(s) from
+            “{{ pending_preview.file_name }}”).
+            <a href="{% url 'admin_panel:csv_upload_preview' %}" style="font-weight:700; color:#0d47a1;">Continue to preview →</a>
+            or
+            <a href="{% url 'admin_panel:csv_upload' %}?fresh=1" style="color:#0d47a1;">start a new upload</a>.
+          </div>
+        {% endif %}
 
         {% if messages %}
           <div class="messages" style="margin-bottom: 20px;">
@@ -513,15 +540,16 @@
               </div>
             </div>
 
-            <button type="submit" class="submit-btn">🚀 Upload and Process File</button>
+            <button type="submit" class="submit-btn">🚀 Upload → Parse → Preview</button>
           </form>
 
           <div style="margin-top: 18px; padding: 14px 16px; background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px; font-size: 13.5px; color: #1b5e20; line-height: 1.55;">
-            <strong>How to know upload worked</strong><br>
-            After a successful Word/CSV upload you are taken to <strong>Manage Questions</strong>
-            with a green success message (e.g. “✅ Upload successful: 82 question(s) imported”).
-            Equations are stored as <strong>text + LaTeX</strong> and rendered with <strong>KaTeX</strong>
-            (sharp, professional math — not blurry equation pictures).
+            <strong>How this works</strong><br>
+            After upload, the file is <strong>normalized</strong>, equations are converted to
+            <strong>LaTeX</strong>, questions and the answer sheet are parsed, then you get a
+            <strong>preview screen</strong> where you can edit or skip questions before they are
+            written to the database. Nothing is saved until you click
+            <strong>Import into database</strong> on the preview page.
             For Exam Builder, fill <strong>Paper code</strong> (required for Word files).
           </div>
           <div style="margin-top: 12px; padding: 12px 16px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; font-size: 13px; color: #6d4c00; line-height: 1.5;">

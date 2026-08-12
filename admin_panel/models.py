@@ -20,7 +20,7 @@ class CSVUpload(models.Model):
     """Track CSV uploads for audit trail"""
     admin_user = models.ForeignKey(AdminUser, on_delete=models.CASCADE, related_name='uploads')
     file_name = models.CharField(max_length=255)
-    file = models.FileField(upload_to='csv_uploads/')
+    file = models.FileField(upload_to="csv_uploads/", blank=True, null=True)
     total_questions = models.IntegerField(default=0)
     successful_imports = models.IntegerField(default=0)
     failed_imports = models.IntegerField(default=0)

@@ -7,8 +7,13 @@ urlpatterns = [
     path("login/", views.admin_login, name="login"),
     path("logout/", views.admin_logout, name="logout"),
     path("dashboard/", views.dashboard, name="dashboard"),
-    # CSV & Questions
+    # CSV & Questions (upload → parse pipeline → preview/edit → import)
     path("csv-upload/", views.csv_upload, name="csv_upload"),
+    path(
+        "csv-upload/preview/",
+        views.csv_upload_preview,
+        name="csv_upload_preview",
+    ),
     path(
         "csv-upload/sample-template/",
         views.download_sample_template,

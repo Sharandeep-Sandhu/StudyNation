@@ -1,5 +1,4 @@
 <style id="eq-inline-css">
-  /* Optional video solution button (questions + answers) */
   a.video-solution-link {
     display: inline-flex !important;
     align-items: center;
@@ -20,104 +19,149 @@
   }
 
   /*
-    Glyph-normalized equation PNGs (see docx _enhance_equation_png):
-    main character line ≈ 28px in the file. Display at natural size
-    (height:auto) so every formula has the SAME character size.
-    Multi-line formulas are taller overall but letters match single-line ones.
+    ALWAYS scale equation PNGs to surrounding text size.
+    Never keep natural pixel size (Word exports huge "2", "log", etc.).
   */
   img.eq-math-img,
   img.eq-inline,
   img[src*="question_equations"],
-  .question-text img[src*="question_equations"],
-  .q-options img[src*="question_equations"],
-  .pq-question-text img[src*="question_equations"],
-  .pq-option-text img[src*="question_equations"],
-  .pq-option img[src*="question_equations"],
-  .eb-q-stem img[src*="question_equations"],
-  .eb-opt-text img[src*="question_equations"],
-  .pr-review-text img[src*="question_equations"] {
+  .question-text img,
+  .q-options img,
+  .q-preview img,
+  .pq-question-text img,
+  .pq-option-text img,
+  .eb-q-stem img,
+  .eb-opt-text img,
+  .pr-review-text img {
     display: inline-block !important;
-    height: auto !important;
-    max-height: 48px !important;
+    height: 1.45em !important;
     width: auto !important;
-    max-width: min(96vw, 720px) !important;
+    max-height: 2.8em !important;
+    max-width: min(100%, 520px) !important;
     vertical-align: middle !important;
     object-fit: contain !important;
-    margin: 2px 4px !important;
+    margin: 0 0.12em !important;
     padding: 0 !important;
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
   }
 
+  /* Multi-line / tall fractions get a bit more room */
+  img.eq-math-img.eq-tall,
+  img.eq-inline.eq-tall,
+  img[src*="question_equations"].eq-tall {
+    height: 2.4em !important;
+    max-height: 2.9em !important;
+  }
+
   span.eq-math,
   span.eq-math--lg {
     display: inline !important;
-    height: auto !important;
-    max-height: none !important;
-    min-height: 0 !important;
-    line-height: inherit !important;
+    vertical-align: middle !important;
     margin: 0 !important;
     padding: 0 !important;
-    vertical-align: middle !important;
-    border: none !important;
     background: transparent !important;
-  }
-
-  .eq-images img,
-  .eq-ref-strip img {
-    height: auto !important;
-    max-height: 48px !important;
-    width: auto !important;
-    object-fit: contain !important;
-    vertical-align: middle !important;
+    border: none !important;
   }
 
   .katex { font-size: 1.05em !important; }
-  .katex-display { margin: 0.4em 0 !important; overflow-x: auto; }
-  .katex-display > .katex { font-size: 1.08em !important; }
+  .katex-display { margin: 0.35em 0 !important; overflow-x: auto; }
 
-  .question-text, .pq-question-text, .pq-option-text, .q-options, .pr-review-text {
-    line-height: 1.9;
+  .question-text, .pq-question-text, .pq-option-text, .q-options,
+  .pr-review-text, .q-preview {
+    line-height: 1.85;
   }
 </style>
 <script id="eq-natural-size-js">
 (function () {
   /**
-   * Clear forced heights from older CSS/DB so glyph-normalized PNGs
-   * display at natural size (same character size for every formula).
+   * Force every equation image to match body text size.
+   * Word/MathType PNGs are often 80–200px tall; showing natural size
+   * makes a lone "2" or "log" dominate the whole card.
    */
-  function force(img) {
-    if (!img || img.tagName !== "IMG") return;
+  function parentFontSize(el) {
+    var node = el.parentElement || document.body;
+    for (var i = 0; i < 6 && node; i++) {
+      var fs = parseFloat(window.getComputedStyle(node).fontSize);
+      if (fs && fs > 8) return fs;
+      node = node.parentElement;
+    }
+    return 15;
+  }
+
+  function isEqImg(img) {
+    if (!img || img.tagName !== "IMG") return false;
     var src = img.getAttribute("src") || "";
     var cls = String(img.className || "");
-    if (
-      src.indexOf("question_equations") === -1 &&
-      cls.indexOf("eq-math") === -1 &&
-      cls.indexOf("eq-inline") === -1
-    ) return;
+    return (
+      src.indexOf("question_equations") !== -1 ||
+      cls.indexOf("eq-math") !== -1 ||
+      cls.indexOf("eq-inline") !== -1
+    );
+  }
 
+  function applySize(img) {
+    if (!isEqImg(img)) return;
     img.classList.add("eq-math-img");
     img.removeAttribute("width");
     img.removeAttribute("height");
-    img.style.setProperty("height", "auto", "important");
-    img.style.setProperty("max-height", "48px", "important");
-    img.style.setProperty("min-height", "0", "important");
-    img.style.setProperty("width", "auto", "important");
-    img.style.setProperty("max-width", "min(96vw,720px)", "important");
+
+    var fs = parentFontSize(img);
+    var nw = img.naturalWidth || 0;
+    var nh = img.naturalHeight || 0;
+
+    // Defaults while loading
+    if (!nw || !nh) {
+      img.style.cssText =
+        "display:inline-block!important;height:1.45em!important;width:auto!important;" +
+        "max-height:2.8em!important;vertical-align:middle!important;object-fit:contain!important;" +
+        "margin:0 0.12em!important;padding:0!important;border:0!important;background:transparent!important;";
+      if (!img.dataset.eqBound) {
+        img.dataset.eqBound = "1";
+        img.addEventListener("load", function () { applySize(img); }, { once: true });
+      }
+      return;
+    }
+
+    // Tall formula (fraction / stacked) if relatively tall
+    var multi = nh >= nw * 0.5 || nh > fs * 3;
+    if (multi) img.classList.add("eq-tall");
+    else img.classList.remove("eq-tall");
+
+    // ALWAYS scale to text-relative height (never natural px)
+    var targetEm = multi ? 2.4 : 1.45;
+    var targetH = fs * targetEm;
+    var scale = targetH / nh;
+    var w = Math.max(1, Math.round(nw * scale));
+    var h = Math.max(1, Math.round(nh * scale));
+
+    // Cap super-wide formulas
+    var maxW = Math.min(window.innerWidth * 0.9, fs * 34);
+    if (w > maxW) {
+      scale = maxW / nw;
+      w = Math.round(maxW);
+      h = Math.max(1, Math.round(nh * scale));
+    }
+
     img.style.setProperty("display", "inline-block", "important");
+    img.style.setProperty("height", h + "px", "important");
+    img.style.setProperty("width", w + "px", "important");
+    img.style.setProperty("max-height", "none", "important");
+    img.style.setProperty("max-width", maxW + "px", "important");
     img.style.setProperty("vertical-align", "middle", "important");
     img.style.setProperty("object-fit", "contain", "important");
-    img.style.setProperty("margin", "2px 4px", "important");
+    img.style.setProperty("margin", "0 0.12em", "important");
     img.style.setProperty("padding", "0", "important");
     img.style.setProperty("border", "0", "important");
     img.style.setProperty("background", "transparent", "important");
+    img.style.setProperty("box-shadow", "none", "important");
 
     var p = img.parentElement;
     if (p && p.classList && p.classList.contains("eq-math")) {
       p.style.cssText =
-        "display:inline!important;height:auto!important;max-height:none!important;" +
-        "margin:0!important;padding:0!important;vertical-align:middle!important;";
+        "display:inline!important;margin:0!important;padding:0!important;" +
+        "vertical-align:middle!important;background:transparent!important;border:0!important;";
     }
   }
 
@@ -128,11 +172,10 @@
           'img.eq-math-img, img.eq-inline, img[src*="question_equations"]'
         )
       : [];
-    for (var i = 0; i < list.length; i++) force(list[i]);
+    for (var i = 0; i < list.length; i++) applySize(list[i]);
   }
 
   window.eqSizeInlineImages = all;
-
   function boot() { all(document); }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
@@ -140,14 +183,15 @@
     boot();
   }
   window.addEventListener("load", boot);
-  setTimeout(boot, 50);
-  setTimeout(boot, 400);
+  setTimeout(boot, 30);
+  setTimeout(boot, 200);
+  setTimeout(boot, 700);
 
   if (typeof MutationObserver !== "undefined") {
     var t = null;
     new MutationObserver(function () {
       if (t) clearTimeout(t);
-      t = setTimeout(boot, 30);
+      t = setTimeout(boot, 40);
     }).observe(document.documentElement, { childList: true, subtree: true });
   }
 })();

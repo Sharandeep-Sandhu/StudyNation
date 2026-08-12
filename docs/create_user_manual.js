@@ -328,7 +328,7 @@ async function main() {
     p("The top menu is available on most public pages:"),
     bullet("Home — landing page and featured categories."),
     bullet("Courses — browse all courses and open a course detail page."),
-    bullet("Past Papers — practice materials; also links to My Exams (when logged in) and Question Form."),
+    bullet("Past Papers — practice materials; also links to My Exams (when logged in) and Question Forum."),
     bullet("Resources — free and paid study resources."),
     bullet("Blogs — articles and updates."),
     bullet("Contact — send a message to the support team."),
@@ -415,16 +415,16 @@ async function main() {
     img("12b_student_list_builder.png"),
     caption("Figure 11 — Question list builder"),
 
-    h2("3.10 Question Form (topic boards)"),
+    h2("3.10 Question Forum (topic boards)"),
     p(
-      "Question Form is a community Q&A space organized into topic boards. Anyone can read; submitting a question requires login."
+      "Question Forum is a community Q&A space organized into topic boards. Anyone can read; submitting a question requires login."
     ),
-    num("Open Past Papers → Question Form (or /question-form/).", "s9"),
+    num("Open Past Papers → Question Forum (or /question-forum/).", "s9"),
     num("Select a board from the left sidebar.", "s9"),
     num("Click Create Post, enter a title and details, optionally attach an image, then Post.", "s9"),
     num("Open a post and write a comment/reply. You can edit or delete your own replies.", "s9"),
     img("08_public_chat.png"),
-    caption("Figure 12 — Question Form"),
+    caption("Figure 12 — Question Forum"),
     tip("Use the ∑ Math Type button to insert equations in titles and posts."),
 
     h2("3.11 Contact support"),
@@ -567,7 +567,7 @@ async function main() {
         ["Question Bank", "A collection of questions, usually linked to a course."],
         ["Paper code", "Past-paper identifier (for example 0606/23). Needed for Exam Builder lists."],
         ["Exam Builder", "Tool to select questions into a practice or curated exam."],
-        ["Question Form", "Topic boards for community questions and answers."],
+        ["Question Forum", "Topic boards for community questions and answers."],
         ["Admin Profile", "Flag that allows a user into the Admin Panel."],
       ],
       [2800, 6560]

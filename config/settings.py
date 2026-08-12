@@ -214,6 +214,17 @@ STORAGES = {
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Question import preview can post many fields (one bank of 80+ questions
+# with options/metadata). Django's default 1000 limit raises TooManyFieldsSent.
+# The preview form also sends a single JSON payload; this is a safety net.
+DATA_UPLOAD_MAX_NUMBER_FIELDS = int(
+    os.environ.get("DATA_UPLOAD_MAX_NUMBER_FIELDS", "20000")
+)
+# Large Word/equation payloads in session → preview posts
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.environ.get("DATA_UPLOAD_MAX_MEMORY_SIZE", str(25 * 1024 * 1024))
+)
+
 # CORS Configuration
 CORS_ALLOW_ALL_ORIGINS = os.environ.get(
     "CORS_ALLOW_ALL_ORIGINS", "True"
