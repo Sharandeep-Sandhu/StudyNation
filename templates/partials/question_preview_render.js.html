@@ -99,7 +99,7 @@
     return (q.answer || '')
       .split(/[,;\s]+/)
       .map(function (a) { return a.trim().toUpperCase(); })
-      .filter(function (a) { return /^[A-E]$/.test(a); });
+      .filter(function (a) { return /^[A-Z0-9]{1,2}$/.test(a); });
   }
 
   function setRichHtml(el, str) {
@@ -107,21 +107,28 @@
   }
 
   function renderOptionsHtml(q, revealAnswer) {
-    const letters = ['A', 'B', 'C', 'D', 'E'];
-    const opts = q.options || {};
-    const present = letters.filter(function (l) { return (opts[l] || '').trim(); });
-    if (!present.length) return '';
+    // Prefer full optionsList (1..N); fall back to A–D map
+    var list = Array.isArray(q.optionsList) ? q.optionsList.slice() : [];
+    if (!list.length) {
+      const opts = q.options || {};
+      Object.keys(opts).sort().forEach(function (l) {
+        if ((opts[l] || '').trim()) list.push({ letter: l, text: opts[l] });
+      });
+    }
+    if (!list.length) return '';
     const correctSet = {};
     correctLetters(q).forEach(function (l) { correctSet[l] = true; });
-    const rows = present.map(function (l) {
-      const isCorrect = revealAnswer && correctSet[l];
+    const rows = list.map(function (item, idx) {
+      const l = (item.letter || String.fromCharCode(65 + idx)).toUpperCase();
+      const text = item.text || '';
+      const isCorrect = revealAnswer && (correctSet[l] || item.is_correct);
       const style = isCorrect
         ? 'background:#e3f7e9; border-color:#4caf7d; font-weight:700; color:#2f8a4e;'
         : 'background:#fafbff; border-color:#e5e8f7; color:#333;';
       const mark = isCorrect ? ' <span style="color:#1b7a3d;font-weight:800;">✓ Correct</span>' : '';
       return '<div style="display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border:1.5px solid; border-radius:6px; margin-bottom:6px; font-size:0.95rem; ' + style + '">' +
         '<span style="font-weight:700; flex-shrink:0;">' + l + ')</span>' +
-        '<span class="eb-opt-text">' + formatRichText(opts[l]) + mark + '</span></div>';
+        '<span class="eb-opt-text">' + formatRichText(text) + mark + '</span></div>';
     }).join('');
     return '<div style="margin-top:12px;">' + rows + '</div>';
   }

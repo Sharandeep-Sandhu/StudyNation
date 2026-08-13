@@ -119,32 +119,69 @@ except ImportError:  # pragma: no cover
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 
-# Classic past-paper: (a) (b) (c) (d)
-# Also common in single-correct banks: (1) (2) (3) (4) or 1) 2) 3) 4)
+# Classic past-paper: (a) (b) (c) (d) … and (1) (2) (3) …
+# Supports variable option counts (1 or more), not only A–D.
+# Letters a–z and numbers 1–26 are accepted.
+_OPTION_TOKEN = r"[a-zA-Z]|[1-9]|1[0-9]|2[0-6]"
 OPTION_RE = re.compile(
-    r"(?:^|[\s\u00a0])\(([a-eA-E1-4])\)\s*|(?:^|[\s\u00a0])([1-4a-eA-E])\)\s+",
+    rf"(?:^|[\s\u00a0])\(({_OPTION_TOKEN})\)\s*|(?:^|[\s\u00a0])({_OPTION_TOKEN})\)\s+",
 )
-# Stronger splitter used when options share a line with the stem
 OPTION_SPLIT_RE = re.compile(
-    r"(?:(?<=\?)|(?<=\s)|(?<=\.))\s*"
-    r"(?:\(([1-4a-eA-E])\)|([1-4a-eA-E])\))\s*",
+    rf"(?:(?<=\?)|(?<=\s)|(?<=\.))\s*"
+    rf"(?:\(({_OPTION_TOKEN})\)|({_OPTION_TOKEN})\))\s*",
+    re.IGNORECASE,
+)
+# Inline / line markers for options
+OPTION_MARKER_RE = re.compile(
+    rf"(?:\(({_OPTION_TOKEN})\)|({_OPTION_TOKEN})\))\s*",
+    re.IGNORECASE,
+)
+OPTION_LINE_START_RE = re.compile(
+    rf"^\s*(?:\(({_OPTION_TOKEN})\)|({_OPTION_TOKEN})\))\s*",
     re.IGNORECASE,
 )
 QUESTION_NUM_RE = re.compile(r"^\s*(\d+)[\.\)]\s+")
 ANSWER_HEADING_RE = re.compile(r"answer\s*(sheet|key)", re.IGNORECASE)
 
-# Map numeric choice labels → a/b/c/d
-_OPT_NUM_TO_LETTER = {"1": "a", "2": "b", "3": "c", "4": "d", "5": "e"}
+# Map numeric choice labels → a,b,c… (1→a … 26→z)
+_OPT_NUM_TO_LETTER = {str(i): chr(ord("a") + i - 1) for i in range(1, 27)}
+_LETTER_ORDER = "abcdefghijklmnopqrstuvwxyz"
 
 
 def _option_letter(token: str) -> str:
-    """Normalize '(a)' / '(1)' / 'A' / '2' → lowercase a–e."""
+    """Normalize '(a)' / '(1)' / 'A' / '12' → lowercase a–z."""
     t = (token or "").strip().lower()
     if t in _OPT_NUM_TO_LETTER:
         return _OPT_NUM_TO_LETTER[t]
-    if t in "abcde":
+    if len(t) == 1 and t in _LETTER_ORDER:
         return t
     return ""
+
+
+def _options_dict_to_ordered_list(options: dict) -> list[dict]:
+    """
+    Convert {letter: text} to a stable ordered list of {letter, text}.
+    Unknown keys keep insertion order after known a–z keys.
+    """
+    if not options:
+        return []
+    ordered = []
+    seen = set()
+    for ch in _LETTER_ORDER:
+        text = (options.get(ch) or "").strip()
+        if text:
+            ordered.append({"letter": ch.upper(), "text": text})
+            seen.add(ch)
+    for k, text in options.items():
+        kk = (k or "").strip().lower()
+        if kk in seen:
+            continue
+        t = (text or "").strip()
+        if not t:
+            continue
+        letter = _option_letter(kk) or kk
+        ordered.append({"letter": (letter or kk).upper()[:2], "text": t})
+    return ordered
 
 
 def _extract_options_from_text(text: str) -> tuple[str, dict]:
@@ -152,26 +189,21 @@ def _extract_options_from_text(text: str) -> tuple[str, dict]:
     Split stem + options when choices are inline, e.g.:
       '... on p ? (1) 2p (2) 2^{p^2} (3) p2 (4) pp'
       '... is (a) foo (b) bar (c) baz (d) qux'
-    Returns (stem, {a:..., b:..., c:..., d:...}).
+      '... only (a) single choice'
+    Returns (stem, {a:..., b:..., ...}) with 1 or more options.
     """
     if not text:
         return "", {}
-    # Find all option markers with either (1)/(a) or 1)/a) form
-    marker = re.compile(
-        r"(?:\(([1-4a-eA-E])\)|([1-4a-eA-E])\))\s*",
-        re.IGNORECASE,
-    )
-    matches = list(marker.finditer(text))
-    if len(matches) < 2:
+    matches = list(OPTION_MARKER_RE.finditer(text))
+    if len(matches) < 1:
         return text, {}
 
-    # Prefer a run of 3–5 consecutive choices near the end (MCQ block)
-    # Group consecutive markers; take the last group with >= 2 items
+    # Group consecutive markers; take the last group with >= 1 item
     groups = []
     current = [matches[0]]
     for m in matches[1:]:
-        # same group if gap between markers is short (< 400 chars of option text)
-        if m.start() - current[-1].end() < 400:
+        # same group if gap between markers is short (< 500 chars of option text)
+        if m.start() - current[-1].end() < 500:
             current.append(m)
         else:
             groups.append(current)
@@ -180,32 +212,42 @@ def _extract_options_from_text(text: str) -> tuple[str, dict]:
 
     best = None
     for g in groups:
-        if len(g) >= 2:
+        if len(g) >= 1:
             best = g
-    if not best or len(best) < 2:
+    if not best:
+        return text, {}
+
+    # Prefer the last multi-option group when available (avoid false positives)
+    multi = [g for g in groups if len(g) >= 2]
+    if multi:
+        best = multi[-1]
+    elif best[0].start() < max(0, len(text) - 80) and len(best) == 1:
+        # Single marker early in text is usually not an option block
         return text, {}
 
     # Stem ends where the option block starts
     stem = text[: best[0].start()].rstrip()
-    # Trim trailing "is"/"are"/punctuation glue
     stem = re.sub(r"[\s\u00a0]+$", "", stem)
 
     options = {}
     for i, m in enumerate(best):
         letter = _option_letter(m.group(1) or m.group(2) or "")
         if not letter:
-            continue
+            # Sequential fallback when token is odd
+            letter = _LETTER_ORDER[i] if i < len(_LETTER_ORDER) else f"x{i}"
         start = m.end()
         end = best[i + 1].start() if i + 1 < len(best) else len(text)
         opt = text[start:end].strip()
-        # Drop trailing punctuation junk
         opt = re.sub(r"[\s,;]+$", "", opt)
+        if not opt and letter not in options:
+            # Keep empty-ish marker only if we already have others? skip blanks
+            continue
         if letter in options and options[letter]:
             options[letter] = f"{options[letter]} {opt}".strip()
         else:
             options[letter] = opt
 
-    if len(options) < 2:
+    if len(options) < 1:
         return text, {}
     return stem, options
 
@@ -1005,7 +1047,7 @@ def _save_image_blob(blob, ext, media_subdir):
         return saved_name
 
 
-_ANSWER_LETTER_RE = re.compile(r"([a-eA-E])")
+_ANSWER_LETTER_RE = re.compile(r"([a-zA-Z])")
 
 
 def _normalize_answer_token(ans: str) -> str:
@@ -1013,8 +1055,8 @@ def _normalize_answer_token(ans: str) -> str:
     if not ans:
         return ""
     ans = ans.strip().lower()
-    # Numeric keys from (1)(2)(3)(4) style papers
-    if re.fullmatch(r"[1-5]", ans):
+    # Numeric keys from (1)(2)(3)… style papers
+    if re.fullmatch(r"[1-9]|1[0-9]|2[0-6]", ans):
         return _OPT_NUM_TO_LETTER.get(ans, "")
     # multi-select e.g. "a,b" or "1,2"
     parts = re.split(r"[\s,;/]+", ans)
@@ -1025,7 +1067,7 @@ def _normalize_answer_token(ans: str) -> str:
             continue
         if p in _OPT_NUM_TO_LETTER:
             L = _OPT_NUM_TO_LETTER[p]
-        elif p in "abcde":
+        elif len(p) == 1 and p in _LETTER_ORDER:
             L = p
         else:
             m = _ANSWER_LETTER_RE.search(p)
@@ -1055,10 +1097,91 @@ def _fix_answer_number_row(cells):
     return vals
 
 
+def _is_two_column_qa_table(rows) -> bool:
+    """
+    Detect simple answer-key tables produced by convert_mcq_docs.py:
+
+        Question | Answer
+        1        | B
+        2        | C
+        ...
+    """
+    if not rows or len(rows) < 2:
+        return False
+    # Inspect up to first 8 data rows for "digit | letter" pairs
+    digit_letter = 0
+    checked = 0
+    for row in rows[:12]:
+        cells = [c.text.strip() for c in row.cells]
+        if len(cells) < 2:
+            continue
+        left, right = cells[0], cells[1]
+        # Skip header
+        if left.lower() in {"question", "q.no", "q", "no", "number", "s.no", "s.no."}:
+            continue
+        if right.lower() in {"answer", "ans", "key", "correct"}:
+            continue
+        checked += 1
+        left_ok = bool(re.fullmatch(r"\d+", left))
+        right_ok = bool(_normalize_answer_token(right))
+        if left_ok and right_ok:
+            digit_letter += 1
+    return checked > 0 and digit_letter >= max(1, checked // 2)
+
+
+def _parse_two_column_qa_table(rows) -> dict:
+    """Parse Question|Answer rows into {question_number: letter}."""
+    answers = {}
+    for row in rows:
+        cells = [c.text.strip() for c in row.cells]
+        if len(cells) < 2:
+            continue
+        left, right = cells[0], cells[1]
+        if not left.isdigit():
+            continue
+        letter = _normalize_answer_token(right)
+        if not letter:
+            continue
+        # Prefer first mapping if duplicates
+        if left not in answers:
+            answers[left] = letter
+    return answers
+
+
+def _looks_like_number_header_row(cells) -> bool:
+    """True when a majority of non-empty cells are question numbers."""
+    vals = [c.strip() for c in cells if c.strip()]
+    if len(vals) < 2:
+        return False
+    digits = sum(1 for v in vals if v.isdigit())
+    return digits >= max(2, (len(vals) + 1) // 2)
+
+
+def _looks_like_answer_letter_row(cells) -> bool:
+    """True when cells look like answer keys (a/b/c… or 1/2/3…), not Q numbers."""
+    vals = [c.strip() for c in cells if c.strip()]
+    if len(vals) < 2:
+        return False
+    letterish = 0
+    for v in vals:
+        if _normalize_answer_token(v):
+            letterish += 1
+        elif v.isdigit() and int(v) <= 26:
+            # bare numbers can be (1)(2) style keys — count as letterish
+            letterish += 1
+    return letterish >= max(2, (len(vals) + 1) // 2)
+
+
 def _parse_answer_sheet_tables(document):
     """
-    Parse classic past-paper Answer Sheet tables:
+    Parse Answer Sheet tables in either format:
 
+    1) Two-column key (convert_mcq_docs / latex_ready):
+        Question | Answer
+        1        | B
+        2        | C
+
+    2) Classic past-paper grid:
         1  2  3  … 10
         c  d  c  … b
         11 12 … 20
@@ -1067,27 +1190,61 @@ def _parse_answer_sheet_tables(document):
     answers = {}
     for table in document.tables:
         rows = table.rows
+        if not rows:
+            continue
+
+        # ---- Format 1: two-column Question | Answer ----
+        if _is_two_column_qa_table(rows):
+            parsed = _parse_two_column_qa_table(rows)
+            for num, letter in parsed.items():
+                if num not in answers:
+                    answers[num] = letter
+            continue
+
+        # ---- Format 2: classic number-row / answer-row pairs ----
         i = 0
         while i + 1 < len(rows):
             raw_nums = [c.text.strip() for c in rows[i].cells]
-            if not any(n.isdigit() for n in raw_nums):
+            raw_ans = [c.text.strip() for c in rows[i + 1].cells]
+
+            if not _looks_like_number_header_row(raw_nums):
                 i += 1
                 continue
+            # Next row must look like answers, not another number sequence
+            # (avoids pairing 1|B with next row 2|C as "1→2")
+            if not _looks_like_answer_letter_row(raw_ans):
+                i += 1
+                continue
+
             num_cells = _fix_answer_number_row(raw_nums)
-            ans_cells = [c.text.strip() for c in rows[i + 1].cells]
+            ans_cells = raw_ans
             for num, ans in zip(num_cells, ans_cells):
                 if not num.isdigit():
                     continue
                 letter = _normalize_answer_token(ans)
                 if not letter:
                     continue
-                # Do not silently overwrite a different key for the same Q
                 if num in answers and answers[num] != letter:
-                    # Prefer the first mapping; sequential fix should prevent this
                     continue
                 answers[num] = letter
             i += 2
     return answers
+
+
+def _normalize_display_latex(text: str) -> str:
+    """
+    Convert common LaTeX delimiters from convert_mcq_docs output to $...$
+    so MathJax / KaTeX on the site render consistently.
+      \\( x \\)  →  $x$
+      \\[ x \\]  →  $$x$$
+    """
+    if not text:
+        return text
+    # Display math first
+    text = re.sub(r"\\\[(.+?)\\\]", r"$$\1$$", text, flags=re.DOTALL)
+    # Inline math
+    text = re.sub(r"\\\((.+?)\\\)", r"$\1$", text, flags=re.DOTALL)
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -1271,28 +1428,20 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
             if current is None:
                 continue
 
-            # Option detection — (a)/(b) or (1)/(2) style, same-line or new line
+            # Option detection — (a)/(b)/(1)/(2)/… style, same-line or new line
+            # Supports 1 or more options per question (not limited to A–D).
             plain_opts = text
-            matches = list(
-                re.finditer(
-                    r"(?:\(([1-4a-eA-E])\)|([1-4a-eA-E])\))\s*",
-                    plain_opts,
-                    re.IGNORECASE,
-                )
-            )
-            # Treat as option line if it starts with a marker OR has 2+ markers
-            starts_with_opt = bool(
-                re.match(
-                    r"^\s*(?:\(([1-4a-eA-E])\)|([1-4a-eA-E])\))\s*",
-                    plain_opts,
-                    re.IGNORECASE,
-                )
-            )
+            matches = list(OPTION_MARKER_RE.finditer(plain_opts))
+            starts_with_opt = bool(OPTION_LINE_START_RE.match(plain_opts))
             if matches and (starts_with_opt or len(matches) >= 2):
                 for idx, m in enumerate(matches):
                     letter = _option_letter(m.group(1) or m.group(2) or "")
                     if not letter:
-                        continue
+                        letter = (
+                            _LETTER_ORDER[idx]
+                            if idx < len(_LETTER_ORDER)
+                            else f"x{idx}"
+                        )
                     start = m.end()
                     end = (
                         matches[idx + 1].start()
@@ -1323,7 +1472,7 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                 )
             current["image_rids"].extend(rids_here)
 
-        # ---- 2b. Pull inline (1)(2)(3)(4) options out of the stem if still missing ----
+        # ---- 2b. Pull inline options out of the stem if still missing ----
         for q in questions:
             if q.get("options"):
                 continue
@@ -1380,7 +1529,7 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                     seen.add(url)
                     saved_urls.append(url)
 
-            options = q["options"]
+            options = q["options"] or {}
             # Match answer key by question_number; fall back to 1-based position
             answer_letters = answers.get(str(qnum), "") or answers.get(str(position), "")
             answer_letters = _normalize_answer_token(answer_letters)
@@ -1390,30 +1539,61 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
             else:
                 question_type = "structured"
 
-            q_text = _substitute_placeholders(
-                q["question_text"].strip(), latex_by_key, rid_to_url, prefer_latex=True
-            )
-            opt_a = _substitute_placeholders(
-                options.get("a", ""), latex_by_key, rid_to_url, prefer_latex=True
-            )
-            opt_b = _substitute_placeholders(
-                options.get("b", ""), latex_by_key, rid_to_url, prefer_latex=True
-            )
-            opt_c = _substitute_placeholders(
-                options.get("c", ""), latex_by_key, rid_to_url, prefer_latex=True
-            )
-            opt_d = _substitute_placeholders(
-                options.get("d", ""), latex_by_key, rid_to_url, prefer_latex=True
-            )
-            expl = _substitute_placeholders(
-                f"Option (e): {options['e']}" if "e" in options else "",
-                latex_by_key,
-                rid_to_url,
-                prefer_latex=True,
+            q_text = _normalize_display_latex(
+                _substitute_placeholders(
+                    q["question_text"].strip(),
+                    latex_by_key,
+                    rid_to_url,
+                    prefer_latex=True,
+                )
             )
 
+            # Build full options list (any count ≥ 1) with LaTeX/images inlined
+            options_list = []
+            for item in _options_dict_to_ordered_list(options):
+                rendered = _normalize_display_latex(
+                    _substitute_placeholders(
+                        item.get("text") or "",
+                        latex_by_key,
+                        rid_to_url,
+                        prefer_latex=True,
+                    )
+                )
+                if not (rendered or "").strip():
+                    continue
+                options_list.append(
+                    {
+                        "letter": item["letter"],
+                        "text": rendered,
+                    }
+                )
+
+            # Legacy A–D columns (first four options) for older UI/export paths
+            by_letter = {o["letter"].lower(): o["text"] for o in options_list}
+            opt_a = by_letter.get("a", "")
+            opt_b = by_letter.get("b", "")
+            opt_c = by_letter.get("c", "")
+            opt_d = by_letter.get("d", "")
+            # If options used non a–d keys only, still fill A–D by order
+            if options_list and not any([opt_a, opt_b, opt_c, opt_d]):
+                for i, o in enumerate(options_list[:4]):
+                    key = _LETTER_ORDER[i]
+                    if key == "a":
+                        opt_a = o["text"]
+                    elif key == "b":
+                        opt_b = o["text"]
+                    elif key == "c":
+                        opt_c = o["text"]
+                    elif key == "d":
+                        opt_d = o["text"]
+
+            expl = ""
+
             # Only keep equation image URLs that are still referenced as <img>
-            combined = " ".join([q_text, opt_a, opt_b, opt_c, opt_d, expl])
+            combined = " ".join(
+                [q_text, opt_a, opt_b, opt_c, opt_d]
+                + [o["text"] for o in options_list]
+            )
             still_used = [
                 u for u in saved_urls if u and u in combined
             ]
@@ -1430,6 +1610,8 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                 "option_b": opt_b,
                 "option_c": opt_c,
                 "option_d": opt_d,
+                # Full list of options (1..N) for import → QuestionOption rows
+                "options_list": options_list,
                 "correct_answer": answer_letters.upper(),
                 "marks": 1,
                 "explanation": expl,
@@ -1447,7 +1629,7 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
         if not rows_out:
             raise forms.ValidationError(
                 "No questions were found in this Word file. Expected numbered "
-                "questions (1. …) with options like (a) (b) (c) (d)."
+                "questions (1. …) with options like (a) (b) (c) (d) or (1) (2)…"
             )
 
         return rows_out

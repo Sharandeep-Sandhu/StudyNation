@@ -296,10 +296,16 @@
 
               <div class="q-preview">
                 <div class="pq-question-text">{{ q.question_text|safe }}</div>
-                {% if q.option_a %}<div class="opt"><strong>(A)</strong> {{ q.option_a|safe }}</div>{% endif %}
-                {% if q.option_b %}<div class="opt"><strong>(B)</strong> {{ q.option_b|safe }}</div>{% endif %}
-                {% if q.option_c %}<div class="opt"><strong>(C)</strong> {{ q.option_c|safe }}</div>{% endif %}
-                {% if q.option_d %}<div class="opt"><strong>(D)</strong> {{ q.option_d|safe }}</div>{% endif %}
+                {% if q.options_list %}
+                  {% for opt in q.options_list %}
+                    <div class="opt"><strong>({{ opt.letter }})</strong> {{ opt.text|safe }}</div>
+                  {% endfor %}
+                {% else %}
+                  {% if q.option_a %}<div class="opt"><strong>(A)</strong> {{ q.option_a|safe }}</div>{% endif %}
+                  {% if q.option_b %}<div class="opt"><strong>(B)</strong> {{ q.option_b|safe }}</div>{% endif %}
+                  {% if q.option_c %}<div class="opt"><strong>(C)</strong> {{ q.option_c|safe }}</div>{% endif %}
+                  {% if q.option_d %}<div class="opt"><strong>(D)</strong> {{ q.option_d|safe }}</div>{% endif %}
+                {% endif %}
                 {% if q.correct_answer %}<div class="ans">Answer: {{ q.correct_answer|upper }}</div>{% endif %}
               </div>
 
@@ -310,6 +316,13 @@
                     <label>Question text</label>
                     <textarea data-field="question_text">{{ q.question_text }}</textarea>
                   </div>
+                  {% if q.options_list %}
+                    <div class="full">
+                      <label>All options (one per line: <code>A|option text</code>)</label>
+                      <textarea data-field="options_list_text" rows="{{ q.options_list|length|add:1 }}" placeholder="A|first option">{% for opt in q.options_list %}{{ opt.letter }}|{{ opt.text }}
+{% endfor %}</textarea>
+                    </div>
+                  {% endif %}
                   <div>
                     <label>Option A</label>
                     <textarea data-field="option_a" rows="2">{{ q.option_a }}</textarea>
@@ -328,7 +341,7 @@
                   </div>
                   <div>
                     <label>Correct answer</label>
-                    <input type="text" data-field="correct_answer" value="{{ q.correct_answer }}" placeholder="A or A,B" />
+                    <input type="text" data-field="correct_answer" value="{{ q.correct_answer }}" placeholder="A or A,B or A,B,C" />
                   </div>
                   <div>
                     <label>Type</label>
@@ -416,6 +429,32 @@
           return el.value;
         }
 
+        function parseOptionsListText(raw) {
+          var out = [];
+          if (!raw) return out;
+          String(raw).split(/\r?\n/).forEach(function (line) {
+            line = (line || '').trim();
+            if (!line) return;
+            var pipe = line.indexOf('|');
+            var letter = '';
+            var text = line;
+            if (pipe !== -1) {
+              letter = line.slice(0, pipe).trim().toUpperCase();
+              text = line.slice(pipe + 1).trim();
+            } else {
+              var m = line.match(/^[\(\[]?([A-Za-z0-9]{1,2})[\)\].:\-]\s*(.+)$/);
+              if (m) {
+                letter = m[1].toUpperCase();
+                text = m[2].trim();
+              }
+            }
+            if (!text) return;
+            if (!letter) letter = String.fromCharCode(65 + out.length);
+            out.push({ letter: letter, text: text });
+          });
+          return out;
+        }
+
         function buildPayload() {
           var cards = form.querySelectorAll('.q-card');
           var list = [];
@@ -424,6 +463,14 @@
             var eqImages = [];
             try { eqImages = JSON.parse(eqRaw); } catch (e) { eqImages = []; }
             if (!Array.isArray(eqImages)) eqImages = [];
+            var optionsList = parseOptionsListText(fieldVal(card, 'options_list_text'));
+            // Fall back to A–D fields when free-form list is empty
+            if (!optionsList.length) {
+              [['A','option_a'],['B','option_b'],['C','option_c'],['D','option_d']].forEach(function (pair) {
+                var t = fieldVal(card, pair[1]);
+                if (t && String(t).trim()) optionsList.push({ letter: pair[0], text: String(t).trim() });
+              });
+            }
             list.push({
               skip: fieldVal(card, 'skip') === '1',
               question_text: fieldVal(card, 'question_text'),
@@ -431,6 +478,7 @@
               option_b: fieldVal(card, 'option_b'),
               option_c: fieldVal(card, 'option_c'),
               option_d: fieldVal(card, 'option_d'),
+              options_list: optionsList,
               correct_answer: fieldVal(card, 'correct_answer'),
               question_type: fieldVal(card, 'question_type') || 'single_choice',
               marks: fieldVal(card, 'marks') || 1,

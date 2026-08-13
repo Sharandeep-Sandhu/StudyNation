@@ -14,6 +14,7 @@ from django.urls import reverse
 from django import forms as django_forms
 import json
 import os
+import re
 
 from .forms import (
     CSVUploadForm,
@@ -270,6 +271,38 @@ def _pipeline_stats_from_questions(questions, *, source_type: str, file_name: st
     }
 
 
+def _normalize_options_list(raw) -> list[dict]:
+    """Normalize options_list from parser / preview JSON → [{letter, text}, ...]."""
+    out = []
+    if isinstance(raw, list):
+        for i, item in enumerate(raw):
+            if isinstance(item, dict):
+                text = str(item.get("text") or "").strip()
+                letter = str(item.get("letter") or "").strip().upper()
+            else:
+                text = str(item or "").strip()
+                letter = ""
+            if not text:
+                continue
+            if not letter:
+                letter = chr(65 + i) if i < 26 else str(i + 1)
+            out.append({"letter": letter[:2], "text": text})
+    return out
+
+
+def _options_list_from_legacy(q: dict) -> list[dict]:
+    """Build options_list from option_a..d when options_list is missing."""
+    existing = _normalize_options_list(q.get("options_list"))
+    if existing:
+        return existing
+    out = []
+    for letter, key in (("A", "option_a"), ("B", "option_b"), ("C", "option_c"), ("D", "option_d")):
+        text = str(q.get(key) or "").strip()
+        if text:
+            out.append({"letter": letter, "text": text})
+    return out
+
+
 def _serialize_import_question(q: dict) -> dict:
     """JSON-safe question dict for session storage."""
     eq = q.get("equation_images") or []
@@ -284,13 +317,18 @@ def _serialize_import_question(q: dict) -> dict:
         marks = int(float(q.get("marks") or 1))
     except (TypeError, ValueError):
         marks = 1
+    options_list = _options_list_from_legacy(q)
+    # Keep option_a..d in sync with first four list entries
+    by_letter = {o["letter"]: o["text"] for o in options_list}
+    ordered_texts = [o["text"] for o in options_list]
     return {
         "question_text": str(q.get("question_text") or ""),
         "question_type": str(q.get("question_type") or "single_choice"),
-        "option_a": str(q.get("option_a") or ""),
-        "option_b": str(q.get("option_b") or ""),
-        "option_c": str(q.get("option_c") or ""),
-        "option_d": str(q.get("option_d") or ""),
+        "option_a": str(by_letter.get("A") or (ordered_texts[0] if len(ordered_texts) > 0 else "") or q.get("option_a") or ""),
+        "option_b": str(by_letter.get("B") or (ordered_texts[1] if len(ordered_texts) > 1 else "") or q.get("option_b") or ""),
+        "option_c": str(by_letter.get("C") or (ordered_texts[2] if len(ordered_texts) > 2 else "") or q.get("option_c") or ""),
+        "option_d": str(by_letter.get("D") or (ordered_texts[3] if len(ordered_texts) > 3 else "") or q.get("option_d") or ""),
+        "options_list": options_list,
         "correct_answer": str(q.get("correct_answer") or ""),
         "marks": marks,
         "explanation": str(q.get("explanation") or ""),
@@ -333,6 +371,7 @@ def _import_questions_to_bank(question_bank, questions, admin_user, file_name, f
                 eq_images = q_data.get("equation_images") or []
                 if not isinstance(eq_images, list):
                     eq_images = []
+                options_list = _options_list_from_legacy(q_data)
                 blob = " ".join(
                     [
                         str(q_data.get("question_text") or ""),
@@ -341,6 +380,7 @@ def _import_questions_to_bank(question_bank, questions, admin_user, file_name, f
                         str(q_data.get("option_c") or ""),
                         str(q_data.get("option_d") or ""),
                     ]
+                    + [str(o.get("text") or "") for o in options_list]
                 )
                 if "$" in blob or "\\(" in blob:
                     questions_with_latex += 1
@@ -363,15 +403,45 @@ def _import_questions_to_bank(question_bank, questions, admin_user, file_name, f
                 except (TypeError, ValueError):
                     marks = 1
 
-                Question.objects.create(
+                correct_raw = (q_data.get("correct_answer") or "").strip()
+                correct_letters = {
+                    p.strip().upper()
+                    for p in re.split(r"[\s,;/]+", correct_raw)
+                    if p.strip()
+                }
+                is_multi = len(correct_letters) > 1 or (
+                    (q_data.get("question_type") or "") == "multiple_choice"
+                )
+                qtype = q_data.get("question_type") or (
+                    "multiple_choice" if is_multi else "single_choice"
+                )
+                if options_list and qtype not in (
+                    "single_choice",
+                    "multiple_choice",
+                    "true_false",
+                    "mcq",
+                    "comprehension",
+                ):
+                    qtype = "multiple_choice" if is_multi else "single_choice"
+
+                # Sync legacy A–D columns from the full options list
+                by_letter = {o["letter"].upper(): o["text"] for o in options_list}
+                ordered_texts = [o["text"] for o in options_list]
+                option_a = by_letter.get("A") or (ordered_texts[0] if len(ordered_texts) > 0 else "") or (q_data.get("option_a") or "")
+                option_b = by_letter.get("B") or (ordered_texts[1] if len(ordered_texts) > 1 else "") or (q_data.get("option_b") or "")
+                option_c = by_letter.get("C") or (ordered_texts[2] if len(ordered_texts) > 2 else "") or (q_data.get("option_c") or "")
+                option_d = by_letter.get("D") or (ordered_texts[3] if len(ordered_texts) > 3 else "") or (q_data.get("option_d") or "")
+
+                question = Question.objects.create(
                     question_bank=question_bank,
                     question_text=q_data.get("question_text") or "",
-                    question_type=q_data.get("question_type") or "single_choice",
-                    option_a=q_data.get("option_a", "") or "",
-                    option_b=q_data.get("option_b", "") or "",
-                    option_c=q_data.get("option_c", "") or "",
-                    option_d=q_data.get("option_d", "") or "",
-                    correct_answer=q_data.get("correct_answer", "") or "",
+                    question_type=qtype,
+                    option_a=option_a or "",
+                    option_b=option_b or "",
+                    option_c=option_c or "",
+                    option_d=option_d or "",
+                    correct_answer=correct_raw,
+                    answer_type="multiple" if is_multi else "single",
                     marks=marks,
                     explanation=q_data.get("explanation", "") or "",
                     video_solution_url=(
@@ -386,6 +456,19 @@ def _import_questions_to_bank(question_bank, questions, admin_user, file_name, f
                     equation_images=(json.dumps(eq_images) if eq_images else ""),
                     order=idx,
                 )
+                # Persist every option (1..N) as QuestionOption rows
+                if options_list:
+                    QuestionOption.objects.bulk_create(
+                        [
+                            QuestionOption(
+                                question=question,
+                                text=opt["text"],
+                                is_correct=opt["letter"].upper() in correct_letters,
+                                order=i,
+                            )
+                            for i, opt in enumerate(options_list)
+                        ]
+                    )
                 successful += 1
             except (ValueError, TypeError, KeyError, OSError) as e:
                 failed += 1
@@ -438,13 +521,46 @@ def _normalize_import_question(raw: dict, index: int) -> dict | None:
             eq = []
     if not isinstance(eq, list):
         eq = []
+    options_list = _options_list_from_legacy(raw)
+    # Prefer explicit options_list JSON from the form when present
+    ol_raw = raw.get("options_list")
+    if isinstance(ol_raw, str) and ol_raw.strip():
+        try:
+            parsed_ol = json.loads(ol_raw)
+            if isinstance(parsed_ol, list) and parsed_ol:
+                options_list = _normalize_options_list(parsed_ol)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            pass
+    by_letter = {o["letter"].upper(): o["text"] for o in options_list}
+    ordered_texts = [o["text"] for o in options_list]
     return {
         "question_text": str(raw.get("question_text") or ""),
         "question_type": str(raw.get("question_type") or "single_choice"),
-        "option_a": str(raw.get("option_a") or ""),
-        "option_b": str(raw.get("option_b") or ""),
-        "option_c": str(raw.get("option_c") or ""),
-        "option_d": str(raw.get("option_d") or ""),
+        "option_a": str(
+            by_letter.get("A")
+            or (ordered_texts[0] if len(ordered_texts) > 0 else "")
+            or raw.get("option_a")
+            or ""
+        ),
+        "option_b": str(
+            by_letter.get("B")
+            or (ordered_texts[1] if len(ordered_texts) > 1 else "")
+            or raw.get("option_b")
+            or ""
+        ),
+        "option_c": str(
+            by_letter.get("C")
+            or (ordered_texts[2] if len(ordered_texts) > 2 else "")
+            or raw.get("option_c")
+            or ""
+        ),
+        "option_d": str(
+            by_letter.get("D")
+            or (ordered_texts[3] if len(ordered_texts) > 3 else "")
+            or raw.get("option_d")
+            or ""
+        ),
+        "options_list": options_list,
         "correct_answer": str(raw.get("correct_answer") or "").strip(),
         "marks": marks,
         "explanation": str(raw.get("explanation") or ""),

@@ -1161,7 +1161,7 @@
     if (e.key === 'r' || e.key === 'R') { e.preventDefault(); toggleMarkReview(); return; }
 
     var letter = e.key.toUpperCase();
-    if (letter >= 'A' && letter <= 'D') {
+    if (letter.length === 1 && letter >= 'A' && letter <= 'Z') {
       var qEl = document.querySelector('.pq-question[data-index="' + currentIndex + '"]');
       if (!qEl) return;
       var group = qEl.querySelector('.pq-options');
