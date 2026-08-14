@@ -1,16 +1,21 @@
 # Deploy StudyNation on Render
 
-This project is configured for **Render** (native Python web service + PostgreSQL).
+This project is configured for **Render** (Docker web service + PostgreSQL).
+
+**Why Docker?** Legacy Word `.doc` question uploads need **LibreOffice** on Linux.
+Local Windows can convert via Microsoft Word COM; the live server cannot. The
+Dockerfile installs `libreoffice-writer-nogui` so `.doc` works on Render too.
+Until that image is deployed, upload **`.docx`** on live (Word → Save As → .docx).
 
 ## What was prepared
 
 | File                                  | Purpose                                                                                                       |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `config/settings.py`                  | Env-based`SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, Postgres via `DATABASE_URL`, WhiteNoise, HTTPS/proxy headers |
-| `build.sh`                            | Install deps,`collectstatic`, `migrate`                                                                       |
-| `render.yaml`                         | Blueprint: web service + Postgres                                                                             |
+| `build.sh`                            | Install deps,`collectstatic`, `migrate` (also tries LibreOffice when root/apt available)                    |
+| `render.yaml`                         | Blueprint: **Docker** web service + Postgres (LibreOffice for .doc)                                           |
 | `Procfile`                            | Start command for Render/Heroku-style deploys                                                                 |
-| `Dockerfile` / `docker-entrypoint.sh` | Optional Docker deploy (uses`$PORT`)                                                                          |
+| `Dockerfile` / `docker-entrypoint.sh` | Production image with LibreOffice + gunicorn (`$PORT`)                                                        |
 | `.gitignore`                          | Keeps`venv/`, secrets, and local DB out of git                                                                |
 
 ## Option A — Blueprint (recommended)
@@ -40,18 +45,12 @@ Render injects:
 ### 2. Create Web Service
 
 - **New** → **Web Service** → connect GitHub repo
-- **Runtime:** Python 3
-- **Build Command:**
-
-  ```bash
-  chmod +x build.sh && ./build.sh
-  ```
-
-- **Start Command:**
-
-  ```bash
-  gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
-  ```
+- **Runtime / Environment:** **Docker** (recommended — includes LibreOffice for `.doc`)
+  - Dockerfile path: `./Dockerfile`
+  - Docker context: `.`
+- **Or** native Python 3 (`.doc` conversion will fail; upload `.docx` only):
+  - **Build Command:** `chmod +x build.sh && ./build.sh`
+  - **Start Command:** `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120`
 
 ### 3. Environment variables
 

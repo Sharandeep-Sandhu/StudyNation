@@ -1,7 +1,22 @@
 #!/usr/bin/env bash
 # Render build script (native Python runtime)
+# Prefer Docker deploy (Dockerfile) so LibreOffice is available for .doc conversion.
 set -o errexit
 set -o pipefail
+
+echo "==> Optional system packages (LibreOffice for .doc → .docx)"
+# Native Render Python builds usually cannot apt-install. This path helps
+# Docker / privileged Linux hosts that still invoke build.sh.
+if command -v apt-get >/dev/null 2>&1 && [ "$(id -u)" -eq 0 ]; then
+  apt-get update -qq
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+    libreoffice-writer-nogui fonts-dejavu-core fonts-liberation \
+    || echo "WARNING: LibreOffice install failed — upload .docx files instead of .doc"
+  rm -rf /var/lib/apt/lists/* || true
+  (soffice --version || libreoffice --version || echo "LibreOffice binary not on PATH")
+else
+  echo "Skipping apt LibreOffice install (no root/apt). Use Docker image or upload .docx."
+fi
 
 echo "==> Installing dependencies"
 pip install --upgrade pip

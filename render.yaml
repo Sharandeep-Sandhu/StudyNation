@@ -1,17 +1,20 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 # Deploy: Dashboard → New → Blueprint → connect this repo
+#
+# Docker runtime is required so LibreOffice can convert legacy .doc uploads
+# on Linux (Word COM only works on local Windows).
 services:
   - type: web
     name: studynation
-    runtime: python
+    runtime: docker
     plan: free
     region: oregon
-    buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /healthz/
+    # DOC→DOCX + equation extract can take a while on free instances
+    # (Render still enforces platform limits; gunicorn timeout is set in entrypoint)
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.11.11"
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
@@ -23,11 +26,6 @@ services:
           name: studynation-db
           property: connectionString
       # ALLOWED_HOSTS / CSRF are auto-handled via RENDER + RENDER_EXTERNAL_HOSTNAME
-      # Optional custom domain example:
-      # - key: ALLOWED_HOSTS
-      #   value: studynation.com,www.studynation.com,.onrender.com
-      # - key: CSRF_TRUSTED_ORIGINS
-      #   value: https://studynation.com,https://www.studynation.com
 
 databases:
   - name: studynation-db

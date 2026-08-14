@@ -1282,16 +1282,29 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
             converted = _convert_document_to_docx(src_path, convert_dir)
             if not converted:
                 lo = "found" if _soffice_bin() else "not found"
+                on_render = bool(
+                    os.environ.get("RENDER")
+                    or os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+                )
+                if on_render and lo == "not found":
+                    raise forms.ValidationError(
+                        "This server cannot convert legacy .doc files yet "
+                        "(LibreOffice is not installed on the live host). "
+                        "Quick fix: open the file in Word → Save As → .docx, "
+                        "then upload the .docx. "
+                        "Permanent fix: redeploy with the Docker image that "
+                        "includes LibreOffice (see Dockerfile / render.yaml)."
+                    )
                 word_hint = (
                     " Microsoft Word is also unavailable for COM conversion."
                     if sys.platform == "win32"
-                    else ""
+                    else " On Linux/Render, install LibreOffice (soffice) or upload .docx."
                 )
                 raise forms.ValidationError(
                     "Couldn't convert this legacy .doc file to .docx "
                     f"(LibreOffice {lo}.{word_hint}) "
                     "Install LibreOffice, or open the file in Word → Save As → "
-                    ".docx and re-upload. On this PC, Microsoft Word COM is used "
+                    ".docx and re-upload. On Windows PCs, Microsoft Word COM is used "
                     "automatically when LibreOffice is missing."
                 )
             docx_path = converted

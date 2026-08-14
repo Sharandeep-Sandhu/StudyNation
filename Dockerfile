@@ -4,14 +4,24 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=1
 ENV DEBUG=False
+# LibreOffice needs a writable config dir in containers
+ENV HOME=/tmp
+ENV SAL_USE_VCLPLUGIN=svp
 
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# System deps:
+# - postgresql-client: DB tooling
+# - libreoffice-writer-nogui: headless DOC → DOCX conversion for question import
+#   (required on Render/Linux; local Windows uses Word COM when LO is missing)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+    libreoffice-writer-nogui \
+    fonts-dejavu-core \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/* \
+    && (soffice --version || libreoffice --version || true)
 
 # Install Python dependencies
 COPY requirements.txt .
