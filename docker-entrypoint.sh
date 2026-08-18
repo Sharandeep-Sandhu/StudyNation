@@ -7,6 +7,17 @@ python manage.py migrate --noinput
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
+echo "Creating superuser (if needed)..."
+if [ "$CREATE_SUPERUSER" = "True" ]; then
+  echo "Creating superuser with username: admin"
+  DJANGO_SUPERUSER_PASSWORD="admin@admin" \
+  python manage.py createsuperuser --noinput \
+    --username "admin" \
+    --email "admin@admin.com" || true
+else
+  echo "Skipping superuser creation"
+fi
+
 # Render (and most PaaS) inject PORT; default 8000 for local Docker
 PORT="${PORT:-8000}"
 
