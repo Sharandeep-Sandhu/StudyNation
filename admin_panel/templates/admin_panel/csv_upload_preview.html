@@ -302,7 +302,22 @@
                   </div>
                 {% endif %}
                 <div class="pq-question-text">{{ q.question_text|safe }}</div>
-                {% if q.options_list %}
+                {% if q.match_left or q.match_right %}
+                  <div class="match-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin-top:8px;">
+                    <div>
+                      <strong>Column I</strong>
+                      {% for opt in q.match_left %}
+                        <div class="opt"><strong>({{ opt.letter }})</strong> {{ opt.text|safe }}</div>
+                      {% endfor %}
+                    </div>
+                    <div>
+                      <strong>Column II</strong>
+                      {% for opt in q.match_right %}
+                        <div class="opt"><strong>({{ opt.letter|lower }})</strong> {{ opt.text|safe }}</div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% elif q.options_list %}
                   {% for opt in q.options_list %}
                     <div class="opt"><strong>({{ opt.letter }})</strong> {{ opt.text|safe }}</div>
                   {% endfor %}
@@ -312,7 +327,7 @@
                   {% if q.option_c %}<div class="opt"><strong>(C)</strong> {{ q.option_c|safe }}</div>{% endif %}
                   {% if q.option_d %}<div class="opt"><strong>(D)</strong> {{ q.option_d|safe }}</div>{% endif %}
                 {% endif %}
-                {% if q.correct_answer %}<div class="ans">Answer: {{ q.correct_answer|upper }}</div>{% endif %}
+                {% if q.correct_answer %}<div class="ans">Answer: {{ q.correct_answer }}</div>{% endif %}
               </div>
 
               <details class="edit-toggle">
@@ -496,6 +511,8 @@
               option_c: fieldVal(card, 'option_c'),
               option_d: fieldVal(card, 'option_d'),
               options_list: optionsList,
+              match_left: (function () { try { return JSON.parse(fieldVal(card, 'match_left') || '[]'); } catch (e) { return []; } })(),
+              match_right: (function () { try { return JSON.parse(fieldVal(card, 'match_right') || '[]'); } catch (e) { return []; } })(),
               correct_answer: fieldVal(card, 'correct_answer'),
               question_type: fieldVal(card, 'question_type') || 'single_choice',
               answer_type: fieldVal(card, 'answer_type') || 'single',

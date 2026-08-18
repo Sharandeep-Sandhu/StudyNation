@@ -335,6 +335,8 @@ def _serialize_import_question(q: dict) -> dict:
         "option_c": str(by_letter.get("C") or (ordered_texts[2] if len(ordered_texts) > 2 else "") or q.get("option_c") or ""),
         "option_d": str(by_letter.get("D") or (ordered_texts[3] if len(ordered_texts) > 3 else "") or q.get("option_d") or ""),
         "options_list": options_list,
+        "match_left": q.get("match_left") or [],
+        "match_right": q.get("match_right") or [],
         "correct_answer": str(q.get("correct_answer") or ""),
         "marks": marks,
         "explanation": str(q.get("explanation") or ""),
@@ -592,6 +594,8 @@ def _normalize_import_question(raw: dict, index: int) -> dict | None:
             or ""
         ),
         "options_list": options_list,
+        "match_left": raw.get("match_left") or [],
+        "match_right": raw.get("match_right") or [],
         "correct_answer": str(raw.get("correct_answer") or "").strip(),
         "marks": marks,
         "explanation": str(raw.get("explanation") or ""),

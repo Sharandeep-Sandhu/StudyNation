@@ -149,7 +149,7 @@ OPTION_LINE_FULL_RE = re.compile(
     rf"^\s*(?:\(({_OPTION_TOKEN})\)|({_OPTION_TOKEN})\)|([A-Za-z])\.\s*\)|([A-Za-z])[.:])\s*(.*)$",
     re.IGNORECASE | re.DOTALL,
 )
-# Inline markers including A. / a.) / A: / A 182 (not only (a) / a))
+# Inline markers: (A) / A) / A. / a.) / A:  — NOT bare "f " (that is f(x) math)
 _INLINE_OPT_MARKER_RE = re.compile(
     rf"(?:(?<=^)|(?<=[\s\u00a0])|(?<=[.?!:]))"
     rf"(?:"
@@ -157,10 +157,18 @@ _INLINE_OPT_MARKER_RE = re.compile(
     rf"({_OPTION_TOKEN})\)|"
     rf"([A-Ia-i])\.\s*\)|"
     rf"([A-Ia-i])\.|"
-    rf"([A-Ia-i]):|"
-    rf"([A-Ia-i])[\t \u00a0]+"
+    rf"([A-Ia-i]):"
     rf")"
-    rf"(?=\S)",
+    rf"(?=\s|\S)",
+    re.IGNORECASE,
+)
+_MATH_ARG_LETTERS = set("xyzntijkuvw")
+_FUNCTION_PREFIX_RE = re.compile(
+    r"(?:^|[^A-Za-z])(?:[fghFG]|log|ln|sin|cos|tan|min|max|exp)$",
+    re.IGNORECASE,
+)
+_COL2_MARKER_RE = re.compile(
+    r"(?:(?<=^)|(?<=[\s\t\u00a0]))(?:\(([pqrst])\)|([pqrst])\))\s+",
     re.IGNORECASE,
 )
 # "1. …", "1) …", "1 Dinari …", "2 (a) …", "Q.1 …", "Q.12\t…"
@@ -257,6 +265,83 @@ def _marker_letter(match) -> str:
     return ""
 
 
+def _is_math_arg_marker(text: str, match, letter: str) -> bool:
+    """True for f (x) / g(x) / sin (x) — not a real MCQ marker."""
+    letter = (letter or "").lower()
+    raw_tok = ""
+    if match is not None:
+        raw_tok = next((g for g in match.groups() if g), "") or ""
+    # Interval close: (–∞, 1) or [–1, 1) — the '(1)' is not option 1
+    i = match.start() if match is not None else 0
+    if raw_tok.isdigit():
+        prev = text[max(0, i - 3) : i]
+        if re.search(r"[,;]\s*$", prev):
+            return True
+    if letter not in _MATH_ARG_LETTERS and letter not in set("ab"):
+        return False
+    while i > 0 and text[i - 1] in " \t\u00a0":
+        i -= 1
+    if i <= 0:
+        return False
+    before = text[max(0, i - 8) : i]
+    return bool(_FUNCTION_PREFIX_RE.search(before))
+
+
+def _real_option_matches(text: str, marker_re):
+    """Option-marker matches with f(x) / g(a) arguments removed."""
+    out = []
+    for m in marker_re.finditer(text or ""):
+        letter = _marker_letter(m)
+        if not letter:
+            continue
+        if _is_math_arg_marker(text, m, letter):
+            continue
+        out.append(m)
+    return out
+
+
+def _split_matching_row(text: str):
+    """
+    Split a match-the-column line:
+      '(A) Function … is    (p) one-one function'
+    → ('a', 'Function … is', 'p', 'one-one function')
+    A lone '(t) f'(x) < 0' → (None, '', 't', "f'(x) < 0")
+    """
+    raw = (text or "").replace("\u00a0", " ")
+    if not raw.strip():
+        return None
+    matches = list(_COL2_MARKER_RE.finditer(raw))
+    if not matches:
+        m = re.match(
+            r"^\s*(?:\(([pqrst])\)|([pqrst])\))\s+(\S.*)$",
+            raw,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not m:
+            return None
+        letter = (m.group(1) or m.group(2) or "").lower()
+        return None, "", letter, (m.group(3) or "").strip()
+    m = matches[-1]
+    right_letter = (m.group(1) or m.group(2) or "").lower()
+    right_text = raw[m.end() :].strip()
+    left = raw[: m.start()].strip()
+    if not left:
+        return None, "", right_letter, right_text
+    left_parsed = _parse_option_line(left)
+    if left_parsed:
+        return left_parsed[0], left_parsed[1], right_letter, right_text
+    return None, left, right_letter, right_text
+
+
+def _looks_like_matching_row(text: str) -> bool:
+    vis = re.sub(r"\x02(?:OMATH|IMGRID)[^\x02]+\x02", "", text or "")
+    return bool(_COL2_MARKER_RE.search(vis) or re.match(
+        r"^\s*(?:\(([pqrst])\)|([pqrst])\))\s+\S",
+        vis,
+        re.I,
+    ))
+
+
 def _letters_are_sequential(letters: list[str]) -> bool:
     """True when letters are consecutive (A,B or C,D — later rows may start mid-alphabet)."""
     if len(letters) < 2:
@@ -316,12 +401,19 @@ def _parse_option_line(line: str) -> tuple[str, str] | None:
         )
         rest = (m.group(5) or "").strip()
         if letter:
+            if rest.lstrip().startswith(("=", ":")):
+                return None
             return letter, rest
     m = OPTION_LINE_BARE_RE.match(raw)
     if m:
         letter = _option_letter(m.group(1) or "")
         rest = (m.group(2) or "").strip()
         if not letter or not rest:
+            return None
+        # "A = {…}" / "A : R → R" are passage definitions, not options
+        if rest.lstrip().startswith(("=", ":", "(")):
+            return None
+        if letter in set("fgh"):
             return None
         # Bare "A zoo has twice as many…" is a stem, not an option
         if len(rest) > 90:
@@ -382,7 +474,7 @@ def _options_from_inline_markers(text: str, marker_re) -> tuple[str, dict]:
     """Group consecutive option markers and take the last multi-option run."""
     if not text:
         return "", {}
-    matches = list(marker_re.finditer(text))
+    matches = _real_option_matches(text, marker_re)
     if len(matches) < 1:
         return text, {}
 
@@ -616,6 +708,8 @@ def _force_option_from_paragraph(text: str):
         ) or _marker_letter(m)
         rest = raw[m.end() :].strip()
         if letter:
+            if rest.lstrip().startswith(("=", ":")):
+                return None
             return letter, rest
     return None
 
@@ -1921,6 +2015,8 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
             current = {
                 "question_text": "",
                 "options": {},
+                "match_left": {},
+                "match_right": {},
                 "image_rids": [],
                 "question_number": num_hint or str(len(questions) + 1),
                 "inline_answer": "",
@@ -1933,6 +2029,28 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
             """Merge a paragraph (stem / options / Correct Answer) into current."""
             if current is None:
                 return
+            matching_ctx = bool(
+                (current.get("section_hint") or (None, None))[0] == "matching"
+                or current.get("match_left")
+                or current.get("match_right")
+                or _looks_like_matching_row(block_text)
+            )
+            if matching_ctx:
+                ca_text, ca_ans = _strip_correct_answer(block_text)
+                if ca_ans and not current.get("inline_answer"):
+                    current["inline_answer"] = ca_ans
+                    block_text = ca_text
+                row = _split_matching_row(block_text)
+                if row:
+                    llet, ltxt, rlet, rtxt = row
+                    if llet:
+                        current["match_left"][llet] = ltxt
+                    if rlet:
+                        current["match_right"][rlet] = rtxt
+                    return
+                if not (block_text or "").strip():
+                    return
+
             stem, opts, ans = _split_stem_options_answer(block_text)
             if not opts:
                 forced = _force_option_from_paragraph(block_text)
@@ -2039,6 +2157,11 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                 continue
 
             if current is None:
+                if section_hint and section_hint[0] == "comprehension":
+                    extra = _normalize_stem_ws(text)
+                    if extra:
+                        current_passage = f"{current_passage} {extra}".strip()
+                    continue
                 forced = _force_option_from_paragraph(text)
                 if forced:
                     pending_shared_options[forced[0]] = forced[1]
@@ -2052,10 +2175,6 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                             f"{prev} {extra}".strip()
                         )
                     continue
-                if section_hint and section_hint[0] == "comprehension":
-                    extra = _normalize_stem_ws(text)
-                    if extra:
-                        current_passage = f"{current_passage} {extra}".strip()
                 continue
 
             _absorb_block(text)
@@ -2063,6 +2182,8 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
 
         # ---- 2b. Pull inline options / Correct Answer out of the stem ----
         for q in questions:
+            if q.get("match_left") or q.get("match_right"):
+                continue
             leftover = q.get("question_text") or ""
             stem, opts, ans = _split_stem_options_answer(leftover)
             if ans and not q.get("inline_answer"):
@@ -2121,7 +2242,13 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                     saved_urls.append(url)
             # Also pick up any rids only present as placeholders in text
             for rid in _IMG_PLACEHOLDER_RE.findall(
-                q["question_text"] + " " + " ".join(q["options"].values())
+                q["question_text"]
+                + " "
+                + " ".join(q["options"].values())
+                + " "
+                + " ".join((q.get("match_left") or {}).values())
+                + " "
+                + " ".join((q.get("match_right") or {}).values())
             ):
                 url = rid_to_url.get(rid)
                 if url and url not in seen:
@@ -2146,32 +2273,53 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
             if question_type in ("numerical", "integer"):
                 options = {}
 
-            q_text = _normalize_display_latex(
-                _substitute_placeholders(
-                    q["question_text"].strip(),
-                    latex_by_key,
-                    rid_to_url,
-                    prefer_latex=True,
-                )
-            )
-
-            # Build full options list (any count ≥ 1) with LaTeX/images inlined
-            options_list = []
-            for item in _options_dict_to_ordered_list(options):
-                rendered = _normalize_display_latex(
+            def _render_chunk(text: str) -> str:
+                return _normalize_display_latex(
                     _substitute_placeholders(
-                        item.get("text") or "",
+                        (text or "").strip(),
                         latex_by_key,
                         rid_to_url,
                         prefer_latex=True,
                     )
                 )
+
+            q_text = _render_chunk(q.get("question_text") or "")
+
+            match_left = q.get("match_left") or {}
+            match_right = q.get("match_right") or {}
+            if match_left or match_right:
+                question_type = "matching"
+                answer_type = "multiple"
+                options = dict(options or {})
+                for k, v in match_left.items():
+                    options.setdefault(k, v)
+                for k, v in match_right.items():
+                    options.setdefault(k, v)
+
+            # Build full options list (any count ≥ 1) with LaTeX/images inlined
+            options_list = []
+            for item in _options_dict_to_ordered_list(options):
+                rendered = _render_chunk(item.get("text") or "")
+                letter = item["letter"]
+                group = ""
+                if letter.lower() in match_left:
+                    group = "I"
+                elif letter.lower() in match_right:
+                    group = "II"
                 options_list.append(
                     {
-                        "letter": item["letter"],
+                        "letter": letter,
                         "text": rendered,
+                        "group": group,
                     }
                 )
+
+            match_left_list = [
+                o for o in options_list if o.get("group") == "I"
+            ]
+            match_right_list = [
+                o for o in options_list if o.get("group") == "II"
+            ]
 
             # Legacy A–D columns (first four options) for older UI/export paths
             by_letter = {o["letter"].lower(): o["text"] for o in options_list}
@@ -2228,6 +2376,8 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                 "option_d": opt_d,
                 # Full list of options (1..N) for import → QuestionOption rows
                 "options_list": options_list,
+                "match_left": match_left_list,
+                "match_right": match_right_list,
                 "correct_answer": _format_correct_answer(answer_raw, question_type),
                 "marks": 1,
                 "explanation": expl,

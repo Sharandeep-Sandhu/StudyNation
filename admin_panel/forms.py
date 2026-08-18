@@ -637,6 +637,8 @@ class CSVUploadForm(forms.Form):
             "option_c": s("option_c"),
             "option_d": s("option_d"),
             "options_list": options_list,
+            "match_left": row.get("match_left") or [],
+            "match_right": row.get("match_right") or [],
             "correct_answer": s("correct_answer"),
             "marks": marks,
             "explanation": s("explanation"),
