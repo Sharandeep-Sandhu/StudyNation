@@ -12,7 +12,7 @@ if [ "$CREATE_SUPERUSER" = "True" ]; then
   echo "Creating superuser with username: admin"
   DJANGO_SUPERUSER_PASSWORD="admin@admin" \
   python manage.py createsuperuser --noinput \
-    --username "admin" \
+    --username "adminuser" \
     --email "admin@admin.com" || true
 else
   echo "Skipping superuser creation"
