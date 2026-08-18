@@ -1,0 +1,3 @@
+question_text,question_type,option_a,option_b,option_c,option_d,correct_answer,marks,explanation,topic,paper_code,year,season,zone,question_number
+What is 2+2?,single_choice,3,4,5,6,B,1,basic,Arithmetic,TEST/01,2024,summer,,1
+Capital of France?,single_choice,London,Paris,Berlin,Rome,B,1,,Geography,TEST/01,2024,summer,,2

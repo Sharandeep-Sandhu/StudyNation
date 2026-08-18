@@ -1,0 +1,379 @@
+﻿<script>
+  const TOTAL_QUESTIONS = {{ exam_questions|length }};
+  let currentIndex = 0;
+  const answeredIds = new Set();
+
+  function letterFromIndex(i) {
+    return String.fromCharCode(65 + (parseInt(i, 10) || 0));
+  }
+
+  // Assign A/B/Câ€¦ for dynamic options that only have data-letter-index
+  function labelOptionLetters() {
+    document.querySelectorAll('.pq-options').forEach(function (group) {
+      group.querySelectorAll('.pq-option').forEach(function (opt, idx) {
+        var letter = opt.dataset.value;
+        if (!letter && opt.dataset.letterIndex !== undefined) {
+          letter = letterFromIndex(opt.dataset.letterIndex);
+        }
+        if (!letter) letter = letterFromIndex(idx);
+        opt.dataset.value = letter;
+        var badge = opt.querySelector('.pq-option-letter');
+        if (badge) badge.textContent = letter;
+      });
+    });
+  }
+
+  function updateAnsweredCount() {
+    document.getElementById('answeredCount').textContent = answeredIds.size;
+  }
+
+  function selectOption(el) {
+    const group = el.parentElement;
+    group.querySelectorAll('.pq-option').forEach(o => o.classList.remove('pq-selected'));
+    el.classList.add('pq-selected');
+    const qid = group.dataset.qid;
+    document.getElementById('answerField_' + qid).value = el.dataset.value || '';
+    markAnswered(qid);
+  }
+
+  function toggleMultiOption(el) {
+    el.classList.toggle('pq-selected');
+    const group = el.parentElement;
+    const qid = group.dataset.qid;
+    const selected = Array.from(group.querySelectorAll('.pq-option.pq-selected')).map(o => o.dataset.value);
+    document.getElementById('answerField_' + qid).value = selected.join(',');
+    if (selected.length) { markAnswered(qid); } else { unmarkAnswered(qid); }
+  }
+
+  function onTextAnswerInput(el) {
+    const qid = el.dataset.qid;
+    document.getElementById('answerField_' + qid).value = el.value;
+    if (el.value.trim()) { markAnswered(qid); } else { unmarkAnswered(qid); }
+  }
+
+  function markAnswered(qid) {
+    answeredIds.add(qid);
+    updateAnsweredCount();
+    const item = document.querySelector(`.pq-qlist-item[data-index]`);
+    document.querySelectorAll('.pq-question').forEach(q => {
+      if (q.querySelector(`[data-qid="${qid}"]`) || q.querySelector(`#answerField_${qid}`)) {
+        const idx = q.dataset.index;
+        const listItem = document.querySelector(`.pq-qlist-item[data-index="${idx}"]`);
+        if (listItem) listItem.classList.add('pq-answered');
+      }
+    });
+  }
+
+  function unmarkAnswered(qid) {
+    answeredIds.delete(qid);
+    updateAnsweredCount();
+    document.querySelectorAll('.pq-question').forEach(q => {
+      if (q.querySelector(`#answerField_${qid}`)) {
+        const idx = q.dataset.index;
+        const listItem = document.querySelector(`.pq-qlist-item[data-index="${idx}"]`);
+        if (listItem) listItem.classList.remove('pq-answered');
+      }
+    });
+  }
+
+  function goToQuestion(index) {
+    document.querySelectorAll('.pq-question').forEach(q => {
+      q.style.display = (parseInt(q.dataset.index) === index) ? 'block' : 'none';
+    });
+    document.querySelectorAll('.pq-qlist-item').forEach(item => {
+      item.classList.toggle('pq-current', parseInt(item.dataset.index) === index);
+    });
+    currentIndex = index;
+    document.getElementById('pqPrevBtn').disabled = (index === 0);
+    document.getElementById('pqNextBtn').disabled = (index === TOTAL_QUESTIONS - 1);
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([document.getElementById('pqQuestionBlock')]);
+    }
+    if (typeof window.eqSizeInlineImages === 'function') {
+      window.eqSizeInlineImages(document.getElementById('pqQuestionBlock'));
+    }
+  }
+
+  function navQuestion(delta) {
+    const next = currentIndex + delta;
+    if (next >= 0 && next < TOTAL_QUESTIONS) goToQuestion(next);
+  }
+
+  function confirmSubmit() {
+    const unanswered = TOTAL_QUESTIONS - answeredIds.size;
+    const msg = unanswered > 0
+      ? `You have ${unanswered} unanswered question(s). Submit anyway?`
+      : 'Submit your answers now?';
+    if (confirm(msg)) {
+      document.getElementById('practiceForm').submit();
+    }
+  }
+
+  // Timer â€” counts up from page load.
+  let elapsedSeconds = 0;
+  setInterval(() => {
+    elapsedSeconds++;
+    const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+    const s = String(elapsedSeconds % 60).padStart(2, '0');
+    document.getElementById('pqTimer').textContent = `${m}:${s}`;
+  }, 1000);
+
+  labelOptionLetters();
+
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise();
+  }
+  if (typeof window.eqSizeInlineImages === 'function') {
+    window.eqSizeInlineImages(document.getElementById('pqQuestionBlock'));
+  }
+
+  // ==================== FULL CALCULATOR ====================
+  (function initPracticeCalculator() {
+    var panel = document.getElementById('pqCalculator');
+    var exprEl = document.getElementById('pqCalcExpr');
+    var resultEl = document.getElementById('pqCalcResult');
+    var toggleBtn = document.getElementById('pqCalcToggle');
+    var keys = document.getElementById('pqCalcKeys');
+    if (!panel || !exprEl || !resultEl || !keys) return;
+
+    var expr = '';
+    var justEvaluated = false;
+
+    function deg2rad(d) { return d * Math.PI / 180; }
+    function rad2deg(r) { return r * 180 / Math.PI; }
+
+    function factorial(n) {
+      if (n < 0 || !Number.isFinite(n) || Math.floor(n) !== n) throw new Error('n! needs whole â‰¥ 0');
+      if (n > 170) throw new Error('Overflow');
+      var r = 1;
+      for (var i = 2; i <= n; i++) r *= i;
+      return r;
+    }
+
+    function formatNumber(n) {
+      if (!Number.isFinite(n)) return String(n);
+      if (Math.abs(n) !== 0 && (Math.abs(n) >= 1e10 || Math.abs(n) < 1e-8)) {
+        return n.toExponential(8).replace(/\.?0+e/, 'e');
+      }
+      var s = Number(n.toPrecision(12)).toString();
+      return s;
+    }
+
+    // Safe expression evaluator (no arbitrary code eval)
+    function evaluateExpression(raw) {
+      var s = String(raw || '').trim();
+      if (!s) return 0;
+      s = s
+        .replace(/Ã—/g, '*')
+        .replace(/Ã·/g, '/')
+        .replace(/âˆ’/g, '-')
+        .replace(/Ï€/g, 'pi')
+        .replace(/\^/g, '**');
+
+      // percent: number% -> (number/100)
+      s = s.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+
+      // Allow only safe tokens (after ** already mapped)
+      var check = s.replace(/\*\*/g, '*');
+      if (!/^[0-9+\-*/().,\sA-Za-z_]+$/.test(check)) {
+        throw new Error('Invalid characters');
+      }
+
+      var fns = {
+        sin: function (x) { return Math.sin(deg2rad(x)); },
+        cos: function (x) { return Math.cos(deg2rad(x)); },
+        tan: function (x) { return Math.tan(deg2rad(x)); },
+        asin: function (x) { return rad2deg(Math.asin(x)); },
+        acos: function (x) { return rad2deg(Math.acos(x)); },
+        atan: function (x) { return rad2deg(Math.atan(x)); },
+        log: function (x) { return Math.log10(x); },
+        ln: function (x) { return Math.log(x); },
+        sqrt: function (x) { return Math.sqrt(x); },
+        abs: function (x) { return Math.abs(x); },
+        exp: function (x) { return Math.exp(x); },
+        pow: function (a, b) { return Math.pow(a, b); },
+        fact: factorial,
+        pi: Math.PI,
+        e: Math.E
+      };
+
+      // Map function names used in expression
+      // Support sin(x) style already; convert bare constants
+      var code = s
+        .replace(/\bpi\b/g, 'pi')
+        .replace(/\be\b/g, 'e');
+
+      // Disallow dangerous identifiers
+      var banned = /\b(window|document|Function|eval|globalThis|constructor|prototype|__proto__|import|require)\b/i;
+      if (banned.test(code)) throw new Error('Invalid expression');
+
+      // Only allow known names + operators/numbers
+      var allowed = /^(sin|cos|tan|asin|acos|atan|log|ln|sqrt|abs|exp|pow|fact|pi|e)$/;
+      var ids = code.match(/[A-Za-z_]+/g) || [];
+      for (var i = 0; i < ids.length; i++) {
+        if (!allowed.test(ids[i])) throw new Error('Unknown: ' + ids[i]);
+      }
+
+      // eslint-disable-next-line no-new-func
+      var fn = new Function(
+        'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'log', 'ln', 'sqrt', 'abs', 'exp', 'pow', 'fact', 'pi', 'e',
+        'return (' + code + ');'
+      );
+      var val = fn(
+        fns.sin, fns.cos, fns.tan, fns.asin, fns.acos, fns.atan,
+        fns.log, fns.ln, fns.sqrt, fns.abs, fns.exp, fns.pow, fns.fact, fns.pi, fns.e
+      );
+      if (typeof val !== 'number' || !Number.isFinite(val)) throw new Error('Math error');
+      return val;
+    }
+
+    function render() {
+      exprEl.textContent = expr || '';
+      resultEl.classList.remove('is-error');
+      if (!expr) {
+        resultEl.textContent = '0';
+        return;
+      }
+      try {
+        // Live preview when expression is evaluable
+        var preview = evaluateExpression(expr);
+        resultEl.textContent = formatNumber(preview);
+      } catch (e) {
+        // Keep last successful display while typing incomplete expressions
+        if (justEvaluated) {
+          resultEl.textContent = 'Error';
+          resultEl.classList.add('is-error');
+        }
+      }
+    }
+
+    function appendKey(k) {
+      if (justEvaluated && /[0-9.]/.test(k)) {
+        expr = '';
+      }
+      justEvaluated = false;
+      expr += k;
+      render();
+    }
+
+    function applyUnary(name) {
+      justEvaluated = false;
+      if (name === 'square') {
+        expr = expr ? '(' + expr + ')**2' : '';
+      } else if (name === 'inv') {
+        expr = expr ? '1/(' + expr + ')' : '';
+      } else if (name === 'neg') {
+        expr = expr ? '-(' + expr + ')' : '-';
+      } else if (name === 'pow') {
+        expr = (expr || '') + '**';
+      } else if (name === 'fact') {
+        expr = expr ? 'fact(' + expr + ')' : 'fact(';
+      } else {
+        // wrap current expr or open function(
+        if (expr && /[0-9).]$/.test(expr)) {
+          expr = name + '(' + expr + ')';
+        } else {
+          expr = (expr || '') + name + '(';
+        }
+      }
+      render();
+    }
+
+    window.calcClearAll = function () {
+      expr = '';
+      justEvaluated = false;
+      resultEl.classList.remove('is-error');
+      resultEl.textContent = '0';
+      exprEl.textContent = '';
+    };
+
+    function backspace() {
+      justEvaluated = false;
+      expr = expr.slice(0, -1);
+      render();
+    }
+
+    function equals() {
+      try {
+        var val = evaluateExpression(expr);
+        exprEl.textContent = expr + ' =';
+        resultEl.classList.remove('is-error');
+        resultEl.textContent = formatNumber(val);
+        expr = String(val);
+        justEvaluated = true;
+      } catch (e) {
+        resultEl.textContent = e.message || 'Error';
+        resultEl.classList.add('is-error');
+        justEvaluated = true;
+      }
+    }
+
+    keys.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      e.preventDefault();
+      if (btn.dataset.key !== undefined) {
+        appendKey(btn.dataset.key);
+        return;
+      }
+      if (btn.dataset.const === 'pi') { appendKey('pi'); return; }
+      if (btn.dataset.const === 'e') { appendKey('e'); return; }
+      if (btn.dataset.fn) { applyUnary(btn.dataset.fn); return; }
+      if (btn.dataset.action === 'ac') { calcClearAll(); return; }
+      if (btn.dataset.action === 'back') { backspace(); return; }
+      if (btn.dataset.action === 'eq') { equals(); return; }
+    });
+
+    window.togglePracticeCalculator = function (force) {
+      var open = typeof force === 'boolean' ? force : !panel.classList.contains('is-open');
+      panel.classList.toggle('is-open', open);
+      if (toggleBtn) toggleBtn.classList.toggle('is-open', open);
+      if (open) render();
+    };
+
+    // Drag by header
+    var handle = document.getElementById('pqCalcDragHandle');
+    var dragging = false, startX = 0, startY = 0, origLeft = 0, origTop = 0;
+    if (handle) {
+      handle.addEventListener('mousedown', function (e) {
+        if (e.target.closest('button')) return;
+        dragging = true;
+        var rect = panel.getBoundingClientRect();
+        panel.style.left = rect.left + 'px';
+        panel.style.top = rect.top + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        startX = e.clientX;
+        startY = e.clientY;
+        origLeft = rect.left;
+        origTop = rect.top;
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        var nx = origLeft + (e.clientX - startX);
+        var ny = origTop + (e.clientY - startY);
+        var maxX = window.innerWidth - panel.offsetWidth - 8;
+        var maxY = window.innerHeight - panel.offsetHeight - 8;
+        panel.style.left = Math.max(8, Math.min(maxX, nx)) + 'px';
+        panel.style.top = Math.max(8, Math.min(maxY, ny)) + 'px';
+      });
+      document.addEventListener('mouseup', function () { dragging = false; });
+    }
+
+    // Keyboard support when calculator is open
+    document.addEventListener('keydown', function (e) {
+      if (!panel.classList.contains('is-open')) return;
+      // Don't hijack when typing in textareas/inputs of the quiz
+      var tag = (e.target && e.target.tagName) || '';
+      if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+
+      if (e.key === 'Escape') { togglePracticeCalculator(false); return; }
+      if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); equals(); return; }
+      if (e.key === 'Backspace') { e.preventDefault(); backspace(); return; }
+      if (e.key === 'Delete') { e.preventDefault(); calcClearAll(); return; }
+      if (/^[0-9+\-*/().%]$/.test(e.key)) { e.preventDefault(); appendKey(e.key); }
+    });
+  })();
+</script>
+{% endblock %}
