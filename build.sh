@@ -28,6 +28,10 @@ python manage.py collectstatic --noinput
 echo "==> Applying database migrations"
 python manage.py migrate --noinput
 
+if [[ $CREATE_SUPERUSER ]]; then
+  python manage.py createsuperuser --noinput
+fi
+
 echo "==> Ensuring critical schema columns (discussion / past papers)"
 python manage.py ensure_schema
 
