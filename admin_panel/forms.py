@@ -616,13 +616,27 @@ class CSVUploadForm(forms.Form):
             except (TypeError, ValueError):
                 year = None
 
+        options_list = row.get("options_list") or []
+        if not isinstance(options_list, list):
+            options_list = []
+
+        answer_type = s("answer_type", "") or ""
+        if answer_type not in ("single", "multiple"):
+            qtype = s("question_type", "single_choice") or "single_choice"
+            answer_type = (
+                "multiple" if qtype in ("multiple_choice", "matching") else "single"
+            )
+
         return {
             "question_text": s("question_text"),
             "question_type": s("question_type", "single_choice") or "single_choice",
+            "answer_type": answer_type,
+            "passage": s("passage"),
             "option_a": s("option_a"),
             "option_b": s("option_b"),
             "option_c": s("option_c"),
             "option_d": s("option_d"),
+            "options_list": options_list,
             "correct_answer": s("correct_answer"),
             "marks": marks,
             "explanation": s("explanation"),

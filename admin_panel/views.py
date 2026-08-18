@@ -324,6 +324,12 @@ def _serialize_import_question(q: dict) -> dict:
     return {
         "question_text": str(q.get("question_text") or ""),
         "question_type": str(q.get("question_type") or "single_choice"),
+        "answer_type": str(q.get("answer_type") or "") or (
+            "multiple"
+            if (q.get("question_type") or "") in ("multiple_choice", "matching")
+            else "single"
+        ),
+        "passage": str(q.get("passage") or ""),
         "option_a": str(by_letter.get("A") or (ordered_texts[0] if len(ordered_texts) > 0 else "") or q.get("option_a") or ""),
         "option_b": str(by_letter.get("B") or (ordered_texts[1] if len(ordered_texts) > 1 else "") or q.get("option_b") or ""),
         "option_c": str(by_letter.get("C") or (ordered_texts[2] if len(ordered_texts) > 2 else "") or q.get("option_c") or ""),
@@ -404,23 +410,41 @@ def _import_questions_to_bank(question_bank, questions, admin_user, file_name, f
                     marks = 1
 
                 correct_raw = (q_data.get("correct_answer") or "").strip()
-                correct_letters = {
-                    p.strip().upper()
-                    for p in re.split(r"[\s,;/]+", correct_raw)
-                    if p.strip()
+                qtype = q_data.get("question_type") or "single_choice"
+                atype = (q_data.get("answer_type") or "").strip().lower()
+                non_letter_types = {
+                    "numerical",
+                    "integer",
+                    "matching",
+                    "structured",
+                    "fill_blank",
                 }
-                is_multi = len(correct_letters) > 1 or (
-                    (q_data.get("question_type") or "") == "multiple_choice"
+                if qtype in non_letter_types:
+                    correct_letters = set()
+                else:
+                    correct_letters = {
+                        p.strip().upper()
+                        for p in re.split(r"[\s,;/]+", correct_raw)
+                        if p.strip() and len(p.strip()) <= 2
+                    }
+                is_multi = (
+                    atype == "multiple"
+                    or qtype in ("multiple_choice", "matching")
+                    or len(correct_letters) > 1
                 )
-                qtype = q_data.get("question_type") or (
-                    "multiple_choice" if is_multi else "single_choice"
-                )
+                if not atype:
+                    atype = "multiple" if is_multi else "single"
                 if options_list and qtype not in (
                     "single_choice",
                     "multiple_choice",
                     "true_false",
                     "mcq",
                     "comprehension",
+                    "matching",
+                    "numerical",
+                    "integer",
+                    "structured",
+                    "fill_blank",
                 ):
                     qtype = "multiple_choice" if is_multi else "single_choice"
 
@@ -441,7 +465,8 @@ def _import_questions_to_bank(question_bank, questions, admin_user, file_name, f
                     option_c=option_c or "",
                     option_d=option_d or "",
                     correct_answer=correct_raw,
-                    answer_type="multiple" if is_multi else "single",
+                    answer_type=atype,
+                    passage=(q_data.get("passage") or "") or "",
                     marks=marks,
                     explanation=q_data.get("explanation", "") or "",
                     video_solution_url=(
@@ -536,6 +561,12 @@ def _normalize_import_question(raw: dict, index: int) -> dict | None:
     return {
         "question_text": str(raw.get("question_text") or ""),
         "question_type": str(raw.get("question_type") or "single_choice"),
+        "answer_type": str(raw.get("answer_type") or "") or (
+            "multiple"
+            if (raw.get("question_type") or "") in ("multiple_choice", "matching")
+            else "single"
+        ),
+        "passage": str(raw.get("passage") or ""),
         "option_a": str(
             by_letter.get("A")
             or (ordered_texts[0] if len(ordered_texts) > 0 else "")
@@ -811,6 +842,16 @@ def csv_upload_preview(request):
                                 question_text=q_data.get("question_text") or "",
                                 question_type=q_data.get("question_type")
                                 or "single_choice",
+                                answer_type=(
+                                    q_data.get("answer_type")
+                                    or (
+                                        "multiple"
+                                        if (q_data.get("question_type") or "")
+                                        in ("multiple_choice", "matching")
+                                        else "single"
+                                    )
+                                ),
+                                passage=q_data.get("passage") or "",
                                 option_a=q_data.get("option_a", "") or "",
                                 option_b=q_data.get("option_b", "") or "",
                                 option_c=q_data.get("option_c", "") or "",

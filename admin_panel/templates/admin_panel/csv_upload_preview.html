@@ -285,7 +285,7 @@
                   {% if q.question_number %}
                     <span style="color:#888; font-weight:500;">(#{{ q.question_number }})</span>
                   {% endif %}
-                  · {{ q.question_type }}
+                  · {{ q.question_type }}{% if q.answer_type %} · answer: {{ q.answer_type }}{% endif %}
                 </h3>
                 <label class="skip-row">
                   <input type="checkbox" data-field="skip" value="1"
@@ -295,6 +295,12 @@
               </div>
 
               <div class="q-preview">
+                {% if q.passage %}
+                  <div class="pq-passage" style="background:#f4f7fb;border-left:3px solid #3b6ea5;padding:8px 10px;margin-bottom:8px;font-size:0.95em;">
+                    <strong>Passage</strong>
+                    <div>{{ q.passage|safe }}</div>
+                  </div>
+                {% endif %}
                 <div class="pq-question-text">{{ q.question_text|safe }}</div>
                 {% if q.options_list %}
                   {% for opt in q.options_list %}
@@ -350,6 +356,17 @@
                         <option value="{{ val }}" {% if q.question_type == val %}selected{% endif %}>{{ label }}</option>
                       {% endfor %}
                     </select>
+                  </div>
+                  <div>
+                    <label>Answer type</label>
+                    <select data-field="answer_type">
+                      <option value="single" {% if q.answer_type != 'multiple' %}selected{% endif %}>Single</option>
+                      <option value="multiple" {% if q.answer_type == 'multiple' %}selected{% endif %}>Multiple</option>
+                    </select>
+                  </div>
+                  <div class="full">
+                    <label>Passage (comprehension)</label>
+                    <textarea data-field="passage" rows="2">{{ q.passage }}</textarea>
                   </div>
                   <div>
                     <label>Marks</label>
@@ -481,6 +498,8 @@
               options_list: optionsList,
               correct_answer: fieldVal(card, 'correct_answer'),
               question_type: fieldVal(card, 'question_type') || 'single_choice',
+              answer_type: fieldVal(card, 'answer_type') || 'single',
+              passage: fieldVal(card, 'passage') || '',
               marks: fieldVal(card, 'marks') || 1,
               question_number: fieldVal(card, 'question_number'),
               topic: fieldVal(card, 'topic'),

@@ -137,11 +137,70 @@ OPTION_MARKER_RE = re.compile(
     re.IGNORECASE,
 )
 OPTION_LINE_START_RE = re.compile(
-    rf"^\s*(?:\(({_OPTION_TOKEN})\)|({_OPTION_TOKEN})\))\s*",
+    rf"^\s*(?:\(({_OPTION_TOKEN})\)|({_OPTION_TOKEN})\)|([A-Za-z])\.\s*\)|([A-Za-z])[.:])\s*",
     re.IGNORECASE,
 )
-QUESTION_NUM_RE = re.compile(r"^\s*(\d+)[\.\)]\s+")
-ANSWER_HEADING_RE = re.compile(r"answer\s*(sheet|key)", re.IGNORECASE)
+# GRE / bank style: "A 182" or "B 191" at the start of a line
+OPTION_LINE_BARE_RE = re.compile(
+    r"^\s*([A-Ia-i])[\t \u00a0]+(\S.*)$",
+    re.DOTALL,
+)
+OPTION_LINE_FULL_RE = re.compile(
+    rf"^\s*(?:\(({_OPTION_TOKEN})\)|({_OPTION_TOKEN})\)|([A-Za-z])\.\s*\)|([A-Za-z])[.:])\s*(.*)$",
+    re.IGNORECASE | re.DOTALL,
+)
+# Inline markers including A. / a.) / A: / A 182 (not only (a) / a))
+_INLINE_OPT_MARKER_RE = re.compile(
+    rf"(?:(?<=^)|(?<=[\s\u00a0])|(?<=[.?!:]))"
+    rf"(?:"
+    rf"\(({_OPTION_TOKEN})\)|"
+    rf"({_OPTION_TOKEN})\)|"
+    rf"([A-Ia-i])\.\s*\)|"
+    rf"([A-Ia-i])\.|"
+    rf"([A-Ia-i]):|"
+    rf"([A-Ia-i])[\t \u00a0]+"
+    rf")"
+    rf"(?=\S)",
+    re.IGNORECASE,
+)
+# "1. …", "1) …", "1 Dinari …", "2 (a) …", "Q.1 …", "Q.12\t…"
+QUESTION_NUM_RE = re.compile(
+    r"^\s*(?:Q(?:ues(?:tion)?)?[\s.\-:]*)?(\d+)(?:[.)]\s+|\t+|\s+(?=[A-Za-z(]))",
+    re.IGNORECASE,
+)
+ANSWER_HEADING_RE = re.compile(r"ans\w{0,4}r\s*(sheet|key)", re.IGNORECASE)
+CORRECT_ANSWER_LINE_RE = re.compile(
+    r"^\s*(?:correct\s*answers?|answer\s*key)\s*[:\-–—]\s*(.+?)\s*$",
+    re.IGNORECASE,
+)
+CORRECT_ANSWER_TAIL_RE = re.compile(
+    r"(?:^|[\n\r]|[\s\u00a0])(?:correct\s*answers?|answer\s*key)\s*[:\-–—]\s*(.+?)\s*$",
+    re.IGNORECASE,
+)
+MULTI_SELECT_HINT_RE = re.compile(
+    r"(?:"
+    r"indicate\s+all|select\s+all|choose\s+all|all\s+that\s+apply|"
+    r"all\s+such|all\s+correct|"
+    r"more\s+than\s+one(?:\s+correct)?(?:\s+(?:option|answer|choice))s?|"
+    r"which\s+of\s+the\s+following\s+(?:could|must|are|is/?are)|"
+    r"which\s+of\s+the\s+following\s+options\s+are|"
+    r"multiple\s+(?:correct|select|answers?)"
+    r")",
+    re.IGNORECASE,
+)
+SECTION_HEADING_RE = re.compile(
+    r"^\s*section\s*[-–—:]?\s*([IVXLC]+|\d+)\b",
+    re.IGNORECASE,
+)
+PASSAGE_HEAD_RE = re.compile(
+    r"^\s*passage\s*\(?\s*Q\.?\s*(\d+)\s*[-–—to]+\s*Q\.?\s*(\d+)",
+    re.IGNORECASE,
+)
+_NUMERIC_ANSWER_RE = re.compile(
+    r"^[+\-]?\d+(?:\.\d+)?(?:\s*(?:to|-|–|—)\s*[+\-]?\d+(?:\.\d+)?)?$",
+    re.IGNORECASE,
+)
+_MATCHING_PAIR_RE = re.compile(r"([A-Da-d])\s*[-–—=]\s*([A-Za-z])")
 
 # Map numeric choice labels → a,b,c… (1→a … 26→z)
 _OPT_NUM_TO_LETTER = {str(i): chr(ord("a") + i - 1) for i in range(1, 27)}
@@ -168,10 +227,11 @@ def _options_dict_to_ordered_list(options: dict) -> list[dict]:
     ordered = []
     seen = set()
     for ch in _LETTER_ORDER:
+        if ch not in options:
+            continue
         text = (options.get(ch) or "").strip()
-        if text:
-            ordered.append({"letter": ch.upper(), "text": text})
-            seen.add(ch)
+        ordered.append({"letter": ch.upper(), "text": text})
+        seen.add(ch)
     for k, text in options.items():
         kk = (k or "").strip().lower()
         if kk in seen:
@@ -184,25 +244,151 @@ def _options_dict_to_ordered_list(options: dict) -> list[dict]:
     return ordered
 
 
-def _extract_options_from_text(text: str) -> tuple[str, dict]:
+def _marker_letter(match) -> str:
+    """Letter from any option-marker regex (first non-empty capturing group)."""
+    if not match:
+        return ""
+    for g in match.groups():
+        if g is None:
+            continue
+        letter = _option_letter(g)
+        if letter:
+            return letter
+    return ""
+
+
+def _letters_are_sequential(letters: list[str]) -> bool:
+    """True when letters are consecutive (A,B or C,D — later rows may start mid-alphabet)."""
+    if len(letters) < 2:
+        return False
+    idxs = []
+    for L in letters:
+        i = _LETTER_ORDER.find((L or "").lower())
+        if i < 0:
+            return False
+        idxs.append(i)
+    return all(b == a + 1 for a, b in zip(idxs, idxs[1:]))
+
+
+def _normalize_stem_ws(text: str) -> str:
+    text = (text or "").replace("\u00a0", " ")
+    text = re.sub(r"[\r\n]+", " ", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
+
+def _strip_correct_answer(text: str) -> tuple[str, str]:
     """
-    Split stem + options when choices are inline, e.g.:
-      '... on p ? (1) 2p (2) 2^{p^2} (3) p2 (4) pp'
-      '... is (a) foo (b) bar (c) baz (d) qux'
-      '... only (a) single choice'
-    Returns (stem, {a:..., b:..., ...}) with 1 or more options.
+    Pull a trailing 'Correct Answer : A, D, F' off the block.
+    Returns (remaining_text, normalized_answer_letters).
     """
     if not text:
+        return "", ""
+    m = CORRECT_ANSWER_TAIL_RE.search(text)
+    if not m:
+        # Whole paragraph is just the answer line
+        line = CORRECT_ANSWER_LINE_RE.match(text.replace("\u00a0", " ").strip())
+        if line:
+            return "", _parse_correct_answer_value(line.group(1))
+        return text, ""
+    ans = _parse_correct_answer_value(m.group(1))
+    remaining = text[: m.start()].rstrip()
+    return remaining, ans
+
+
+def _parse_option_line(line: str) -> tuple[str, str] | None:
+    """
+    If `line` is a single option, return (letter, text), else None.
+
+    Accepts: (A) 5:2 / A) 5:2 / A. 4 / a.) x / A: 14 / A 182
+    Rejects long sentences that happen to start with 'A ' (e.g. 'A zoo has…').
+    """
+    raw = (line or "").replace("\u00a0", " ").strip()
+    if not raw:
+        return None
+    if CORRECT_ANSWER_LINE_RE.match(raw):
+        return None
+    m = OPTION_LINE_FULL_RE.match(raw)
+    if m:
+        # groups: 1=(token) 2=token) 3=letter.) 4=letter.: 5=rest
+        letter = _option_letter(
+            m.group(1) or m.group(2) or m.group(3) or m.group(4) or ""
+        )
+        rest = (m.group(5) or "").strip()
+        if letter:
+            return letter, rest
+    m = OPTION_LINE_BARE_RE.match(raw)
+    if m:
+        letter = _option_letter(m.group(1) or "")
+        rest = (m.group(2) or "").strip()
+        if not letter or not rest:
+            return None
+        # Bare "A zoo has twice as many…" is a stem, not an option
+        if len(rest) > 90:
+            return None
+        if re.match(r"^(zoo|the|an?|in|on|of|to|for|if|when|which|what|how)\b", rest, re.I):
+            return None
+        return letter, rest
+    return None
+
+
+def _options_from_lines(text: str) -> tuple[str, dict]:
+    """Split a multi-line question block into stem + {letter: text}."""
+    if not text or "\n" not in text:
+        return text, {}
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    parsed = []
+    for i, line in enumerate(lines):
+        parsed.append((i, line, _parse_option_line(line)))
+
+    # Last run of 2+ sequential option lines (blank lines allowed between them)
+    best = None
+    current = []
+    for i, line, opt in parsed:
+        if opt is None:
+            if (line or "").strip() == "":
+                continue
+            if current:
+                if len(current) >= 2:
+                    best = current
+                current = []
+            continue
+        current.append((i, opt[0], opt[1]))
+    if len(current) >= 2:
+        best = current
+    if not best:
+        return text, {}
+
+    letters = [item[1] for item in best]
+    if not _letters_are_sequential(letters) and len(set(letters)) < 2:
+        return text, {}
+
+    first_idx = best[0][0]
+    stem_lines = lines[:first_idx]
+    options = {}
+    for _i, letter, opt_text in best:
+        opt_text = re.sub(r"[\s,;]+$", "", (opt_text or "").strip())
+        if letter in options and options[letter]:
+            options[letter] = f"{options[letter]} {opt_text}".strip()
+        else:
+            options[letter] = opt_text
+    if len(options) < 2:
+        return text, {}
+    stem = "\n".join(stem_lines).rstrip()
+    return stem, options
+
+
+def _options_from_inline_markers(text: str, marker_re) -> tuple[str, dict]:
+    """Group consecutive option markers and take the last multi-option run."""
+    if not text:
         return "", {}
-    matches = list(OPTION_MARKER_RE.finditer(text))
+    matches = list(marker_re.finditer(text))
     if len(matches) < 1:
         return text, {}
 
-    # Group consecutive markers; take the last group with >= 1 item
     groups = []
     current = [matches[0]]
     for m in matches[1:]:
-        # same group if gap between markers is short (< 500 chars of option text)
         if m.start() - current[-1].end() < 500:
             current.append(m)
         else:
@@ -210,45 +396,366 @@ def _extract_options_from_text(text: str) -> tuple[str, dict]:
             current = [m]
     groups.append(current)
 
+    candidates = [g for g in groups if len(g) >= 2]
     best = None
-    for g in groups:
-        if len(g) >= 1:
-            best = g
+    for g in reversed(candidates or []):
+        # Prefer the longest sequential suffix (A,B,C…) so a leading
+        # "A zoo has…" is not treated as option A.
+        trimmed = None
+        letters = [_marker_letter(m) for m in g]
+        for start in range(len(g)):
+            sl = letters[start:]
+            if all(sl) and _letters_are_sequential(sl):
+                trimmed = g[start:]
+                break
+        if trimmed and len(trimmed) >= 2:
+            best = trimmed
+            break
     if not best:
-        return text, {}
+        # Single trailing (a) / (1) marker only
+        tail = groups[-1] if groups else []
+        if (
+            len(tail) == 1
+            and tail[0].start() >= max(0, len(text) - 80)
+            and marker_re is OPTION_MARKER_RE
+        ):
+            best = tail
+        else:
+            return text, {}
 
-    # Prefer the last multi-option group when available (avoid false positives)
-    multi = [g for g in groups if len(g) >= 2]
-    if multi:
-        best = multi[-1]
-    elif best[0].start() < max(0, len(text) - 80) and len(best) == 1:
-        # Single marker early in text is usually not an option block
-        return text, {}
-
-    # Stem ends where the option block starts
     stem = text[: best[0].start()].rstrip()
     stem = re.sub(r"[\s\u00a0]+$", "", stem)
-
     options = {}
     for i, m in enumerate(best):
-        letter = _option_letter(m.group(1) or m.group(2) or "")
-        if not letter:
-            # Sequential fallback when token is odd
-            letter = _LETTER_ORDER[i] if i < len(_LETTER_ORDER) else f"x{i}"
+        letter = _marker_letter(m) or (
+            _LETTER_ORDER[i] if i < len(_LETTER_ORDER) else f"x{i}"
+        )
         start = m.end()
         end = best[i + 1].start() if i + 1 < len(best) else len(text)
         opt = text[start:end].strip()
         opt = re.sub(r"[\s,;]+$", "", opt)
-        if not opt and letter not in options:
-            # Keep empty-ish marker only if we already have others? skip blanks
-            continue
-        if letter in options and options[letter]:
-            options[letter] = f"{options[letter]} {opt}".strip()
-        else:
+        if letter not in options:
             options[letter] = opt
-
+        elif opt:
+            options[letter] = f"{options[letter]} {opt}".strip()
     if len(options) < 1:
         return text, {}
+    return stem, options
+
+
+def _options_look_like_mcq(options: dict, stem: str) -> bool:
+    """False for past-paper (a)/(b) sub-parts (long text, [marks], blanks)."""
+    if not options or len(options) < 2:
+        return False
+    blob = f"{stem or ''} " + " ".join(options.values())
+    if re.search(r"\[\s*\d+\s*\]", blob):
+        return False
+    if re.search(r"\.{6,}", blob):
+        return False
+    avg_len = sum(len(v or "") for v in options.values()) / max(len(options), 1)
+    if avg_len > 160:
+        return False
+    return True
+
+
+def _join_stem_and_options(stem: str, options: dict) -> str:
+    parts = [stem.strip()] if (stem or "").strip() else []
+    for item in _options_dict_to_ordered_list(options):
+        parts.append(f"({item['letter']}) {item['text']}".strip())
+    return " ".join(p for p in parts if p).strip()
+
+
+def _filename_type_hints(name: str) -> list[str]:
+    """Question-type keywords found in the uploaded file name."""
+    n = re.sub(r"[\s\-]+", "_", (name or "").lower())
+    found = []
+    checks = (
+        (r"multiple_correct|multi_correct|multi_select|more_than_one", "multiple_choice"),
+        (r"single_correct|single_choice", "single_choice"),
+        (r"true_false|truefalse", "true_false"),
+        (r"fill_blank|fill_in", "fill_blank"),
+        (r"comprehension|comprehensive", "comprehension"),
+        (r"numerical", "numerical"),
+        (r"integer", "integer"),
+        (r"structured", "structured"),
+        (r"matching", "matching"),
+    )
+    for pat, typ in checks:
+        if re.search(pat, n):
+            found.append(typ)
+    return found
+
+
+def _parse_correct_answer_value(raw: str) -> str:
+    """
+    Keep numerical / matching keys intact. Only compress A,B,C letter keys.
+    '23' must stay 23 (not letter W).
+    """
+    raw = re.sub(r"[\s\u00a0]+", " ", (raw or "")).strip()
+    if not raw:
+        return ""
+    pairs = _MATCHING_PAIR_RE.findall(raw)
+    if len(pairs) >= 2:
+        return ", ".join(f"{a.upper()}-{b.lower()}" for a, b in pairs)
+    compact = raw.replace(" ", "")
+    if _NUMERIC_ANSWER_RE.match(raw) or _NUMERIC_ANSWER_RE.match(compact):
+        return raw
+    if re.match(
+        r"^[+\-]?\d+(?:\.\d+)?\s+to\s+[+\-]?\d+(?:\.\d+)?$", raw, re.I
+    ):
+        return raw
+    letters = _normalize_answer_token(raw)
+    if letters:
+        return letters
+    return raw
+
+
+def _looks_numeric_answer(ans: str) -> bool:
+    ans = (ans or "").strip()
+    if not ans:
+        return False
+    return bool(
+        _NUMERIC_ANSWER_RE.match(ans)
+        or _NUMERIC_ANSWER_RE.match(ans.replace(" ", ""))
+        or re.match(r"^[+\-]?\d+(?:\.\d+)?\s+to\s+[+\-]?\d+(?:\.\d+)?$", ans, re.I)
+    )
+
+
+def _looks_matching_answer(ans: str) -> bool:
+    return len(_MATCHING_PAIR_RE.findall(ans or "")) >= 2
+
+
+def _looks_comprehension_stem(stem: str) -> bool:
+    blob = stem or ""
+    if re.search(r"\[\s*\d+\s*\]", blob):
+        return True
+    if re.search(r"\.{6,}", blob):
+        return True
+    if re.search(r"\(\s*(?:i{1,3}|iv|v|vi{0,3}|ix|x)\s*\)", blob, re.I):
+        return True
+    return False
+
+
+def _infer_section_context(text: str):
+    """(question_type, answer_type) from a SECTION / instruction paragraph."""
+    t = re.sub(r"\s+", " ", (text or "")).strip().lower()
+    if not t:
+        return None
+    if re.search(r"match(?:ing)?\s+the\s+column|column\s+i\b", t) and re.search(
+        r"column|match", t
+    ):
+        if "match" in t:
+            return ("matching", "multiple")
+    if re.search(r"\breal number|\bnumerical\b|\binteger type\b", t):
+        return ("numerical", "single")
+    if re.search(
+        r"one or more (?:answers?|options?) are correct|more than one.{0,40}correct",
+        t,
+    ):
+        return ("multiple_choice", "multiple")
+    if re.search(
+        r"based upon each paragraph|this section contains paragraph|"
+        r"passage\s*\(?\s*q",
+        t,
+    ):
+        return ("comprehension", "single")
+    if re.search(r"only one is correct|out of which only one", t):
+        return ("single_choice", "single")
+    if re.search(r"statement\s*-?\s*1", t) and re.search(r"statement\s*-?\s*2", t):
+        return ("single_choice", "single")
+    return None
+
+
+def _is_boilerplate_paragraph(text: str) -> bool:
+    t = re.sub(r"\s+", " ", (text or "")).strip()
+    if not t:
+        return False
+    if SECTION_HEADING_RE.match(t):
+        return True
+    if re.match(r"this section contains\b", t, re.I):
+        return True
+    if PASSAGE_HEAD_RE.match(t):
+        return True
+    if re.match(r"column\s+(?:i{1,2}|1|2)\b", t, re.I):
+        return True
+    if re.match(r"each question has 4 choices", t, re.I):
+        return True
+    if re.match(r"four statements\s*\(", t, re.I):
+        return True
+    return False
+
+
+def _closes_current_question(text: str) -> bool:
+    """Section / passage headers end the previous question; column titles do not."""
+    t = re.sub(r"\s+", " ", (text or "")).strip()
+    if not t:
+        return False
+    if SECTION_HEADING_RE.match(t):
+        return True
+    if re.match(r"this section contains\b", t, re.I):
+        return True
+    if PASSAGE_HEAD_RE.match(t):
+        return True
+    return False
+
+
+def _force_option_from_paragraph(text: str):
+    """Lone option line, including empty / equation-only '(a)' rows."""
+    raw = (text or "").replace("\u00a0", " ").strip()
+    if not raw:
+        return None
+    parsed = _parse_option_line(raw)
+    if parsed:
+        return parsed
+    m = OPTION_LINE_START_RE.match(raw)
+    if not m:
+        m = OPTION_LINE_FULL_RE.match(raw)
+    if m and (m.start() == 0):
+        letter = _option_letter(
+            next((g for g in m.groups() if g), "")
+        ) or _marker_letter(m)
+        rest = raw[m.end() :].strip()
+        if letter:
+            return letter, rest
+    return None
+
+
+def _detect_question_and_answer_type(
+    stem: str,
+    options: dict,
+    answer_raw: str,
+    filename: str = "",
+    section_hint=None,
+) -> tuple[str, str]:
+    """
+    Return (question_type, answer_type).
+
+    Priority: in-document section instructions → answer shape → stem
+    wording → options → a single unambiguous file-name hint.
+    Mixed file names (single + multiple + numerical) are ignored.
+    """
+    opts = options or {}
+    n_opts = len(opts)
+    ans = (answer_raw or "").strip()
+    matching_ans = _looks_matching_answer(ans)
+    numeric_ans = _looks_numeric_answer(ans)
+    letter_parts = []
+    if ans and not matching_ans and not numeric_ans:
+        letter_parts = [p for p in ans.split(",") if p.strip()]
+        # "a,d,f" style; reject long tokens
+        if any(len(p.strip()) > 2 for p in letter_parts):
+            letter_parts = [
+                p for p in _normalize_answer_token(ans).split(",") if p.strip()
+            ]
+    multi_ans = len(letter_parts) >= 2
+    multi_hint = bool(MULTI_SELECT_HINT_RE.search(stem or ""))
+    fn_hints = _filename_type_hints(filename)
+
+    if section_hint:
+        qtype, atype = section_hint
+        if qtype == "single_choice" and multi_ans:
+            return "multiple_choice", "multiple"
+        if qtype == "numerical":
+            return "numerical", "single"
+        if qtype == "integer":
+            return "integer", "single"
+        if qtype == "matching":
+            return "matching", "multiple"
+        if qtype == "comprehension":
+            return "comprehension", "multiple" if (multi_ans or multi_hint) else "single"
+        if qtype == "multiple_choice":
+            return "multiple_choice", "multiple"
+        if qtype == "single_choice" and n_opts >= 2:
+            return "single_choice", "single"
+        return qtype, atype
+
+    if matching_ans or re.search(r"match(?:ing)?\s+the\s+column", stem or "", re.I):
+        return "matching", "multiple"
+    if numeric_ans and n_opts < 2:
+        return "numerical", "single"
+
+    if n_opts >= 2:
+        texts = {(v or "").strip().lower() for v in opts.values() if (v or "").strip()}
+        if len(texts) == 2 and texts <= {"true", "false", "t", "f", "yes", "no"}:
+            return "true_false", "single"
+        if multi_ans or multi_hint:
+            return "multiple_choice", "multiple"
+        if fn_hints == ["multiple_choice"]:
+            return "multiple_choice", "multiple"
+        return "single_choice", "single"
+
+    stem_l = stem or ""
+    if re.search(r"\b(?:fill\s+in\s+the\s+blank|fills?\s+in)\b", stem_l, re.I):
+        return "fill_blank", "single"
+    if re.search(
+        r"\b(?:integer\s+type|enter\s+(?:the\s+)?(?:correct\s+)?integer)\b",
+        stem_l,
+        re.I,
+    ):
+        return "integer", "single"
+    if _looks_comprehension_stem(stem_l):
+        return "comprehension", "single"
+    if len(fn_hints) == 1:
+        qtype = fn_hints[0]
+        atype = "multiple" if qtype in ("multiple_choice", "matching") else "single"
+        return qtype, atype
+    return "structured", "single"
+
+
+def _detect_question_type(stem: str, options: dict, answer_letters: str, filename: str = "") -> str:
+    qtype, _atype = _detect_question_and_answer_type(
+        stem, options, answer_letters, filename=filename
+    )
+    return qtype
+
+
+def _format_correct_answer(ans: str, question_type: str) -> str:
+    ans = (ans or "").strip()
+    if not ans:
+        return ""
+    if question_type in ("numerical", "integer", "matching"):
+        return ans
+    if _looks_numeric_answer(ans) or _looks_matching_answer(ans):
+        return ans
+    return ans.upper()
+
+
+def _split_stem_options_answer(text: str) -> tuple[str, dict, str]:
+    """
+    Split a question block into (stem, options, answer_letters).
+
+    Handles:
+      - (A)/(1)/A)/A./a.)/A 182 options on their own lines
+      - the same markers inlined on one line
+      - a trailing 'Correct Answer : A, D, F' line
+    """
+    if not text:
+        return "", {}, ""
+    remaining, answer = _strip_correct_answer(text)
+    remaining = remaining.replace("\u00a0", " ")
+
+    stem, options = _options_from_lines(remaining)
+    if not options:
+        stem, options = _options_from_inline_markers(remaining, OPTION_MARKER_RE)
+    if not options:
+        stem, options = _options_from_inline_markers(remaining, _INLINE_OPT_MARKER_RE)
+
+    if options and not _options_look_like_mcq(options, stem) and not answer:
+        return _normalize_stem_ws(remaining), {}, answer
+
+    return _normalize_stem_ws(stem if options else remaining), options, answer
+
+
+def _extract_options_from_text(text: str) -> tuple[str, dict]:
+    """
+    Split stem + options when choices are inline, e.g.:
+      '... on p ? (1) 2p (2) 2^{p^2} (3) p2 (4) pp'
+      '... is (a) foo (b) bar (c) baz (d) qux'
+      '... only (a) single choice'
+      '... Indicate all such numbers.\\nA 182\\nB 191'
+    Returns (stem, {a:..., b:..., ...}) with 1 or more options.
+    """
+    stem, options, _ans = _split_stem_options_answer(text)
     return stem, options
 
 VML_NS = "urn:schemas-microsoft-com:vml"
@@ -345,7 +852,10 @@ def _run_text_with_image_placeholders(run_elem):
         elif tag == qn("w:tab"):
             parts.append("\t")
         elif tag == qn("w:br"):
-            parts.append(" ")
+            # Soft line breaks keep option lines ("A 182" / "A. 4") separate.
+            # Page/column breaks are not option separators.
+            br_type = child.get(qn("w:type"))
+            parts.append(" " if br_type in ("page", "column") else "\n")
         elif tag in (qn("w:drawing"), qn("w:pict"), qn("w:object")):
             for rid in _rids_from_element(child):
                 parts.append(f"\x02IMGRID{rid}\x02")
@@ -1398,22 +1908,81 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
         questions = []
         current = None
         omath_registry = []
+        section_hint = None  # (question_type, answer_type) from SECTION text
+        current_passage = ""
+        pending_shared_options = {}
+        last_pending_letter = ""
 
         def start_question(num_hint=None):
             nonlocal current
+            passage = ""
+            if section_hint and section_hint[0] == "comprehension" and current_passage:
+                passage = current_passage
             current = {
                 "question_text": "",
                 "options": {},
                 "image_rids": [],
                 "question_number": num_hint or str(len(questions) + 1),
+                "inline_answer": "",
+                "section_hint": section_hint,
+                "passage": passage,
             }
             questions.append(current)
+
+        def _absorb_block(block_text: str):
+            """Merge a paragraph (stem / options / Correct Answer) into current."""
+            if current is None:
+                return
+            stem, opts, ans = _split_stem_options_answer(block_text)
+            if not opts:
+                forced = _force_option_from_paragraph(block_text)
+                if forced:
+                    opts = {forced[0]: forced[1]}
+                    stem = ""
+            if ans and not current.get("inline_answer"):
+                current["inline_answer"] = ans
+            if opts:
+                if stem:
+                    current["question_text"] = (
+                        f"{current['question_text']} {stem}".strip()
+                        if current["question_text"]
+                        else stem
+                    )
+                for letter, opt_text in opts.items():
+                    if letter in current["options"] and current["options"][letter]:
+                        if opt_text:
+                            current["options"][letter] = (
+                                f"{current['options'][letter]} {opt_text}".strip()
+                            )
+                    else:
+                        current["options"][letter] = opt_text
+                return
+            if stem:
+                current["question_text"] = (
+                    f"{current['question_text']} {stem}".strip()
+                    if current["question_text"]
+                    else stem
+                )
 
         for p in document.paragraphs:
             raw_text = _paragraph_text_with_placeholders(p, omath_registry).strip()
 
-            if ANSWER_HEADING_RE.search(
-                re.sub(r"\x02(?:OMATH|IMGRID)[^\x02]+\x02", "", raw_text)
+            visible_plain = re.sub(
+                r"\x02(?:OMATH|IMGRID)[^\x02]+\x02", "", raw_text
+            )
+            visible_plain = visible_plain.replace("\u00a0", " ").strip()
+            # "Correct Answer : A, D" is the key for the current question,
+            # not a new "Answer Sheet" section heading.
+            if (
+                ANSWER_HEADING_RE.search(visible_plain)
+                and not CORRECT_ANSWER_LINE_RE.match(visible_plain)
+                and not current
+            ):
+                break
+            if (
+                ANSWER_HEADING_RE.search(visible_plain)
+                and re.search(r"sheet", visible_plain, re.I)
+                and not CORRECT_ANSWER_LINE_RE.match(visible_plain)
             ):
                 break
 
@@ -1426,73 +1995,90 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
             if not raw_text and not rids_here:
                 continue
 
+            if _is_boilerplate_paragraph(visible_plain):
+                # Section / passage headers end the previous question.
+                # Column titles are skipped but must not drop the current Q
+                # (its Correct Answer line still follows).
+                if _closes_current_question(visible_plain):
+                    current = None
+                    inferred = _infer_section_context(visible_plain)
+                    if inferred:
+                        section_hint = inferred
+                        if inferred[0] != "comprehension":
+                            current_passage = ""
+                        pending_shared_options = {}
+                        last_pending_letter = ""
+                    p_head = PASSAGE_HEAD_RE.match(visible_plain)
+                    if p_head:
+                        current_passage = ""
+                        section_hint = section_hint or ("comprehension", "single")
+                continue
+
             text = raw_text
             if explicit_num:
-                # Strip leading "1." from the plain prefix only
+                # Strip leading "1." / "Q.12" from the plain prefix only
                 text = QUESTION_NUM_RE.sub("", text, count=1)
 
             if is_new_q:
                 num_hint = explicit_num.group(1) if explicit_num else None
                 start_question(num_hint)
-                current["question_text"] = text
+                _absorb_block(text)
+                numerical_section = bool(
+                    section_hint and section_hint[0] in ("numerical", "integer")
+                )
+                if (
+                    not current["options"]
+                    and pending_shared_options
+                    and not numerical_section
+                ):
+                    current["options"] = dict(pending_shared_options)
+                if numerical_section:
+                    # Intervals like (a, b) are not MCQ options
+                    current["options"] = {}
                 current["image_rids"].extend(rids_here)
                 continue
 
             if current is None:
+                forced = _force_option_from_paragraph(text)
+                if forced:
+                    pending_shared_options[forced[0]] = forced[1]
+                    last_pending_letter = forced[0]
+                    continue
+                if last_pending_letter:
+                    extra = _normalize_stem_ws(text)
+                    if extra:
+                        prev = pending_shared_options.get(last_pending_letter) or ""
+                        pending_shared_options[last_pending_letter] = (
+                            f"{prev} {extra}".strip()
+                        )
+                    continue
+                if section_hint and section_hint[0] == "comprehension":
+                    extra = _normalize_stem_ws(text)
+                    if extra:
+                        current_passage = f"{current_passage} {extra}".strip()
                 continue
 
-            # Option detection — (a)/(b)/(1)/(2)/… style, same-line or new line
-            # Supports 1 or more options per question (not limited to A–D).
-            plain_opts = text
-            matches = list(OPTION_MARKER_RE.finditer(plain_opts))
-            starts_with_opt = bool(OPTION_LINE_START_RE.match(plain_opts))
-            if matches and (starts_with_opt or len(matches) >= 2):
-                for idx, m in enumerate(matches):
-                    letter = _option_letter(m.group(1) or m.group(2) or "")
-                    if not letter:
-                        letter = (
-                            _LETTER_ORDER[idx]
-                            if idx < len(_LETTER_ORDER)
-                            else f"x{idx}"
-                        )
-                    start = m.end()
-                    end = (
-                        matches[idx + 1].start()
-                        if idx + 1 < len(matches)
-                        else len(plain_opts)
-                    )
-                    opt_text = plain_opts[start:end].strip(" \t")
-                    # Text before first option on a mixed stem+options line → stem
-                    if idx == 0 and m.start() > 0:
-                        prefix = plain_opts[: m.start()].strip()
-                        if prefix:
-                            current["question_text"] = (
-                                f"{current['question_text']} {prefix}".strip()
-                                if current["question_text"]
-                                else prefix
-                            )
-                    if letter in current["options"] and current["options"][letter]:
-                        current["options"][letter] = (
-                            f"{current['options'][letter]} {opt_text}".strip()
-                        )
-                    else:
-                        current["options"][letter] = opt_text
-            elif text:
-                current["question_text"] = (
-                    f"{current['question_text']} {text}".strip()
-                    if current["question_text"]
-                    else text
-                )
+            _absorb_block(text)
             current["image_rids"].extend(rids_here)
 
-        # ---- 2b. Pull inline options out of the stem if still missing ----
+        # ---- 2b. Pull inline options / Correct Answer out of the stem ----
         for q in questions:
-            if q.get("options"):
-                continue
-            stem, opts = _extract_options_from_text(q.get("question_text") or "")
-            if opts:
+            leftover = q.get("question_text") or ""
+            stem, opts, ans = _split_stem_options_answer(leftover)
+            if ans and not q.get("inline_answer"):
+                q["inline_answer"] = ans
+            if opts and not q.get("options"):
                 q["question_text"] = stem
                 q["options"] = opts
+            elif ans:
+                q["question_text"] = stem
+            if q.get("options") and not _options_look_like_mcq(
+                q["options"], q.get("question_text") or ""
+            ) and not q.get("inline_answer"):
+                q["question_text"] = _join_stem_and_options(
+                    q.get("question_text") or "", q["options"]
+                )
+                q["options"] = {}
 
         # ---- 3. Answer Sheet table ----
         answers = _parse_answer_sheet_tables(document)
@@ -1544,13 +2130,21 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
 
             options = q["options"] or {}
             # Match answer key by question_number; fall back to 1-based position
-            answer_letters = answers.get(str(qnum), "") or answers.get(str(position), "")
-            answer_letters = _normalize_answer_token(answer_letters)
-            is_multi = "," in answer_letters
-            if options:
-                question_type = "multiple_choice" if is_multi else "single_choice"
+            # or an in-document "Correct Answer : A, D" / "45.92" line.
+            table_ans = answers.get(str(qnum), "") or answers.get(str(position), "")
+            if table_ans:
+                answer_raw = _normalize_answer_token(table_ans)
             else:
-                question_type = "structured"
+                answer_raw = q.get("inline_answer") or ""
+            question_type, answer_type = _detect_question_and_answer_type(
+                q.get("question_text") or "",
+                options,
+                answer_raw,
+                filename=src_name,
+                section_hint=q.get("section_hint"),
+            )
+            if question_type in ("numerical", "integer"):
+                options = {}
 
             q_text = _normalize_display_latex(
                 _substitute_placeholders(
@@ -1572,8 +2166,6 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                         prefer_latex=True,
                     )
                 )
-                if not (rendered or "").strip():
-                    continue
                 options_list.append(
                     {
                         "letter": item["letter"],
@@ -1616,16 +2208,27 @@ def parse_docx_questions(uploaded_file, media_subdir="question_equations"):
                 # for everything — keep list for admin review only
                 pass
 
+            passage_text = _normalize_display_latex(
+                _substitute_placeholders(
+                    (q.get("passage") or "").strip(),
+                    latex_by_key,
+                    rid_to_url,
+                    prefer_latex=True,
+                )
+            ) if q.get("passage") else ""
+
             row = {
                 "question_text": q_text,
                 "question_type": question_type,
+                "answer_type": answer_type,
+                "passage": passage_text,
                 "option_a": opt_a,
                 "option_b": opt_b,
                 "option_c": opt_c,
                 "option_d": opt_d,
                 # Full list of options (1..N) for import → QuestionOption rows
                 "options_list": options_list,
-                "correct_answer": answer_letters.upper(),
+                "correct_answer": _format_correct_answer(answer_raw, question_type),
                 "marks": 1,
                 "explanation": expl,
                 "topic": "",
