@@ -28,8 +28,16 @@ python manage.py collectstatic --noinput
 echo "==> Applying database migrations"
 python manage.py migrate --noinput
 
-if [[ $CREATE_SUPERUSER ]]; then
-  python manage.py createsuperuser --noinput
+echo "==> Creating superuser (if needed)"
+if [ "$CREATE_SUPERUSER" = "True" ]; then
+  echo "Creating superuser..."
+  
+  DJANGO_SUPERUSER_PASSWORD="admin@admin" \
+  python manage.py createsuperuser --noinput \
+    --username "admin" \
+    --email "admin@admin.com" || true
+else
+  echo "Skipping superuser creation"
 fi
 
 echo "==> Ensuring critical schema columns (discussion / past papers)"
